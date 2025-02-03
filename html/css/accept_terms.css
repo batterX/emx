@@ -1,0 +1,32 @@
+body {
+	background-color: var(--color-main);
+}
+
+@media (min-width:1200px) { .container { max-width: 1000px; } }
+
+h1 {
+	font-size: 2rem;
+	margin-top: 3rem;
+	padding: 1.5rem 0;
+	margin-bottom: 1.5rem;
+	font-weight: 600;
+	text-align: center;
+}
+
+h2 {
+	font-weight: 600;
+	font-size: 1.25rem;
+	margin-top: 3rem;
+	padding: 0;
+	margin-bottom: 1rem;
+}
+
+p {
+	font-size: 0.9rem;
+	margin-bottom: 0.5rem;
+	text-align: justify;
+}
+
+#btnFinish {
+	visibility: hidden;
+}

@@ -1,0 +1,70 @@
+*:not(input):not(select):not(textarea) { user-select: none }
+
+
+
+
+
+body {
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+main {
+	width: 100%;
+	text-align: center;
+	padding: 1rem;
+}
+
+.container {
+	max-width: 720px;
+	background-color: var(--color-main);
+	text-align: center;
+	padding: 5rem 1rem;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+	border-radius: 0.25rem;
+}
+
+
+
+
+
+h1 {
+	font-weight: 400;
+	margin-bottom: 4rem;
+}
+
+
+
+
+
+input {
+	width: 60% !important;
+	min-width: 260px;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	font-size: 1.5rem !important;
+	text-align: center;
+}
+
+#errorMsg {
+	width: 75%;
+	min-width: 260px;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	display: block;
+	color: red !important;
+	font-size: 1.25rem;
+}
+#warningMsg {
+	width: 75%;
+	min-width: 260px;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	display: block;
+	color: darkorange !important;
+	font-size: 1.25rem;
+}

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+    <style type="text/css">
+    	.st0{fill:#808080;}
+    	.st1{fill:#007BFF;}
+    	.st2{fill:none;}
+    	.st3{font-family:&#39;Roboto-Italic&#39;;}
+    	.st4{font-size:36px;}
+    	.st5{font-size:24px;}
+    	.st6{font-family:&#39;Roboto-Regular&#39;;}
+    	.st7{font-size:30px;}
+    </style>
+    <rect x="797.5" y="100" width="5" height="700"/>
+    <rect x="100" y="447.5" width="1400" height="5"/>
+    <polygon points="791.3 100 800 85 808.7 100 "/>
+    <polygon points="1500 441.3 1515 450 1500 458.7 "/>
+    <rect x="322.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="372.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="422.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="472.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="522.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="572.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="622.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="672.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="722.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="772.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="606.8" y="447.5" class="st1" width="193.2" height="5"/>
+    <rect x="760.2" y="103.8" class="st2" width="33.5" height="35.5"/>
+    <text transform="matrix(1 0 0 1 760.1667 131.265)" class="st3 st4">Q</text>
+    <rect x="1420.8" y="468.3" class="st2" width="86.7" height="35.5"/>
+    <text transform="matrix(1 0 0 1 1420.8328 495.7585)"><tspan class="st3 st4">U&#x2F;U</tspan><tspan x="59.9" class="st3 st5">n</tspan></text>
+    <rect x="708.2" y="207.3" class="st2" width="84.1" height="35.5"/>
+    <text transform="matrix(1 0 0 1 708.1667 234.6816)"><tspan class="st3 st4">Q</tspan><tspan x="23" class="st3 st5">max</tspan></text>
+    <rect x="1355" y="319.8" class="st2" width="160" height="35.5"/>
+    <text transform="matrix(1 0 0 1 1355 342.6099)" class="st6 st7">Untererregt</text>
+    <rect x="1355" y="589.8" class="st2" width="160" height="35.5"/>
+    <text transform="matrix(1 0 0 1 1355 612.6868)" class="st6 st7">Übererregt</text>
+    <rect x="827.8" y="657.3" class="st2" width="94.5" height="35.5"/>
+    <text transform="matrix(1 0 0 1 827.7602 684.6816)"><tspan class="st3 st4">-Q</tspan><tspan x="32.3" class="st3 st5">max</tspan></text>
+    <rect x="1322.5" y="422.5" class="st0" width="5" height="30"/>
+    <rect x="1322.5" y="372.5" class="st0" width="5" height="30"/>
+    <rect x="1322.5" y="322.5" class="st0" width="5" height="30"/>
+    <rect x="1322.5" y="272.5" class="st0" width="5" height="30"/>
+    <rect x="1247.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="1197.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="1147.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="1097.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="1047.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="997.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="947.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="897.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="847.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="797.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="800" y="447.5" class="st1" width="193.2" height="5"/>
+    <rect x="272.5" y="447.5" class="st0" width="5" height="30"/>
+    <rect x="272.5" y="497.5" class="st0" width="5" height="30"/>
+    <rect x="272.5" y="547.5" class="st0" width="5" height="30"/>
+    <rect x="272.5" y="597.5" class="st0" width="5" height="30"/>
+    <rect x="272.5" y="647.5" class="st0" width="5" height="30"/>
+    <rect x="272.5" y="672.5" class="st0" width="30" height="5"/>
+    <rect x="1297.5" y="222.5" class="st0" width="30" height="5"/>
+    <rect x="1322.5" y="222.5" class="st0" width="5" height="30"/>
+    <rect x="238.9" y="560" transform="matrix(0.829 -0.5592 0.5592 0.829 -239.1897 342.6775)" class="st1" width="403.8" height="5"/>
+    <rect x="199.8" y="672.5" class="st1" width="75" height="5"/>
+    <rect x="957.3" y="335" transform="matrix(-0.829 0.5592 -0.5592 -0.829 2308.863 -30.9006)" class="st1" width="403.8" height="5"/>
+    <rect x="1325.2" y="222.5" class="st1" width="72.3" height="5"/>
+    <rect x="814.5" y="465.3" class="st2" width="61.5" height="35.5"/>
+    <text transform="matrix(1 0 0 1 814.5 492.6816)"><tspan class="st3 st4">U</tspan><tspan x="22.9" class="st3 st5">Q0</tspan></text>
+    <rect x="210" y="390.4" class="st2" width="130" height="35.5"/>
+    <text transform="matrix(1 0 0 1 243.6146 417.8488)" class="st3 st4">93%</text>
+    <rect x="547.6" y="390.4" class="st2" width="118.4" height="35.5"/>
+    <text transform="matrix(1 0 0 1 575.4271 417.8488)" class="st3 st4">97%</text>
+    <rect x="928.3" y="478.9" class="st2" width="122.4" height="35.5"/>
+    <text transform="matrix(1 0 0 1 948.646 506.3483)" class="st3 st4">103%</text>
+    <rect x="1256" y="478.9" class="st2" width="130.6" height="35.5"/>
+    <text transform="matrix(1 0 0 1 1280.459 506.3483)" class="st3 st4">107%</text>
+    <rect x="272.5" y="435" width="5" height="30"/>
+    <rect x="604.3" y="435" width="5" height="30"/>
+    <rect x="990.7" y="435" width="5" height="30"/>
+    <rect x="1322.5" y="435" width="5" height="30"/>
+    <rect x="785" y="222.5" width="30" height="5"/>
+    <rect x="785" y="672.5" width="30" height="5"/>
+</svg>

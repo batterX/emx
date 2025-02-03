@@ -1,0 +1,72 @@
+*:not(input):not(select):not(textarea) { user-select: none }
+
+body {
+	min-height: 100vh;
+	padding: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.card {
+	background-color: white;
+	padding: 5vmin;
+	text-align: center;
+}
+
+.logo {
+	width: 50vmin;
+	height: 20vmin;
+	margin: 0 10vmin;
+}
+
+h1 {
+	margin: 0;
+	font-size: 4vmin;
+	font-weight: 300;
+	margin: 5vmin 0;
+}
+
+.row, .box {
+	margin: 0;
+	padding: 0;
+}
+
+.box {
+	cursor: pointer;
+	border-radius: 0.25rem;
+	padding-top: 2vmin !important;
+	padding-bottom: 2vmin !important;
+}
+.box:hover  { background: rgba(0, 0, 0, 0.10); }
+.box:active { background: rgba(0, 0, 0, 0.15); }
+
+.box > div {
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	height: 7.5vmin;
+}
+
+.box span {
+	display: block;
+	line-height: 1;
+	font-size: 2vmin;
+	margin-top: 2vmin;
+	font-weight: 400;
+}
+
+#lang_en > div { background-image: url(../img/lang_en.png) }
+#lang_de > div { background-image: url(../img/lang_de.png) }
+#lang_fr > div { background-image: url(../img/lang_fr.png) }
+#lang_cs > div { background-image: url(../img/lang_cs.png) }
+#lang_es > div { background-image: url(../img/lang_es.png) }
+
+#softwareVersion {
+	display: block;
+	position: absolute;
+	bottom: 1vmin;
+	font-weight: bold;
+	font-size: 2vmin;
+	font-family: var(--font-family-monospace);
+}

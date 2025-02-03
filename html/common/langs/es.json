@@ -1,0 +1,551 @@
+{
+
+
+
+
+
+
+
+
+
+
+    "lang": "es",
+
+    "dict_gender": {
+        "0" : "Sr.",
+        "1" : "Sra."
+    },
+
+    "dict_countries": {
+        "europe" : "Europa",
+        "africa" : "África",
+        "at" : "Austria",
+        "by" : "Bielorrusia",
+        "be" : "Bélgica",
+        "hr" : "Croacia",
+        "cy" : "Chipre",
+        "cz" : "Chequia",
+        "dk" : "Dinamarca",
+        "ee" : "Estonia",
+        "fi" : "Finlandia",
+        "fr" : "Francia",
+        "ge" : "Georgia",
+        "de" : "Alemania",
+        "gr" : "Grecia",
+        "hu" : "Hungría",
+        "is" : "Islandia",
+        "ie" : "Irlanda",
+        "it" : "Italia",
+        "lv" : "Letonia",
+        "lt" : "Lituania",
+        "lu" : "Luxemburgo",
+        "mt" : "Malta",
+        "md" : "Moldavia",
+        "nl" : "Países Bajos",
+        "no" : "Noruega",
+        "pl" : "Polonia",
+        "pt" : "Portugal",
+        "ro" : "Rumania",
+        "ru" : "Rusia",
+        "sk" : "Eslovaquia",
+        "si" : "Eslovenia",
+        "es" : "España",
+        "se" : "Suecia",
+        "ch" : "Suiza",
+        "tr" : "Turquia",
+        "ua" : "Ucrania",
+        "gb" : "Reino Unido",
+        "cd" : "República Democrática del Congo",
+        "gh" : "Ghana",
+        "ci" : "Costa de Marfil",
+        "ke" : "Kenia",
+        "ng" : "Nigeria",
+        "re" : "Reunión",
+        "sn" : "Senegal",
+        "za" : "Sudáfrica",
+        "tg" : "Togo",
+        "tn" : "Túnez",
+        "ug" : "Uganda"
+    },
+
+    "dict_reactive_mode": {
+        "0" : "Ninguno",
+        "1" : "Curva coso(P)",
+        "2" : "Coso fijo",
+        "3" : "Q(U) Curva",
+        "4" : "Fixed Reactive Power (Qfix)"
+    },
+    
+    "dict_bs_sysmode": {
+        "0" : "Ninguno",
+        "1" : "Descarga automática de baterías",
+        "2" : "Potencia de red cercana a cero",
+        "3" : "Corte de pico de potencia"
+    },
+
+    "btn": {
+        "continue"  : "Continuar",
+        "login"     : "Iniciar sesión",
+        "apply"     : "Aplicar",
+        "save"      : "Guardar",
+        "show_more" : "Ver más",
+        "sign_in"   : "Iniciar sesión",
+        "verify"    : "Verificar",
+        "delete"    : "Apagar",
+        "close"     : "Cerrar"
+    },
+
+    "common": {
+        "email"            : "Email",
+        "password"         : "Palabra clave",
+        "name"             : "Nombre",
+        "first_name"       : "Nombre",
+        "last_name"        : "Apellido",
+        "company"          : "Empresa",
+        "telephone"        : "Teléfono",
+        "country"          : "Pais",
+        "city"             : "Ciudad",
+        "zip_code"         : "Código postal",
+        "address"          : "Dirección",
+        "serialnumber"     : "Número de serie",
+        "on"               : "On",
+        "off"              : "Off",
+        "yes"              : "Sí",
+        "no"               : "No",
+        "mode"             : "Modo",
+        "date"             : "Fecha",
+        "type"             : "Tipo",
+        "owner"            : "Proprietário",
+        "latest_timestamp" : "Ultimo registro de tiempo",
+        "voltage"          : "Tensión",
+        "current"          : "Corriente",
+        "power"            : "Potencia",
+        "capacity"         : "Capacidad",
+        "frequency"        : "Frecuencia",
+        "total"            : "Total",
+        "search"           : "Procura",
+        "language"         : "Idioma"
+    },
+
+
+
+
+
+
+
+
+
+
+    "software_update": {
+        "software_update"                : "Actualización de software",
+        "checking_internet_connection"   : "Comprobando la conexión de Internet",
+        "check_network_cable_connection" : "Asegúrese de que el cable de red esté conectado",
+        "no_internet_connection"         : "Sin conexión a Internet",
+        "searching_for_updates"          : "Buscando actualizaciones",
+        "downloading_update"             : "Descargando actualización",
+        "rebooting"                      : "Reinicio",
+        "finishing_update"               : "Terminando actualización",
+        "update_completed"               : "Actualización terminada"
+    },
+
+    "installer_login": {
+        "installer_login"                : "Inicio de sesión del instalador",
+        "wrong_email_or_password"        : "Correo o contraseña equivocada. ¡Inténtalo de nuevo!",
+        "wrong_system_installer"         : "Usted no es el instalador de este sistema, por tanto no es posible que termine la instalación."
+    },
+
+    "customer_info": {
+        "customer_information"           : "Informaciones para clientes",
+        "installer_on_site"              : "Installer on site",
+        "installation_address"           : "Dirección de instalación",
+        "same_as_customer_address"       : "Igual que la dirección del cliente",
+        "customer_same_as_installer"     : "El correo electrónico del cliente no puede ser el mismo que el correo electrónico del instalador. ¡Elija otro correo electrónico!",
+        "wrong_customer_installer"       : "Usted no tiene acceso al cliente con este email. Por favor use otra dirección de email."
+    },
+
+    "system_test": {
+        "system_test"                    : "Prueba del sistema",
+        "energy_meter"                   : "Medidor de energía",
+        "solar_controllers"              : "Solar Controllers",
+        "battery_charging"               : "Bateria cargando",
+        "ups_mode"                       : "Modo UPS",
+        "warning"                        : "Advertencia",
+        "warning_16640"                  : "Pérdida de tensión en la entrada (C.A.)",
+        "warning_16642"                  : "Dislocación de fase C.A. de entrada",
+        "performing_test"                : "Hacer prueba",
+        "verifying_battery_soc"          : "Verificando bateria SoC",
+        "charging_battery_to"            : "Cargando bateria para",
+        "discharging_battery_to"         : "Descargando bateria para",
+        "enable_ac_charging"             : "Habilitar la carga de la batería con C.A.",
+        "disable_ac_charging"            : "Deshabilitar la carga de la batería con C.A.",
+        "current_status"                 : "Estado actual",
+        "check_output_active"            : "Comprobando si la salida está activa",
+        "turn_solar_off"                 : "Please turn OFF the solar breaker",
+        "turn_input_off"                 : "Apague el interruptor solar y de entrada.",
+        "turn_input_on"                  : "Encienda el interruptor solar y de entrada.",
+        "turn_output_on"                 : "Conecte la salida del UPS"
+    },
+    
+
+
+
+
+
+
+
+
+
+    "system_detect": {
+        "inverter_unknown"                                         : "Inversor desconocido",
+        "please_connect_inverter"                                  : "Conecte su inversor al EMX",
+        "inverter_not_registered"                                  : "Su inversor no está registrado en nuestra base de datos"
+    },
+    
+    "system_setup": {
+        "system"                                                   : "batterX Home",
+        "system_new"                                               : "Sistema nuevo",
+        "system_existing"                                          : "Sistema existente",
+        "system_serialnumber_system"                               : "Número de serie del sistema (armário)",
+        "system_serialnumber_inverter"                             : "Número de serie del inversor",
+        "system_serialnumber_emx"                                  : "Número de serie del EMX",
+        "system_type_r"                                            : "Armário completo con inversor",
+        "system_type_w"                                            : "Inversor montado en la pared",
+        "system_mode"                                              : "Modo de sistema",
+        "system_mode_ups"                                          : "UPS",
+        "system_mode_backup"                                       : "Backup",
+        "system_installer_memo"                                    : "Notas del instalador",
+        "extended_parameters"                                      : "Parametros extendidos",
+        "extended_overfrequency_reduction"                         : "Reducción de potencia extendida activa en caso de sobrefrequencia",
+        "extended_underfrequency_reduction"                        : "Active power reduction in case of under-frequency",
+        "extended_grid_connection_conditions"                      : "Grid connection conditions",
+        "extended_grid_decoupling_protection"                      : "Grid decoupling protection",
+        "extended_start_of_reduction"                              : "Inicio de reducción de potencia",
+        "extended_gradient"                                        : "Degradada",
+        "extended_droop"                                           : "Droop",
+        "extended_ueff"                                            : "Overvoltage protection Ueff of the 10-minute moving average",
+        "extended_uefftime"                                        : "Ueff Time",
+        "extended_mingridvoltage"                                  : "Min grid voltage",
+        "extended_maxgridvoltage"                                  : "Max grid voltage",
+        "extended_mingridfrequency"                                : "Min grid frequency",
+        "extended_maxgridfrequency"                                : "Max grid frequency",
+        "extended_gridconnectdelay"                                : "Grid connect delay",
+        "extended_gridreconnectdelay"                              : "Grid reconnect delay",
+        "extended_putime"                                          : "P(U) Time",
+        "solar"                                                    : "Sistema PV",
+        "solar_size"                                               : "Tamaño del sistema PV",
+        "solar_watt_peak"                                          : "Potencia pico (Wp)",
+        "solar_wide_input_range"                                   : "Wide Solar Input Range",
+        "solar_feed_in_limitation"                                 : "¿Cuánto porcentaje de la energía solar se puede verter a la red en términos de potencia máxima?",
+        "solar_info"                                               : "Información de la instalación PV",
+        "solar_emeter_phase_connected"                             : "Indique a qué fase de salida del medidor de energía se ha conectado la entrada del inversor.",
+        "global_regulation_check"                                  : "Dynamic feed-in control of the entire PV system",
+        "extsol_meter"                                             : "External Solar Meter Connected",
+        "user_meters"                                              : "User Energy Meters",
+        "user_meter"                                               : "User Meter",
+        "connected"                                                : "Connected",
+        "label"                                                    : "Label",
+        "batteries"                                                : "Baterias",
+        "batteries_none"                                           : "No Battery",
+        "batteries_lifepo"                                         : "LiFePO",
+        "batteries_lifepo_serialnumber"                            : "Escriba el num. Série de cada una de las baterías conectadas al sistema",
+        "batteries_lifepo_serialnumber_placeholder"                : "Número de serie de la batería 1",
+        "batteries_lifepo_sn_bms"                                  : "S/N of each BMS module",
+        "batteries_lifepo_sn_battery"                              : "S/N of each battery module",
+        "batteries_carbon"                                         : "Carbon",
+        "batteries_carbon_model"                                   : "Baterias",
+        "batteries_carbon_number_of_strings"                       : "Número Strings",
+        "batteries_carbon_capacity"                                : "Capacidad",
+        "batteries_other"                                          : "Otro",
+        "batteries_other_capacity"                                 : "Capacidad bateria",
+        "batteries_other_max_charging_current"                     : "Máx. corriente de carga",
+        "batteries_other_max_discharging_current"                  : "Máx. corriente de descarga",
+        "batteries_other_bulk_charging_voltage"                    : "Voltaje de carga Bulk",
+        "batteries_other_float_charging_voltage"                   : "Voltaje de carga flotante",
+        "batteries_other_cutoff_voltage_hybrid"                    : "Voltaje de corte hibrida",
+        "batteries_other_redischarging_voltage_hybrid"             : "Voltaje de descarga hibrida",
+        "batteries_other_cutoff_voltage"                           : "Voltaje de corte",
+        "batteries_other_redischarging_voltage"                    : "Voltaje de descarga",
+        "reactive_title"                                           : "Fuente de alimentación reactiva a VDE-AR-N 4105:2018",
+        "reactive_title_tor"                                       : "Fuente de alimentación reactiva a TOR",
+        "reactive_select_mode"                                     : "Seleccionar modo",
+        "reactive_overexcited"                                     : "Sobreexcitado",
+        "reactive_underexcited"                                    : "No suficientemente excitado",
+        "reactive_qutime"                                          : "Q(U) Time",
+        "reactive_kinkpoint"                                       : "Kink Point",
+        "import_data_from_cloud"                                   : "Import data from Cloud",
+        "msg_importing_data_from_cloud"                            : "Importing Data from Cloud",
+        "msg_please_wait"                                          : "Please Wait…",
+        "msg_setting_parameters"                                   : "Configuración de parámetros. Por favor espere…",
+        "msg_setting_success"                                      : "Configuración exitosa",
+        "msg_solar_size_very_low"                                  : "El tamaño del sistema PV parece demasiado bajo.",
+        "msg_solar_size_very_low_confirm"                          : "Por favor confirme que el tamaño es solo 100 Wp, o cancele y cámbielo",
+        "msg_lifepo_communication_problem"                         : "Problema de comunicación con baterias LiFePO",
+        "msg_lifepo_recognition_problem"                           : "Solo modulos de X battery detectados",
+        "msg_emx_not_registered"                                   : "Su EMX no está registrado en nuestra base de datos. Por favor contacte su proveedor de batterX para resolverlo.",
+        "msg_system_serial_not_correct"                            : "Sistema S/N no correcto",
+        "msg_inverter_registered_with_other_system"                : "Inversor ya registrado con otro sistema!",
+        "msg_battery_not_exist_or_registered_with_other_system"    : "¡La batería no existe o ya está registrada en otro sistema!",
+        "msg_low_soc_please_wait"                                  : "Low battery SoC, please wait several minutes",
+        "msg_system_with_sn_does_not_exist"                        : "System with S/N 123 does not exist",
+        "msg_system_registered_with_other_user"                    : "System already registered with another user!",
+        "backupmodeconfirm_title"                                  : "Confirm Backup Mode",
+        "backupmodeconfirm_message"                                : "Please confirm that the Backup Mode connector is connected, as shown on the image below.",
+        "backupmodeconfirm_confirm"                                : "Confirm",
+        "upsmodeconfirm_title"                                     : "Confirm UPS Mode",
+        "upsmodeconfirm_message"                                   : "Please confirm that the UPS Mode connector is connected, as shown on the image below.",
+        "upsmodeconfirm_confirm"                                   : "Confirm",
+        "otherbatteriesconfirm_title"                              : "Confirm Battery Settings",
+        "otherbatteriesconfirm_message1"                           : "Please confirm that the set battery parameters are correct and that you take full responsibility for the setting of your batteries.",
+        "otherbatteriesconfirm_message2"                           : "Vision UPS Systems does not take any responsibility and is not liable for any damage caused by incorrect setting or use of your batteries.",
+        "otherbatteriesconfirm_confirm"                            : "Confirm",
+        "internalsolarconfirm_title"                               : "Confirmation of PV Sizing",
+        "internalsolarconfirm_message"                             : "Please confirm that the installed PV power of the h10 inverter is at least 30% of the total PV power.",
+        "internalsolarconfirm_confirm"                             : "Confirm",
+        "extendedconfirm_title"                                    : "Confirm Extended Parameters",
+        "extendedconfirm_message"                                  : "Please confirm that the extended inverter parameters are correctly set, or modify their values.",
+        "extendedconfirm_modify"                                   : "Modify",
+        "extendedconfirm_confirm"                                  : "Confirm"
+    },
+
+    "summary": {
+        "installation_summary"                                     : "Resumen de la instalación",
+        "installation_date"                                        : "Fecha de instalación",
+        "latest_maintenance"                                       : "Último mantenimiento",
+        "installer"                                                : "Instalador",
+        "customer"                                                 : "Cliente",
+        "installation"                                             : "Instalación",
+        "installer_memo"                                           : "Notas del instalador",
+        "installation_system_model"                                : "Nombre del sistema",
+        "installation_system_is_vde4105"                           : "De acuerdo con la normativa VDE 4105",
+        "installation_system_is_tor"                               : "De acuerdo con la normativa TOR",
+        "installation_sn_system"                                   : "Sistema Num. Serie (armário)",
+        "installation_sn_system_new"                               : "Will be generated on finish",
+        "installation_sn_inverter"                                 : "Num. Serie inversor",
+        "installation_sn_emx"                                      : "Num. Serie EMX",
+        "installation_nominal_power"                               : "Potencia nominal",
+        "installation_reactive_power_supply"                       : "Reactive power supply",
+        "installation_power_factor"                                : "Factor de potencia (cosφ)",
+        "installation_batteries"                                   : "Baterías",
+        "installation_solar_size"                                  : "Tamaño del sistema PV",
+        "installation_solar_info"                                  : "Información de la instalación PV",
+        "installation_solar_feed_in_limitation"                    : "Limitación de vertido",
+        "extended_overfrequency_reduction"                         : "Reducción de potencia activa en caso de sobrefrequencia",
+        "extended_underfrequency_reduction"                        : "Active power reduction in case of under-frequency",
+        "extended_grid_connection_conditions"                      : "Grid connection conditions",
+        "extended_grid_decoupling_protection"                      : "Grid decoupling protection",
+        "extended_overvoltage_reduction"                           : "Reducción de potencia en caso de sobrevoltaje",
+        "extended_lvrt"                                            : "Low voltage ride through (LVRT)",
+        "extended_frt_capability"                                  : "Capacidad de FRT para caídas de voltaje.",
+        "extended_enabled"                                         : "Activado",
+        "extended_disabled"                                        : "Desactivado",
+        "extended_start_of_reduction"                              : "Comienzo de la reducción de potencia",
+        "extended_gradient"                                        : "Degradada",
+        "extended_start_point"                                     : "Punto de arranque",
+        "extended_end_point"                                       : "Punto de finalización",
+        "confirm_load_final_ups"                                   : "As part of the installation routine, the installing technician has confirmed that the UPS load, including inrush and start-up currents, is correctly designed or, in the event of overloads with available mains, will be reduced to the permissible level within 1 month of the installation date, which is a prerequisite for the validity of the product warranty. It is pointed out that according to the warranty conditions, overloads during mains power failure will invalidate the warranty.",
+        "confirm_load_final_backup"                                : "As part of the installation routine, the installing technician has confirmed that the system is protected on the AC input side against overloads exceeding 32/35A.",
+        "confirm_userdocs_final"                                   : "As part of the installation routine, the installing technician has confirmed that the operator of the system has been correctly briefed and provided with the relevant documentation.",
+        "confirm_info"                                             : "I hereby confirm that the information above is true, complete and accurate.",
+        "confirm_load_ups"                                         : "It is hereby confirmed that the UPS load, including inrush and start-up currents, is correctly designed or, in the event of overloads with available mains, will be reduced to the permissible level within 1 month of the installation date, which is a prerequisite for the validity of the product warranty. It is pointed out that according to the warranty conditions, overloads during mains power failure will invalidate the warranty.",
+        "confirm_load_backup"                                      : "It is hereby confirmed that the system is protected on the AC input side against overloads exceeding 32/35A respectively.",
+        "confirm_userdocs"                                         : "It is hereby confirmed that the operator of the system has been correctly briefed and provided with the relevant documentation.",
+        "finish_installation"                                      : "Finalizar instalación",
+        "final_congratulations"                                    : "¡Felicidades!",
+        "final_download_pdf"                                       : "Descargar PDF",
+        "final_reboot_emx"                                         : "Reiniciar EMX",
+        "final_text1"                                              : "La instalación de BatterX Home System se completó con éxito y se envió un correo electrónico con un enlace de confirmación al cliente.",
+        "final_text2"                                              : "Al hacer clic en el enlace de confirmación, el cliente puede comenzar a usar el portal batterX para monitoreo y control remoto de su sistema BatterX Home.",
+        "final_text3"                                              : "Como instalador del Sistema, usted también tiene acceso completo a este BatterX Home desde su propia cuenta.",
+        "final_text4"                                              : "El portal batterX se puede encontrar en el siguiente enlace",
+        "final_text5"                                              : "Cargamos automáticamente el Informe de instalación a batterX Cloud, pero también recomendamos que descargue el archivo PDF y lo guarde localmente.",
+        "final_text6"                                              : "También recomendamos reiniciar EMX una vez, presionando el botón inferior."
+    },
+    
+
+
+
+
+
+
+
+
+
+    "trax_system_setup": {
+        "system_serialnumber_livex"                 : "Número de serie del LiveX",
+        "system_installer_memo"                     : "Notas del instalador",
+        "energy_meters"                             : "Energy Meters",
+        "optional"                                  : "optional",
+        "type_of_energy_meters"                     : "Type of energy meter(s)",
+        "none"                                      : "None",
+        "baudrate"                                  : "Baudrate",
+        "extsol_meter"                              : "External Solar Meter",
+        "user_meter"                                : "User Meter",
+        "hybrid_inverter"                           : "Hybrid Inverter",
+        "model"                                     : "Model",
+        "protocol"                                  : "Protocol",
+        "pv_system_size"                            : "Tamaño del sistema PV",
+        "battery_size"                              : "Battery Size",
+        "pv_installation_info"                      : "Información de la instalación PV",
+        "msg_setting_parameters"                    : "Configuración de parámetros. Por favor espere…",
+        "msg_setting_success"                       : "Configuración exitosa",
+        "msg_livex_not_registered"                  : "Su liveX no está registrado en nuestra base de datos. Por favor contacte su proveedor de batterX para resolverlo.",
+        "msg_inverter_registered_with_other_system" : "Inversor ya registrado con otro sistema!"
+    },
+
+    "trax_summary": {
+        "installation_summary"                      : "Resumen de la instalación",
+        "installation_date"                         : "Fecha de instalación",
+        "latest_maintenance"                        : "Último mantenimiento",
+        "installer"                                 : "Instalador",
+        "customer"                                  : "Cliente",
+        "installation"                              : "Instalación",
+        "installer_memo"                            : "Notas del instalador",
+        "installation_sn_inverter"                  : "Num. Serie inversor",
+        "installation_sn_livex"                     : "Num. Serie LiveX",
+        "installation_batteries"                    : "Baterías",
+        "installation_solar_size"                   : "Tamaño del sistema PV",
+        "installation_solar_info"                   : "Información de la instalación PV",
+        "confirm_info"                              : "Por la presente confirmo que la información anterior es verdadera, completa y precisa",
+        "finish_installation"                       : "Finalizar instalación",
+        "final_congratulations"                     : "¡Felicidades!",
+        "final_download_pdf"                        : "Descargar PDF",
+        "final_reboot_livex"                        : "Reiniciar LiveX",
+        "final_text1"                               : "La instalación de BatterX TraX se completó con éxito y se envió un correo electrónico con un enlace de confirmación al cliente.",
+        "final_text2"                               : "Al hacer clic en el enlace de confirmación, el cliente puede comenzar a usar el portal batterX para monitoreo remoto de su sistema BatterX TraX.",
+        "final_text3"                               : "Como instalador del Sistema, usted también tiene acceso a este BatterX TraX desde su propia cuenta.",
+        "final_text4"                               : "El portal batterX se puede encontrar en el siguiente enlace",
+        "final_text5"                               : "Cargamos automáticamente el Informe de instalación a batterX Cloud, pero también recomendamos que descargue el archivo PDF y lo guarde localmente.",
+        "final_text6"                               : "También recomendamos reiniciar liveX una vez, presionando el botón inferior."
+    },
+    
+
+
+
+
+
+
+
+
+
+    "bs_system_detect": {
+        "ups_unknown"                                              : "UPS desconocido",
+        "please_connect_ups"                                       : "Por favor conecte su UPS a la LiveX"
+    },
+
+    "bs_system_setup": {
+        "system"                                                   : "batterX Business",
+        "system_serialnumber_ups"                                  : "Número de serie de UPS",
+        "system_ups_model"                                         : "Modelo UPS",
+        "system_serialnumber_livex"                                : "Número de serie de LiveX",
+        "system_installer_memo"                                    : "Memo de instalador",
+        "solar"                                                    : "Sistema PV",
+        "solar_serialnumber"                                       : "Por favor entre el S/N y potencia solar instalada para cada controlador solar conectado al sistema.",
+        "solar_controller"                                         : "Controlador",
+        "solar_total_power_installed"                              : "Potencia total solar instalada (Wp)",
+        "solar_info"                                               : "Información de instalación PV",
+        "batteries"                                                : "Baterías",
+        "batteries_lifepo"                                         : "LiFePO",
+        "batteries_lifepo_sn_bms_module"                           : "S/N de cada módulo BMS",
+        "batteries_lifepo_sn_battery_modules"                      : "S/N de cada módulo de batería",
+        "batteries_carbon"                                         : "Carbono",
+        "batteries_carbon_model"                                   : "Baterías",
+        "batteries_carbon_number_of_strings"                       : "Número de cuerdas",
+        "batteries_carbon_capacity"                                : "Capacitat",
+        "batteries_other"                                          : "Otros",
+        "batteries_other_total_capacity"                           : "Capacidad total de batería",
+        "batteries_other_max_charge_c"                             : "Carga máxima de batería C",
+        "batteries_other_max_discharge_c"                          : "Descarga máxima de batería C",
+        "batteries_other_min_discharge_voltage"                    : "Voltaje de descarga mínimo",
+        "batteries_other_voltage_hysteresis"                       : "Histeresis de voltaje",
+        "batteries_other_discharge_current"                        : "Modo de autodescarga de corriente automático",
+        "sysmode"                                                  : "Modo de sistema",
+        "sysmode_cut_power_peak"                                   : "Pico de corte de potencia",
+        "sysmode_max_power"                                        : "Potencia máxima",
+        "sysmode_max_power_hysteresis"                             : "Histeresis de potencia máxima",
+        "sysmode_power_target"                                     : "Objetivo de potencia",
+        "sysmode_auto_eco_mode"                                    : "Modo ECO automático",
+        "sysmode_auto_pfc_off"                                     : "Apagado automático de PFC",
+        "modbus_connection"                                        : "Conexión de Modbus",
+        "modbus_baud_rate"                                         : "Nivel de baudios",
+        "modbus_parity"                                            : "Paridad",
+        "modbus_stop_bits"                                         : "Parada de bits",
+        "modbus_port_name"                                         : "Nombre de puerto de modbus",
+        "modbus_possible_usb_devices"                              : "Dispositivos de USB posibles",
+        "modbus_refresh_list"                                      : "Refrescar lista",
+        "modbus_use_selected"                                      : "Usar selección",
+        "modbus_devices"                                           : "Dispositivos modbus",
+        "modbus_devices_ups_input_counter"                         : "Contador de UPS entrante",
+        "modbus_devices_ups_output_counter"                        : "Contador de UPS saliente",
+        "modbus_devices_grid_counter"                              : "Contador de red",
+        "modbus_devices_external_solar_counter"                    : "Contador solar externo",
+        "modbus_devices_connected"                                 : "Conectado",
+        "modbus_devices_id"                                        : "Identidad de Modbus",
+        "generator_setup"                                          : "Preparación de generador",
+        "generator_enable"                                         : "Activar función generador",
+        "generator_pin"                                            : "Pin de generador",
+        "generator_none"                                           : "Ninguno",
+        "generator_output_pin"                                     : "Pin de salida",
+        "generator_limit_charging_current"                         : "Limitar corriente de carga",
+        "generator_switch_on_when"                                 : "Encender cuando",
+        "generator_time"                                           : "Tiempo",
+        "generator_battery_voltage"                                : "Voltaje de batería",
+        "generator_min_on_time"                                    : "Tiempo mínimo de encendido",
+        "generator_switch_off_when"                                : "Apagar cuando",
+        "generator_min_off_time"                                   : "Tiempo de apagado mínimo",
+        "generator_info"                                           : "Info de generador",
+        "system_configuration"                                     : "Configuración de sistema",
+        "msg_setting_parameters"                                   : "Preparando parámetros. Espere, por favor",
+        "msg_setting_success"                                      : "Preparación correcta",
+        "msg_livex_not_registered"                                 : "Su liveX no está registrada en su base de datos",
+        "msg_ups_registered_with_other_system"                     : "UPS ya registrada con otro sistema",
+        "msg_controller_not_exist_or_registered_with_other_system" : "Controlador solar no existe ya esta registrado con otro sistema",
+        "msg_battery_not_exist_or_registered_with_other_system"    : "Batería no existe o ya registrada con otro sistema",
+        "msg_bms_not_exist_or_registered_with_other_system"        : "BMS no existe o está ya registrado con otro sistema",
+        "otherbatteriesconfirm_title"                              : "Confirm Battery Settings",
+        "otherbatteriesconfirm_message1"                           : "Please confirm that the set battery parameters are correct and that you take full responsibility for the setting of your batteries.",
+        "otherbatteriesconfirm_message2"                           : "Vision UPS Systems does not take any responsibility and is not liable for any damage caused by incorrect setting or use of your batteries.",
+        "otherbatteriesconfirm_confirm"                            : "Confirm"
+    },
+
+    "bs_summary": {
+        "installation_summary"                                     : "Sumario de instalación",
+        "installation_date"                                        : "Fecha de instalación",
+        "latest_maintenance"                                       : "Último mantenimiento",
+        "installer"                                                : "Instalador",
+        "customer"                                                 : "Cliente",
+        "installation"                                             : "Instalación",
+        "installer_memo"                                           : "Memo de instalador",
+        "installation_sn_ups"                                      : "UPS S/N",
+        "installation_sn_livex"                                    : "liveX S/N",
+        "installation_nominal_power"                               : "Potencia nominal",
+        "installation_power_factor"                                : "Factor de potencia (coso)",
+        "installation_bms"                                         : "BMS",
+        "installation_batteries"                                   : "Baterías",
+        "installation_solar_controllers"                           : "Controladores PV",
+        "installation_solar_size"                                  : "Tamaño de sistema PV",
+        "installation_solar_info"                                  : "Info de instalación PV",
+        "confirm_load_final"                                       : "Como parte de la rutina de instalación, el técnico instalador ha confirmado que la carga UPS, incluida la irrupción y la corriente de arranque, está correctamente diseñado, lo que es un prerequisito para la validez de la garantía del producto. Está indicado que las sobrecargas invalidarán la garantía.",
+        "confirm_info"                                             : "Por lo tanto confirmo que la información de arriba es verdadera, completa y ajustada.",
+        "confirm_load"                                             : "Aquí queda confirmado que la carga UPS, incluída la irrupción y las corrientes de arranque, está correctamente diseñada, lo que es un prerequisito para la validez de la garantía del producto. Está indicado que las sobrecargas invalidarán la garantía.",
+        "finish_installation"                                      : "Finalice instalación",
+        "final_congratulations"                                    : "Enhorabuena!",
+        "final_download_pdf"                                       : "Descargue PDF",
+        "final_reboot_livex"                                       : "Reinicie LiveX",
+        "final_text1"                                              : "La instalación de batterX sistema para negocios has sido completada con éxito. Ha sido enviado un email con un link de confirmation al cliente.",
+        "final_text2"                                              : "Al clickar en el link de confirmación, el cliente puede empezar a usar el portal batterX para monitorización remota y control de su batterX Business System",
+        "final_text3"                                              : "Como instalador del sistema, usted tiene completo acceso a batterX Business desde su propia cuenta también, para que pueda ofrecer soporte remoto si es necesario.",
+        "final_text4"                                              : "La web de batterX puede ser accedida a través del siguiente link",
+        "final_text5"                                              : "Hemos subido automaticamente a la nube el informe de instalación a la nube de batterX, pero también recomendamos descargar el archivo PDF para guardarlo en su dispositivo.",
+        "final_text6"                                              : "También le recomendamos que reinicie el liveX una vez, apretando el botón de más abajo."
+    }
+
+
+
+
+
+
+
+
+
+
+}

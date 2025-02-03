@@ -1,0 +1,33 @@
+*:not(input):not(select):not(textarea) { user-select: none }
+
+
+
+
+
+body {
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.container {
+	max-width: 720px;
+}
+
+
+
+
+
+h1 {
+	font-size: 1.5rem;
+	padding: 1rem 1.25rem 1rem 4.5rem !important;
+	background-repeat: no-repeat;
+	background-position: 1.25rem center;
+	background-size: 2rem;
+}
+
+
+
+.customer-information { background-image: url(../img/ic_user.png); }
+.installation-address { background-image: url(../img/ic_home.png); }

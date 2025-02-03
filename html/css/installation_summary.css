@@ -1,0 +1,168 @@
+*:not(input):not(select):not(textarea) { user-select: none }
+
+
+
+
+
+body {
+	background-color: var(--color-main);
+	padding-bottom: 100px;
+}
+
+body.show-success {
+	background-color: var(--color-body);
+	padding-bottom: 48px;
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+
+
+
+
+#confirm,
+#btnFinish {
+	width:     950px !important;
+	min-width: 950px !important;
+	max-width: 950px !important;
+}
+
+#btnFinish {
+	visibility: hidden;
+}
+
+
+
+
+
+#successBox {
+	max-width: 800px;
+	background-color: var(--color-main);
+	border-radius: 0.25rem;
+}
+
+#successBox p {
+	text-align: justify;
+}
+
+#successBox .btn {
+	min-width: 13.5rem;
+}
+
+#successBox .mt-2rem {
+	margin-top: 2rem;
+}
+
+#successBox .notif {
+	display: inline-block;
+	width: 2rem;
+	height: 2rem;
+	min-width: 2rem;
+	min-height: 2rem;
+}
+
+
+
+
+
+#summary {
+	width:     950px  !important;
+	min-width: 950px  !important;
+	max-width: 950px  !important;
+	padding:   0 16px !important;
+}
+
+#summary .border { border: 1px solid black !important; }
+#summary .box-margin { margin-bottom: 25px; }
+
+#summary .bt { border-top:    1px solid black !important; }
+#summary .br { border-right:  1px solid black !important; }
+#summary .bb { border-bottom: 1px solid black !important; }
+#summary .bl { border-left:   1px solid black !important; }
+
+#summary .head {
+	width: 100%;
+	display: flex;
+}
+
+#summary .title {
+	height:  100px;
+	display: flex;
+	justify-content: center;
+	align-content: center;
+	flex-grow: 1;
+}
+#summary .title span {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-size: 32px;
+}
+
+#summary .logo {
+	width:  230px;
+	height: 100px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 20px 40px;
+}
+
+#summary .logo img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+#summary .box-head {
+	width: 100%;
+	background-color: #dddddd;
+}
+#summary .box-head span {
+	display: flex;
+	align-items: center;
+	padding: 4px 8px;
+	font-size: 16px;
+	font-weight: bold;
+}
+
+#summary .box-row {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: stretch;
+}
+#summary .box-row span {
+	display: flex;
+	align-items: center;
+	padding: 4px 8px;
+	font-size: 16px;
+}
+#summary .box-row span:first-child {
+	width: 30%;
+	min-width: 30%;
+}
+#summary .box-row span:last-child {
+	flex-grow: 1;
+	font-size: 16px;
+}
+
+
+
+
+
+#summary .box-row2 {
+	width: 100%;
+}
+
+#summary .box-row2 .table {
+	width: auto;
+	/*font-size: 14px;*/
+	line-height: 1.3;
+}
+
+#summary .box-row2 .table th,
+#summary .box-row2 .table td {
+	padding: 3px 2px;
+}
