@@ -424,7 +424,7 @@ function showSystemInfo(json) {
     if(json.hasOwnProperty("device")) {
         if(json.device.hasOwnProperty("solar_watt_peak"))
             $("#solar_wattpeak").val(json.device.solar_watt_peak);
-        if(json.device.hasOwnProperty("grid_feedin_limitation"))
+        if(json.device.hasOwnProperty("grid_feedin_limitation") && !isVde4105)
             $("#solar_feedinlimitation").val(json.device.grid_feedin_limitation);
     }
 
@@ -511,6 +511,16 @@ function showSystemSettings(response) {
             $("#meter4_mode ").val(temp["4"]["mode"]);
             $("#meter4_label").val(temp["4"]["s1"  ]);
         }
+    }
+
+    // Control Power
+    if(response.hasOwnProperty("ControlMaxChargingPowerAC")) {
+        var temp = response["ControlMaxChargingPowerAC"];
+        $("#controlMaxChargingPowerAC_check").prop("checked", temp["0"]["mode"] != "0");
+    }
+    if(response.hasOwnProperty("ControlMaxInjectionPower")) {
+        var temp = response["ControlMaxInjectionPower"];
+        $("#controlMaxInjectionPower_check").prop("checked", temp["0"]["mode"] != "0");
     }
 
     // Inverter Parameters
@@ -1359,6 +1369,9 @@ function mainFormSubmit_6() {
         #meter3_label,
         #meter4_mode,
         #meter4_label,
+        
+        #controlMaxChargingPowerAC_check,
+        #controlMaxInjectionPower_check,
 
         #system_co_new,
         #system_co_old,
@@ -1569,6 +1582,15 @@ function setValuesToSession() {
 
 
 
+    // Control Power
+
+    tempData.control_max_charging_power_ac = $("#controlMaxChargingPowerAC_check").is(":checked") ? "1" : "0";
+    tempData.control_max_injection_power = $("#controlMaxInjectionPower_check").is(":checked") ? "1" : "0";
+
+
+
+
+
     // Add Values To Session
 
     $.post({
@@ -1725,6 +1747,9 @@ function setup2() {
     newParameters["meter3Label"   ] = $("#meter3_label    ").val();
     newParameters["meter4Label"   ] = $("#meter4_label    ").val();
 
+    newParameters["controlMaxChargingPowerACMode"] = $("#controlMaxChargingPowerAC_check").is(":checked") ? "1" : "0";
+    newParameters["controlMaxInjectionPowerMode" ] = $("#controlMaxInjectionPower_check" ).is(":checked") ? "1" : "0";
+
     newParameters["prepareBatteryExtension"] = "0";
     newParameters["cloudSet"               ] = "1";
 
@@ -1870,6 +1895,9 @@ function setup2() {
             oldParameters["meter3Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("3") ? ""  : response["UserMeter"]["3"]["s1"  ];
             oldParameters["meter4Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("4") ? ""  : response["UserMeter"]["4"]["s1"  ];
 
+            oldParameters["controlMaxChargingPowerACMode"] = !response.hasOwnProperty("ControlMaxChargingPowerAC") ? "0" : response["ControlMaxChargingPowerAC"]["0"]["mode"];
+            oldParameters["controlMaxInjectionPowerMode" ] = !response.hasOwnProperty("ControlMaxInjectionPower" ) ? "0" : response["ControlMaxInjectionPower" ]["0"]["mode"];
+
             oldParameters["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
             oldParameters["cloudSet"               ] = !response.hasOwnProperty("CloudSet"               ) || !response["CloudSet"               ].hasOwnProperty("0") ? ""  : response["CloudSet"               ]["0"]["mode"];
 
@@ -1949,6 +1977,9 @@ function setup2() {
     if(newParameters["meter2Label"   ] != oldParameters["meter2Label"   ]) { retry = true; setup_sendSetting("UserMeter"            , "2", "s1"   , newParameters["meter2Label"   ]); }
     if(newParameters["meter3Label"   ] != oldParameters["meter3Label"   ]) { retry = true; setup_sendSetting("UserMeter"            , "3", "s1"   , newParameters["meter3Label"   ]); }
     if(newParameters["meter4Label"   ] != oldParameters["meter4Label"   ]) { retry = true; setup_sendSetting("UserMeter"            , "4", "s1"   , newParameters["meter4Label"   ]); }
+
+    if(newParameters["controlMaxChargingPowerACMode"] != oldParameters["controlMaxChargingPowerACMode"]) { retry = true; setup_sendCommand(20769, 0, "", newParameters["controlMaxChargingPowerACMode"]); }
+    if(newParameters["controlMaxInjectionPowerMode" ] != oldParameters["controlMaxInjectionPowerMode" ]) { retry = true; setup_sendCommand(20770, 0, "", newParameters["controlMaxInjectionPowerMode" ]); }
 
     if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]) }
     if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]) }
@@ -2093,6 +2124,9 @@ function setup_checkParameters() {
             oldParameters["meter3Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("3") ? ""  : response["UserMeter"]["3"]["s1"  ];
             oldParameters["meter4Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("4") ? ""  : response["UserMeter"]["4"]["s1"  ];
 
+            oldParameters["controlMaxChargingPowerACMode"] = !response.hasOwnProperty("ControlMaxChargingPowerAC") ? "0" : response["ControlMaxChargingPowerAC"]["0"]["mode"];
+            oldParameters["controlMaxInjectionPowerMode" ] = !response.hasOwnProperty("ControlMaxInjectionPower" ) ? "0" : response["ControlMaxInjectionPower" ]["0"]["mode"];
+
             oldParameters["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
             oldParameters["cloudSet"               ] = !response.hasOwnProperty("CloudSet"               ) || !response["CloudSet"               ].hasOwnProperty("0") ? ""  : response["CloudSet"               ]["0"]["mode"];
 
@@ -2169,6 +2203,9 @@ function setup_checkParameters() {
             if(newParameters["meter2Label"   ] != oldParameters["meter2Label"   ]) { retry = true; setup_sendSetting("UserMeter"            , "2", "s1"   , newParameters["meter2Label"   ]); }
             if(newParameters["meter3Label"   ] != oldParameters["meter3Label"   ]) { retry = true; setup_sendSetting("UserMeter"            , "3", "s1"   , newParameters["meter3Label"   ]); }
             if(newParameters["meter4Label"   ] != oldParameters["meter4Label"   ]) { retry = true; setup_sendSetting("UserMeter"            , "4", "s1"   , newParameters["meter4Label"   ]); }
+
+            if(newParameters["controlMaxChargingPowerACMode"] != oldParameters["controlMaxChargingPowerACMode"]) { retry = true; setup_sendCommand(20769, 0, "", newParameters["controlMaxChargingPowerACMode"]); }
+            if(newParameters["controlMaxInjectionPowerMode" ] != oldParameters["controlMaxInjectionPowerMode" ]) { retry = true; setup_sendCommand(20770, 0, "", newParameters["controlMaxInjectionPowerMode" ]); }
 
             if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]) }
             if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]) }
@@ -2254,6 +2291,9 @@ function setup_checkParameters() {
                     else if(newParameters["meter2Label"   ] != oldParameters["meter2Label"   ]) showSettingParametersError("Problem when setting meter2Label"   );
                     else if(newParameters["meter3Label"   ] != oldParameters["meter3Label"   ]) showSettingParametersError("Problem when setting meter3Label"   );
                     else if(newParameters["meter4Label"   ] != oldParameters["meter4Label"   ]) showSettingParametersError("Problem when setting meter4Label"   );
+
+                    else if(newParameters["controlMaxChargingPowerACMode"] != oldParameters["controlMaxChargingPowerACMode"]) showSettingParametersError("Problem when setting controlMaxChargingPowerACMode");
+                    else if(newParameters["controlMaxInjectionPowerMode" ] != oldParameters["controlMaxInjectionPowerMode" ]) showSettingParametersError("Problem when setting controlMaxInjectionPowerMode" );
 
                     else if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) showSettingParametersError("Problem when setting prepareBatteryExtension");
                     else if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) showSettingParametersError("Problem when setting cloudSet"               );

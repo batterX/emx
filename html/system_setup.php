@@ -448,7 +448,7 @@ $customerEmail = empty($_SESSION["customer_email"]) ? "" : $_SESSION["customer_e
 							<div class="card-body border-bottom pt-3">
 								<label for="solar_feedinlimitation"><?php echo $lang["system_setup"]["solar_feed_in_limitation"]; ?></label>
 								<div class="row m-0 p-0">
-									<div class="col-6 d-flex align-items-center m-0 p-0"><input id="solar_feedinlimitation" class="form-control form-control-outline" type="number" step="1" min="0" max="100" value="100" required></div>
+									<div class="col-6 d-flex align-items-center m-0 p-0"><input id="solar_feedinlimitation" class="form-control form-control-outline" type="number" step="1" min="0" max="100" value="<?php echo $isVde4105 ? "" : "100" ?>" required></div>
 									<div class="col-6 d-flex align-items-center m-0 py-0 pr-0 pl-2"><span>%</span></div>
 								</div>
 								<div class="custom-control custom-checkbox pt-3">
@@ -514,6 +514,28 @@ MPPT 2
 									<!-- There's nothing here -->
 								</div>
 
+							</div>
+						</div>
+
+					</div>
+
+					<!-- Control Power -->
+					<div id="steuve" class="col-xl-6 pt-5 <?php echo $isVde4105 ? "" : "d-none" ?>">
+
+						<h1 class="card-header bg-transparent border-0"><?php echo $lang["system_setup"]["control_power"]; ?></h1>
+
+						<div class="card elevate-1 h-100" style="height: auto !important">
+							<div class="card-body border-bottom">
+								<div class="custom-control custom-checkbox">
+									<input type="checkbox" class="custom-control-input" id="controlMaxChargingPowerAC_check">
+									<label class="custom-control-label" for="controlMaxChargingPowerAC_check"><?php echo $lang["system_setup"]["control_max_charging_power_ac"]; ?> <span class="text-muted d-inline-block">(<?php echo $lang["system_setup"]["control_power_info"]; ?>)</span></label>
+								</div>
+							</div>
+							<div class="card-body">
+								<div class="custom-control custom-checkbox">
+									<input type="checkbox" class="custom-control-input" id="controlMaxInjectionPower_check">
+									<label class="custom-control-label" for="controlMaxInjectionPower_check"><?php echo $lang["system_setup"]["control_max_injection_power"]; ?> <span class="text-muted d-inline-block">(<?php echo $lang["system_setup"]["control_power_info"]; ?>)</span></label>
+								</div>
 							</div>
 						</div>
 

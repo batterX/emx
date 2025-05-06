@@ -477,6 +477,15 @@ $deviceStandard = isset($objDeviceStandards[$dataSettings["Inverter"]["201"]["s1
 						<?php echo (isset($_SESSION["has_extsol"]) && $_SESSION["has_extsol"] == "1") ? "<br>" . $lang["system_setup"]["extsol_meter"] . " (✓)" : "" ?>
 					</span>
 				</div>
+				<?php if($isVde4105): ?>
+					<div class="box-row bt">
+						<span class="br"><?php echo $lang["system_setup"]["control_power"]; ?></span>
+						<span>
+							<?php echo $lang["system_setup"]["control_max_charging_power_ac"]; ?> = <?php echo (isset($_SESSION["control_max_charging_power_ac"]) && $_SESSION["control_max_charging_power_ac"] == "1") ? $lang["summary"]["extended_enabled"] . " (✓)" : $lang["summary"]["extended_disabled"] ?><br>
+							<?php echo $lang["system_setup"]["control_max_injection_power"]; ?> = <?php echo (isset($_SESSION["control_max_injection_power"]) && $_SESSION["control_max_injection_power"] == "1") ? $lang["summary"]["extended_enabled"] . " (✓)" : $lang["summary"]["extended_disabled"] ?><br>
+						</span>
+					</div>
+				<?php endif; ?>
 				<div class="box-row bt">
 					<span class="br"><?php echo $lang["common"]["address"]; ?></span>
 					<span><?php echo $_SESSION["installation_address"] . "<br>" . $_SESSION["installation_zipcode"] . " " . $_SESSION["installation_city"] . ", " . $arrayCountry[$_SESSION["installation_country"]]; ?></span>
