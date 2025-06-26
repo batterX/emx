@@ -162,7 +162,7 @@ $installerCountry = isset($_SESSION["installer_country"]) ? $_SESSION["installer
 
 			<ol type="1">
 				<li style="font-weight:normal">
-					<span>Die gesamte Garantiezeit ergibt sich aus der Multiplikation der Standartgarantie und der Ersatzteilgarantie</span>
+					<span>Die gesamte Garantiezeit ergibt sich aus der Addition der Standartgarantie und der Ersatzteilgarantie</span>
 					<div class="d-flex">
 						<table class="table table-bordered w-auto mt-3 mb-0">
 							<tr>
