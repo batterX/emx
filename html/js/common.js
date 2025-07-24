@@ -29,6 +29,10 @@ const PNS_DEVICE = {
 const PNS_BOX = {
     ""          : { "type" : ""   , "version" : 0 , "name" : ""               },
     "K800311"   : { "type" : "ie" , "version" : 1 , "name" : "batterX EMX"    },
+    "K800414-8" : { "type" : "xc" , "version" : 7 , "name" : "cliX 2.0"       },
+    "K800415-8" : { "type" : "xc" , "version" : 7 , "name" : "cliX 2.0"       },
+    "K800414-7" : { "type" : "xc" , "version" : 6 , "name" : "cliX 2.0"       },
+    "K800415-7" : { "type" : "xc" , "version" : 6 , "name" : "cliX 2.0"       },
     "K800414-6" : { "type" : "xc" , "version" : 5 , "name" : "cliX 2.0"       },
     "K800415-6" : { "type" : "xc" , "version" : 5 , "name" : "cliX 2.0"       },
     "K800414-5" : { "type" : "xc" , "version" : 4 , "name" : "cliX 2.0"       },

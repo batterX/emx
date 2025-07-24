@@ -65,6 +65,10 @@ define("PNS_DEVICE", (array) [
 define("PNS_BOX", (array) [
     ""          => (array) [ "type" => ""   , "version" => 0 , "name" => ""               ],
     "K800311"   => (array) [ "type" => "ie" , "version" => 1 , "name" => "batterX EMX"    ],
+    "K800414-8" => (array) [ "type" => "xc" , "version" => 7 , "name" => "cliX 2.0"       ],
+    "K800415-8" => (array) [ "type" => "xc" , "version" => 7 , "name" => "cliX 2.0"       ],
+    "K800414-7" => (array) [ "type" => "xc" , "version" => 6 , "name" => "cliX 2.0"       ],
+    "K800415-7" => (array) [ "type" => "xc" , "version" => 6 , "name" => "cliX 2.0"       ],
     "K800414-6" => (array) [ "type" => "xc" , "version" => 5 , "name" => "cliX 2.0"       ],
     "K800415-6" => (array) [ "type" => "xc" , "version" => 5 , "name" => "cliX 2.0"       ],
     "K800414-5" => (array) [ "type" => "xc" , "version" => 4 , "name" => "cliX 2.0"       ],
