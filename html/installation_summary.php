@@ -152,10 +152,6 @@ if($isSameInstaller) {
 					<span><?php echo $lang["summary"]["installer"]; ?></span>
 				</div>
 				<div class="box-row bt">
-					<span class="br"><?php echo $lang["customer_info"]["installer_on_site"]; ?></span>
-					<span><?php echo $_SESSION["installer_on_site"]; ?></span>
-				</div>
-				<div class="box-row bt">
 					<span class="br"><?php echo $lang["common"]["company"]; ?></span>
 					<span><?php echo $arrayGender[$_SESSION["installer_og_gender"]] . " " . $_SESSION["installer_og_firstname"] . " " . $_SESSION["installer_og_lastname"] . " (" . $_SESSION["installer_og_company"] . ")"; ?></span>
 				</div>
@@ -166,6 +162,10 @@ if($isSameInstaller) {
 				<div class="box-row bt">
 					<span class="br"><?php echo $lang["common"]["telephone"]; ?></span>
 					<span><?php echo $_SESSION["installer_og_telephone"]; ?></span>
+				</div>
+				<div class="box-row bt">
+					<span class="br"><?php echo $lang["customer_info"]["installer_on_site"]; ?></span>
+					<span><?php echo $_SESSION["installer_on_site"]; ?></span>
 				</div>
 				<?php if(!$isSameInstaller): ?>
 					<div class="box-row bt">
