@@ -56,6 +56,19 @@ $objDeviceStandards = (array) [
 ];
 $deviceStandard = isset($objDeviceStandards[$dataSettings["Inverter"]["201"]["s1"]]) ? $objDeviceStandards[$dataSettings["Inverter"]["201"]["s1"]] : "";
 
+$isSameInstaller = false;
+if(empty($_SESSION["installer_og_email"])) $isSameInstaller = true; // first installation
+if($_SESSION["installer_og_email"] == $_SESSION["installer_email"]) $isSameInstaller = true;
+if($isSameInstaller) {
+	$_SESSION["installer_og_email"    ] = $_SESSION["installer_email"    ];
+	$_SESSION["installer_og_gender"   ] = $_SESSION["installer_gender"   ];
+	$_SESSION["installer_og_firstname"] = $_SESSION["installer_firstname"];
+	$_SESSION["installer_og_lastname" ] = $_SESSION["installer_lastname" ];
+	$_SESSION["installer_og_company"  ] = $_SESSION["installer_company"  ];
+	$_SESSION["installer_og_telephone"] = $_SESSION["installer_telephone"];
+	$_SESSION["installer_og_country"  ] = $_SESSION["installer_country"  ];
+}
+
 ?>
 
 
@@ -90,8 +103,23 @@ $deviceStandard = isset($objDeviceStandards[$dataSettings["Inverter"]["201"]["s1
 		<!-- Progress Bar -->
 		<div id="progress" class="shadow-lg">
 			<div><div class="progress"><div class="progress-bar progress-bar-striped bg-success progress-bar-animated"></div></div></div>
+			<div data-toggle="modal" data-target="#modalSkipSetup" style="position:absolute;width:1rem;height:1rem;z-index:100;bottom:0;left:0"></div>
 		</div>
 		<!-- Progress Bar -->
+
+
+
+
+
+		<div class="modal fade" id="modalSkipSetup" tabindex="-1" role="dialog">
+			<div class="modal-dialog modal-dialog-centered modal-sm">
+				<div class="modal-content">
+					<div class="modal-body text-center p-0">
+						<input type="password" class="form-control form-control-outline border-0 text-center p-4" value="" placeholder="Enter batterX auth-code and press enter">
+					</div>
+				</div>
+			</div>
+		</div>
 
 
 
@@ -129,16 +157,26 @@ $deviceStandard = isset($objDeviceStandards[$dataSettings["Inverter"]["201"]["s1
 				</div>
 				<div class="box-row bt">
 					<span class="br"><?php echo $lang["common"]["company"]; ?></span>
-					<span><?php echo $arrayGender[$_SESSION["installer_gender"]] . " " . $_SESSION["installer_firstname"] . " " . $_SESSION["installer_lastname"] . "<br>" . $_SESSION["installer_company"]; ?></span>
+					<span><?php echo $arrayGender[$_SESSION["installer_og_gender"]] . " " . $_SESSION["installer_og_firstname"] . " " . $_SESSION["installer_og_lastname"] . " (" . $_SESSION["installer_og_company"] . ")"; ?></span>
 				</div>
 				<div class="box-row bt">
 					<span class="br"><?php echo $lang["common"]["email"]; ?></span>
-					<span><?php echo $_SESSION["installer_email"]; ?></span>
+					<span><?php echo $_SESSION["installer_og_email"]; ?></span>
 				</div>
 				<div class="box-row bt">
 					<span class="br"><?php echo $lang["common"]["telephone"]; ?></span>
-					<span><?php echo $_SESSION["installer_telephone"]; ?></span>
+					<span><?php echo $_SESSION["installer_og_telephone"]; ?></span>
 				</div>
+				<?php if(!$isSameInstaller): ?>
+					<div class="box-row bt">
+						<span class="br"><?php echo $lang["summary"]["one_time_installer"]; ?></span>
+						<span>
+							<?php echo $arrayGender[$_SESSION["installer_gender"]] . " " . $_SESSION["installer_firstname"] . " " . $_SESSION["installer_lastname"] . " (" . $_SESSION["installer_company"] . ")"; ?><br>
+							• <?php echo $lang["common"]["email"]; ?>: <?php echo $_SESSION["installer_email"]; ?><br>
+							• <?php echo $lang["common"]["telephone"]; ?>: <?php echo $_SESSION["installer_telephone"]; ?>
+						</span>
+					</div>
+				<?php endif; ?>
 				<?php if(!empty($_SESSION["note"])): ?>
 					<div class="box-row bt">
 						<span class="br"><?php echo $lang["summary"]["installer_memo"]; ?></span>

@@ -156,7 +156,7 @@
 
     "customer_info": {
         "customer_information"           : "Informaciones para clientes",
-        "installer_on_site"              : "Installer on site",
+        "installer_on_site"              : "Technician on site",
         "installation_address"           : "Dirección de instalación",
         "same_as_customer_address"       : "Igual que la dirección del cliente",
         "customer_same_as_installer"     : "El correo electrónico del cliente no puede ser el mismo que el correo electrónico del instalador. ¡Elija otro correo electrónico!",
@@ -316,6 +316,7 @@
         "installation_date"                                        : "Fecha de instalación",
         "latest_maintenance"                                       : "Último mantenimiento",
         "installer"                                                : "Instalador",
+        "one_time_installer"                                       : "Installer for this commissioning",
         "customer"                                                 : "Cliente",
         "installation"                                             : "Instalación",
         "installer_memo"                                           : "Notas del instalador",

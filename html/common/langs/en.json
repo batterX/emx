@@ -156,7 +156,7 @@
 
     "customer_info": {
         "customer_information"           : "Customer Information",
-        "installer_on_site"              : "Installer on site",
+        "installer_on_site"              : "Technician on site",
         "installation_address"           : "Installation Address",
         "same_as_customer_address"       : "Same as customer address",
         "customer_same_as_installer"     : "The customer email cannot be same as the installer email. Please use another email address!",
@@ -316,6 +316,7 @@
         "installation_date"                                        : "Installation Date",
         "latest_maintenance"                                       : "Latest Maintenance",
         "installer"                                                : "Installer",
+        "one_time_installer"                                       : "Installer for this commissioning",
         "customer"                                                 : "Customer",
         "installation"                                             : "Installation",
         "installer_memo"                                           : "Installer Memo",

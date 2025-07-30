@@ -25,6 +25,8 @@ var hasAccessToUser = true;
 
 
 
+var installation_data = {};
+
 $.post({
 	url: "https://api.batterx.app/v2/install.php",
 	data: {
@@ -37,6 +39,8 @@ $.post({
 		console.log(json);
 
 		if(!json) return;
+
+		installation_data = json;
 
 		// Set Customer Information
 		if(json.hasOwnProperty("customer")) {
@@ -226,21 +230,28 @@ $("#mainForm").on("submit", (e) => {
 		$.post({
 			url: "cmd/session.php",
 			data: {
-				customer_gender:      $("#customerInformation .gender          ").val().trim(),
-				customer_firstname:   $("#customerInformation .first-name      ").val().trim(),
-				customer_lastname:    $("#customerInformation .last-name       ").val().trim(),
-				customer_email:       $("#customerInformation .email           ").val().trim(),
-				customer_telephone:   $("#customerInformation .telephone       ").val().trim(),
-				customer_company:     $("#customerInformation .company         ").val().trim(),
-				customer_country:     $("#customerInformation .location-country").val().trim(),
-				customer_city:        $("#customerInformation .location-city   ").val().trim(),
-				customer_zipcode:     $("#customerInformation .location-zip    ").val().trim(),
-				customer_address:     $("#customerInformation .location-address").val().trim(),
-				installer_on_site:    $("#installerOnSite                      ").val().trim(),
-				installation_country: $("#sameAddress").is(":checked") ? $("#customerInformation .location-country").val().trim() : $("#installationAddress  .location-country").val().trim(),
-				installation_city:    $("#sameAddress").is(":checked") ? $("#customerInformation .location-city   ").val().trim() : $("#installationAddress  .location-city   ").val().trim(),
-				installation_zipcode: $("#sameAddress").is(":checked") ? $("#customerInformation .location-zip    ").val().trim() : $("#installationAddress  .location-zip    ").val().trim(),
-				installation_address: $("#sameAddress").is(":checked") ? $("#customerInformation .location-address").val().trim() : $("#installationAddress  .location-address").val().trim()
+				customer_gender:        $("#customerInformation .gender          ").val().trim(),
+				customer_firstname:     $("#customerInformation .first-name      ").val().trim(),
+				customer_lastname:      $("#customerInformation .last-name       ").val().trim(),
+				customer_email:         $("#customerInformation .email           ").val().trim(),
+				customer_telephone:     $("#customerInformation .telephone       ").val().trim(),
+				customer_company:       $("#customerInformation .company         ").val().trim(),
+				customer_country:       $("#customerInformation .location-country").val().trim(),
+				customer_city:          $("#customerInformation .location-city   ").val().trim(),
+				customer_zipcode:       $("#customerInformation .location-zip    ").val().trim(),
+				customer_address:       $("#customerInformation .location-address").val().trim(),
+				installer_on_site:      $("#installerOnSite                      ").val().trim(),
+				installation_country:   $("#sameAddress").is(":checked") ? $("#customerInformation .location-country").val().trim() : $("#installationAddress  .location-country").val().trim(),
+				installation_city:      $("#sameAddress").is(":checked") ? $("#customerInformation .location-city   ").val().trim() : $("#installationAddress  .location-city   ").val().trim(),
+				installation_zipcode:   $("#sameAddress").is(":checked") ? $("#customerInformation .location-zip    ").val().trim() : $("#installationAddress  .location-zip    ").val().trim(),
+				installation_address:   $("#sameAddress").is(":checked") ? $("#customerInformation .location-address").val().trim() : $("#installationAddress  .location-address").val().trim(),
+				installer_og_email:     installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("email"    ) ? installation_data.installer.email     : "",
+				installer_og_gender:    installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("gender"   ) ? installation_data.installer.gender    : "0",
+				installer_og_firstname: installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("firstname") ? installation_data.installer.firstname : "",
+				installer_og_lastname:  installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("lastname" ) ? installation_data.installer.lastname  : "",
+				installer_og_company:   installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("company"  ) ? installation_data.installer.company   : "",
+				installer_og_telephone: installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("telephone") ? installation_data.installer.telephone : "",
+				installer_og_country:   installation_data.hasOwnProperty("installer") && installation_data.installer.hasOwnProperty("country"  ) ? installation_data.installer.country   : ""
 			},
 			error: () => { alert("E003. Please refresh the page! (Error while saving data to session)"); },
 			success: (response) => {

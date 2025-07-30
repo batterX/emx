@@ -156,7 +156,7 @@
 
     "customer_info": {
         "customer_information"           : "Kundeninformationen",
-        "installer_on_site"              : "Installateur vor Ort",
+        "installer_on_site"              : "Techniker vor Ort",
         "installation_address"           : "Installationsadresse",
         "same_as_customer_address"       : "Gleich Kundenadresse",
         "customer_same_as_installer"     : "Die Kunden-E-Mail kann nicht mit der Installateur-E-Mail gleich sein. Bitte wählen Sie eine andere E-Mail Adresse!",
@@ -316,6 +316,7 @@
         "installation_date"                                        : "Installationsdatum",
         "latest_maintenance"                                       : "Letzte Wartung",
         "installer"                                                : "Installateur",
+        "one_time_installer"                                       : "Installateur für diese Inbetriebnahme",
         "customer"                                                 : "Kunde",
         "installation"                                             : "Installation",
         "installer_memo"                                           : "Installateur-Memo",
