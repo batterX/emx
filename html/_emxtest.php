@@ -7,6 +7,13 @@
 // Include Base
 include_once "common/base.php";
 
+// Make sure it's EMX software
+if($boxType != "emx") {
+    http_response_code(404);
+    echo "404 - Page Not Found";
+    exit(); // Stop script execution
+}
+
 // Password Restricted Page
 $secretPass = '$2y$10$QYvlEkra/hEHExIfbCytAOjhGYhsMKyvP.shug0qH4RMzqGIQwYhu';
 if(empty($_POST["secretPass"]) || !password_verify($_POST["secretPass"], $secretPass)) {
@@ -94,21 +101,21 @@ $apikey = sha1(strval($serial));
 
 <html>
 
-	<head>
+    <head>
 
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-		<meta name="author" content="Ivan Gavrilov">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        <meta name="author" content="Ivan Gavrilov">
 
-		<title>batterX Factory Test</title>
+        <title>batterX Factory Test</title>
 
-		<link rel="stylesheet" href="css/dist/bundle.css?v=<?php echo $versionHash ?>">
-        <link rel="stylesheet" href="css/common.css?v=<?php echo $versionHash ?>">
-		<link rel="stylesheet" href="css/_emxtest.css?v=<?php echo $versionHash ?>">
+        <link rel="stylesheet" href="css/dist/bundle.css?v=<?php echo $versionHash; ?>">
+        <link rel="stylesheet" href="css/common.css?v=<?php echo $versionHash; ?>">
+        <link rel="stylesheet" href="css/_emxtest.css?v=<?php echo $versionHash; ?>">
 
-	</head>
+    </head>
 
-	<body>
+    <body>
 
         <main class="container">
 
@@ -299,13 +306,13 @@ $apikey = sha1(strval($serial));
 
         </main>
 
-		<script src="js/dist/bundle.js?v=<?php echo $versionHash ?>"></script>
-		<script src="js/common.js?v=<?php echo $versionHash ?>"></script>
+        <script src="js/dist/bundle.js?v=<?php echo $versionHash; ?>"></script>
+        <script src="js/common.js?v=<?php echo $versionHash; ?>"></script>
         <script>
             const softwareVersion = <?php echo json_encode($softwareVersion) ?>;
         </script>
-		<script src="js/_emxtest.js?v=<?php echo $versionHash ?>"></script>
+        <script src="js/_emxtest.js?v=<?php echo $versionHash; ?>"></script>
 
-	</body>
+    </body>
 
 </html>

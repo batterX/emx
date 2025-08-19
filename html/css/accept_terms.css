@@ -1,37 +1,37 @@
 body {
-	background-color: var(--color-main);
+    background-color: var(--color-main);
 }
 
 @media (min-width:1200px) { .container { max-width: 1000px; } }
 
 h1 {
-	font-size: 1rem;
-	margin-top: 3rem;
-	margin-bottom: 0;
-	font-weight: bold;
-	font-style: italic;
+    font-size: 1rem;
+    margin-top: 3rem;
+    margin-bottom: 0;
+    font-weight: bold;
+    font-style: italic;
 }
 
 h2 {
-	font-size: 1rem;
-	margin-bottom: 3rem;
-	font-weight: bold;
+    font-size: 1rem;
+    margin-bottom: 3rem;
+    font-weight: bold;
 }
 
 #btnFinish {
-	visibility: hidden;
+    visibility: hidden;
 }
 
 ol[type="1"] > li {
-	font-size: 1rem;
-	font-weight: bold;
-	margin-bottom: 3rem;
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 3rem;
 }
 ol[type="a"] > li {
-	font-size: 1rem;
-	font-weight: normal;
+    font-size: 1rem;
+    font-weight: normal;
 }
 ol[type="i"] > li {
-	font-size: 1rem;
-	font-weight: normal;
+    font-size: 1rem;
+    font-weight: normal;
 }

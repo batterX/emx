@@ -1,0 +1,40 @@
+main > h1 {
+    margin-top: 4.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-left: 1.5rem;
+}
+
+main > .card {
+    margin-bottom: 4.5rem;
+}
+
+main > .card:not(.enable-step) {
+    pointer-events: none !important;
+    user-select: none !important;
+    opacity: 0.5 !important;
+}
+main > .card.finish-step {
+    border: 2px solid green;
+}
+main > .card.error-step {
+    border: 2px solid red;
+    background-color: rgba(255, 0, 0, 0.1);
+    pointer-events: none !important;
+    user-select: none !important;
+    opacity: 1 !important;
+}
+
+main .red   { color: red;   }
+main .green { color: green; }
+
+main .info-popup {
+    position: relative;
+    bottom: 2px;
+    cursor: pointer;
+    font-weight: 400;
+    margin-left: 0.4em;
+}

@@ -2,554 +2,554 @@
 
 <html>
 
-	<head>
-
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-		<meta name="author" content="Ivan Gavrilov">
-		<link rel="icon" href="img/favicon.png">
-
-		<title>batterX</title>
-
-		<link rel="stylesheet" href="css/dist/bundle.css">
-		<link rel="stylesheet" href="css/common.css">
-		<link rel="stylesheet" href="css/x.css">
-
-	</head>
-
-	<body>
-		
-		<div class="container p-0">
-
-			<div class="row m-0 px-2 py-3">
-
-
-
-
-
-				<div class="col-12 py-5 px-0 text-center">
-					<h1 class="mb-3">LIVE</h1>
-					<p>Latest UTC Timestamp<br><b id="timestamp">-</b></p>
-				</div>
-
-
-
-
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="4">Solar</th>
-								</tr>
-								<tr class="text-right">
-									<td></td>
-									<td><b>MPPT 1</b></td>
-									<td><b>MPPT 2</b></td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="1553_1"></td>
-									<td class="text-right" id="1554_1"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="1569_1"></td>
-									<td class="text-right" id="1570_1"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="1617_1"></td>
-									<td class="text-right" id="1618_1"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Power Total</td>
-									<td class="text-right" id="1634_0" colspan="2"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">External Solar</th>
-								</tr>
-								<tr class="text-right">
-									<td></td>
-									<td><b>L1</b></td>
-									<td><b>L2</b></td>
-									<td><b>L3</b></td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="2833_3"></td>
-									<td class="text-right" id="2834_3"></td>
-									<td class="text-right" id="2835_3"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="2865_3"></td>
-									<td class="text-right" id="2866_3"></td>
-									<td class="text-right" id="2867_3"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="2897_3"></td>
-									<td class="text-right" id="2898_3"></td>
-									<td class="text-right" id="2899_3"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Power Total</td>
-									<td class="text-right" id="2913_3" colspan="3"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">UPS Output</th>
-								</tr>
-								<tr class="text-right">
-									<td></td>
-									<td><b>L1</b></td>
-									<td><b>L2</b></td>
-									<td><b>L3</b></td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="1297_1"></td>
-									<td class="text-right" id="1298_1"></td>
-									<td class="text-right" id="1299_1"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="1329_1"></td>
-									<td class="text-right" id="1330_1"></td>
-									<td class="text-right" id="1331_1"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="1361_1"></td>
-									<td class="text-right" id="1362_1"></td>
-									<td class="text-right" id="1363_1"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Power Total</td>
-									<td class="text-right" id="1377_1" colspan="3"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">Unprotected Load</th>
-								</tr>
-								<tr class="text-right">
-									<td></td>
-									<td><b>L1</b></td>
-									<td><b>L2</b></td>
-									<td><b>L3</b></td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="2833_2"></td>
-									<td class="text-right" id="2834_2"></td>
-									<td class="text-right" id="2835_2"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="2865_2"></td>
-									<td class="text-right" id="2866_2"></td>
-									<td class="text-right" id="2867_2"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="2897_2"></td>
-									<td class="text-right" id="2898_2"></td>
-									<td class="text-right" id="2899_2"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Power Total</td>
-									<td class="text-right" id="2913_2" colspan="3"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">UPS Input</th>
-								</tr>
-								<tr class="text-right">
-									<td></td>
-									<td><b>L1</b></td>
-									<td><b>L2</b></td>
-									<td><b>L3</b></td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="273_1"></td>
-									<td class="text-right" id="274_1"></td>
-									<td class="text-right" id="275_1"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="305_1"></td>
-									<td class="text-right" id="306_1"></td>
-									<td class="text-right" id="307_1"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="337_1"></td>
-									<td class="text-right" id="338_1"></td>
-									<td class="text-right" id="339_1"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Power Total</td>
-									<td class="text-right" id="353_1" colspan="3"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">Grid E.Meter</th>
-								</tr>
-								<tr class="text-right">
-									<td></td>
-									<td><b>L1</b></td>
-									<td><b>L2</b></td>
-									<td><b>L3</b></td>
-									<td></td>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="2833_0"></td>
-									<td class="text-right" id="2834_0"></td>
-									<td class="text-right" id="2835_0"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="2865_0"></td>
-									<td class="text-right" id="2866_0"></td>
-									<td class="text-right" id="2867_0"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="2897_0"></td>
-									<td class="text-right" id="2898_0"></td>
-									<td class="text-right" id="2899_0"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Power Total</td>
-									<td class="text-right" id="2913_0" colspan="3"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">Battery</th>
-								</tr>
-								<tr>
-									<td>Voltage</td>
-									<td class="text-right" id="1042_1"></td>
-									<td>V</td>
-								</tr>
-								<tr>
-									<td>Current</td>
-									<td class="text-right" id="1058_1"></td>
-									<td>A</td>
-								</tr>
-								<tr>
-									<td>Power</td>
-									<td class="text-right" id="1121_1"></td>
-									<td>W</td>
-								</tr>
-								<tr>
-									<td>Capacity</td>
-									<td class="text-right" id="1074_1"></td>
-									<td>%</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live col-lg-6">
-					<div class="card elevate">
-						<div class="table-responsive">
-							<table class="table m-0">
-								<tr>
-									<th colspan="5">Other</th>
-								</tr>
-								<tr>
-									<td>Temperature 1</td>
-									<td class="text-right" id="369_1"></td>
-									<td>°C</td>
-								</tr>
-								<tr>
-									<td>Temperature 2</td>
-									<td class="text-right" id="370_1"></td>
-									<td>°C</td>
-								</tr>
-								<tr>
-									<td>WinterCharge Delay</td>
-									<td class="text-right" id="24582_1"></td>
-									<td>sec</td>
-								</tr>
-								<tr>
-									<td>GridSol Power</td>
-									<td class="text-right" id="2913_9"></td>
-									<td>W</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-				</div>
-
-
-
-
-
-				<div class="col-12 m-0 py-5 px-0 text-center">
-					<h1 class="m-0">GPIO</h1>
-				</div>
-
-
-
-
-
-				<div class="box-live cmd col-sm-6 col-xl-3">
-					<div class="cmd1 card elevate">
-						<p>GridInjection: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live cmd col-sm-6 col-xl-3">
-					<div class="cmd2 card elevate">
-						<p>BatteryCharging: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live cmd col-sm-6 col-xl-3">
-					<div class="cmd3 card elevate">
-						<p>BatteryChargingAC: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live cmd col-sm-6 col-xl-3">
-					<div class="cmd4 card elevate">
-						<p>BatteryDischarging: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live out col-sm-6 col-xl-3">
-					<div class="out1 card elevate">
-						<p>Output 1: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live out col-sm-6 col-xl-3">
-					<div class="out2 card elevate">
-						<p>Output 2: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live out col-sm-6 col-xl-3">
-					<div class="out3 card elevate">
-						<p>Output 3: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live out col-sm-6 col-xl-3">
-					<div class="out4 card elevate">
-						<p>Output 4: <span>OFF</span></p>
-						<div class="d-flex">
-							<button class="auto btn btn-primary ripple" disabled>AUTO</button>
-							<button class="on btn btn-success ripple">ON</button>
-							<button class="off btn btn-danger ripple">OFF</button>
-						</div>
-					</div>
-				</div>
-
-				<div class="box-live in col-6 col-xl-3">
-					<div class="in1 card elevate">
-						<p>Input 1: <span>OFF</span></p>
-					</div>
-				</div>
-
-				<div class="box-live in col-6 col-xl-3">
-					<div class="in2 card elevate">
-						<p>Input 2: <span>OFF</span></p>
-					</div>
-				</div>
-
-				<div class="box-live in col-6 col-xl-3">
-					<div class="in3 card elevate">
-						<p>Input 3: <span>OFF</span></p>
-					</div>
-				</div>
-
-				<div class="box-live in col-6 col-xl-3">
-					<div class="in4 card elevate">
-						<p>Input 4: <span>OFF</span></p>
-					</div>
-				</div>
-
-				<div class="box-live col-12 m-0 p-0 text-center">
-					<p class="gpio-note mt-3 mb-0">There can be a delay of up to 10 seconds when sending GPIO commands</p>
-				</div>
-
-
-
-
-
-				<div class="col-12 m-0 mt-5 py-5 px-0 text-center">
-					<h2 class="mb-3">APIKEY</h2>
-					<p id="apikey" class="m-0">-</p>
-				</div>
-
-
-
-
-
-				<div class="col-12 m-0 pt-5 px-0 text-center">
-					<h2 class="mb-3">EMX CONTROL</h2>
-				</div>
-
-				<div class="col-sm-3"></div>
-
-				<div class="emx col-6 col-sm-3 mb-5 pl-3 pr-2 m-0">
-					<button id="btnReboot" class="btn btn-block btn-primary ripple">Reboot</button>
-				</div>
-				
-				<div class="emx col-6 col-sm-3 mb-5 pr-3 pl-2 m-0">
-					<button id="btnShutdown" class="btn btn-block btn-danger ripple">Shutdown</button>
-				</div>
-				
-				<div class="col-sm-3"></div>
-
-
-
-				
-
-				<div class="clear-db d-none col-12 m-0 pt-5 px-0 text-center">
-					<h2 class="mb-3">CLEAR DATABASE</h2>
-				</div>
-
-				<div class="clear-db d-none col-2 col-sm-4"></div>
-				
-				<div class="clear-db d-none col-8 col-sm-4 mb-5 px-3 m-0">
-					<button id="btnClearDatabase" class="btn btn-block btn-danger ripple">CLEAR DATABASE</button>
-				</div>
-				
-				<div class="clear-db d-none col-2 col-sm-4"></div>
-
-
-
-
-
-			</div>
-
-		</div>
-
-		<script src="js/dist/bundle.js"></script>
-		<script src="js/x.js"></script>
-
-	</body>
+    <head>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        <meta name="author" content="Ivan Gavrilov">
+        <link rel="icon" href="img/favicon.png">
+
+        <title>batterX</title>
+
+        <link rel="stylesheet" href="css/dist/bundle.css">
+        <link rel="stylesheet" href="css/common.css">
+        <link rel="stylesheet" href="css/x.css">
+
+    </head>
+
+    <body>
+        
+        <div class="container p-0">
+
+            <div class="row m-0 px-2 py-3">
+
+
+
+
+
+                <div class="col-12 py-5 px-0 text-center">
+                    <h1 class="mb-3">LIVE</h1>
+                    <p>Latest UTC Timestamp<br><b id="timestamp">-</b></p>
+                </div>
+
+
+
+
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="4">Solar</th>
+                                </tr>
+                                <tr class="text-right">
+                                    <td></td>
+                                    <td><b>MPPT 1</b></td>
+                                    <td><b>MPPT 2</b></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="1553_1"></td>
+                                    <td class="text-right" id="1554_1"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="1569_1"></td>
+                                    <td class="text-right" id="1570_1"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="1617_1"></td>
+                                    <td class="text-right" id="1618_1"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Power Total</td>
+                                    <td class="text-right" id="1634_0" colspan="2"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">External Solar</th>
+                                </tr>
+                                <tr class="text-right">
+                                    <td></td>
+                                    <td><b>L1</b></td>
+                                    <td><b>L2</b></td>
+                                    <td><b>L3</b></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="2833_3"></td>
+                                    <td class="text-right" id="2834_3"></td>
+                                    <td class="text-right" id="2835_3"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="2865_3"></td>
+                                    <td class="text-right" id="2866_3"></td>
+                                    <td class="text-right" id="2867_3"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="2897_3"></td>
+                                    <td class="text-right" id="2898_3"></td>
+                                    <td class="text-right" id="2899_3"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Power Total</td>
+                                    <td class="text-right" id="2913_3" colspan="3"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">UPS Output</th>
+                                </tr>
+                                <tr class="text-right">
+                                    <td></td>
+                                    <td><b>L1</b></td>
+                                    <td><b>L2</b></td>
+                                    <td><b>L3</b></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="1297_1"></td>
+                                    <td class="text-right" id="1298_1"></td>
+                                    <td class="text-right" id="1299_1"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="1329_1"></td>
+                                    <td class="text-right" id="1330_1"></td>
+                                    <td class="text-right" id="1331_1"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="1361_1"></td>
+                                    <td class="text-right" id="1362_1"></td>
+                                    <td class="text-right" id="1363_1"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Power Total</td>
+                                    <td class="text-right" id="1377_1" colspan="3"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">Unprotected Load</th>
+                                </tr>
+                                <tr class="text-right">
+                                    <td></td>
+                                    <td><b>L1</b></td>
+                                    <td><b>L2</b></td>
+                                    <td><b>L3</b></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="2833_2"></td>
+                                    <td class="text-right" id="2834_2"></td>
+                                    <td class="text-right" id="2835_2"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="2865_2"></td>
+                                    <td class="text-right" id="2866_2"></td>
+                                    <td class="text-right" id="2867_2"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="2897_2"></td>
+                                    <td class="text-right" id="2898_2"></td>
+                                    <td class="text-right" id="2899_2"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Power Total</td>
+                                    <td class="text-right" id="2913_2" colspan="3"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">UPS Input</th>
+                                </tr>
+                                <tr class="text-right">
+                                    <td></td>
+                                    <td><b>L1</b></td>
+                                    <td><b>L2</b></td>
+                                    <td><b>L3</b></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="273_1"></td>
+                                    <td class="text-right" id="274_1"></td>
+                                    <td class="text-right" id="275_1"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="305_1"></td>
+                                    <td class="text-right" id="306_1"></td>
+                                    <td class="text-right" id="307_1"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="337_1"></td>
+                                    <td class="text-right" id="338_1"></td>
+                                    <td class="text-right" id="339_1"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Power Total</td>
+                                    <td class="text-right" id="353_1" colspan="3"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">Grid E.Meter</th>
+                                </tr>
+                                <tr class="text-right">
+                                    <td></td>
+                                    <td><b>L1</b></td>
+                                    <td><b>L2</b></td>
+                                    <td><b>L3</b></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="2833_0"></td>
+                                    <td class="text-right" id="2834_0"></td>
+                                    <td class="text-right" id="2835_0"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="2865_0"></td>
+                                    <td class="text-right" id="2866_0"></td>
+                                    <td class="text-right" id="2867_0"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="2897_0"></td>
+                                    <td class="text-right" id="2898_0"></td>
+                                    <td class="text-right" id="2899_0"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Power Total</td>
+                                    <td class="text-right" id="2913_0" colspan="3"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">Battery</th>
+                                </tr>
+                                <tr>
+                                    <td>Voltage</td>
+                                    <td class="text-right" id="1042_1"></td>
+                                    <td>V</td>
+                                </tr>
+                                <tr>
+                                    <td>Current</td>
+                                    <td class="text-right" id="1058_1"></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td class="text-right" id="1121_1"></td>
+                                    <td>W</td>
+                                </tr>
+                                <tr>
+                                    <td>Capacity</td>
+                                    <td class="text-right" id="1074_1"></td>
+                                    <td>%</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live col-lg-6">
+                    <div class="card elevate">
+                        <div class="table-responsive">
+                            <table class="table m-0">
+                                <tr>
+                                    <th colspan="5">Other</th>
+                                </tr>
+                                <tr>
+                                    <td>Temperature 1</td>
+                                    <td class="text-right" id="369_1"></td>
+                                    <td>°C</td>
+                                </tr>
+                                <tr>
+                                    <td>Temperature 2</td>
+                                    <td class="text-right" id="370_1"></td>
+                                    <td>°C</td>
+                                </tr>
+                                <tr>
+                                    <td>WinterCharge Delay</td>
+                                    <td class="text-right" id="24582_1"></td>
+                                    <td>sec</td>
+                                </tr>
+                                <tr>
+                                    <td>GridSol Power</td>
+                                    <td class="text-right" id="2913_9"></td>
+                                    <td>W</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+
+
+
+
+                <div class="col-12 m-0 py-5 px-0 text-center">
+                    <h1 class="m-0">GPIO</h1>
+                </div>
+
+
+
+
+
+                <div class="box-live cmd col-sm-6 col-xl-3">
+                    <div class="cmd1 card elevate">
+                        <p>GridInjection: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live cmd col-sm-6 col-xl-3">
+                    <div class="cmd2 card elevate">
+                        <p>BatteryCharging: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live cmd col-sm-6 col-xl-3">
+                    <div class="cmd3 card elevate">
+                        <p>BatteryChargingAC: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live cmd col-sm-6 col-xl-3">
+                    <div class="cmd4 card elevate">
+                        <p>BatteryDischarging: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live out col-sm-6 col-xl-3">
+                    <div class="out1 card elevate">
+                        <p>Output 1: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live out col-sm-6 col-xl-3">
+                    <div class="out2 card elevate">
+                        <p>Output 2: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live out col-sm-6 col-xl-3">
+                    <div class="out3 card elevate">
+                        <p>Output 3: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live out col-sm-6 col-xl-3">
+                    <div class="out4 card elevate">
+                        <p>Output 4: <span>OFF</span></p>
+                        <div class="d-flex">
+                            <button class="auto btn btn-primary ripple" disabled>AUTO</button>
+                            <button class="on btn btn-success ripple">ON</button>
+                            <button class="off btn btn-danger ripple">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="box-live in col-6 col-xl-3">
+                    <div class="in1 card elevate">
+                        <p>Input 1: <span>OFF</span></p>
+                    </div>
+                </div>
+
+                <div class="box-live in col-6 col-xl-3">
+                    <div class="in2 card elevate">
+                        <p>Input 2: <span>OFF</span></p>
+                    </div>
+                </div>
+
+                <div class="box-live in col-6 col-xl-3">
+                    <div class="in3 card elevate">
+                        <p>Input 3: <span>OFF</span></p>
+                    </div>
+                </div>
+
+                <div class="box-live in col-6 col-xl-3">
+                    <div class="in4 card elevate">
+                        <p>Input 4: <span>OFF</span></p>
+                    </div>
+                </div>
+
+                <div class="box-live col-12 m-0 p-0 text-center">
+                    <p class="gpio-note mt-3 mb-0">There can be a delay of up to 10 seconds when sending GPIO commands</p>
+                </div>
+
+
+
+
+
+                <div class="col-12 m-0 mt-5 py-5 px-0 text-center">
+                    <h2 class="mb-3">APIKEY</h2>
+                    <p id="apikey" class="m-0">-</p>
+                </div>
+
+
+
+
+
+                <div class="col-12 m-0 pt-5 px-0 text-center">
+                    <h2 class="mb-3">LIVEX CONTROL</h2>
+                </div>
+
+                <div class="col-sm-3"></div>
+
+                <div class="emx col-6 col-sm-3 mb-5 pl-3 pr-2 m-0">
+                    <button id="btnReboot" class="btn btn-block btn-primary ripple">Reboot</button>
+                </div>
+                
+                <div class="emx col-6 col-sm-3 mb-5 pr-3 pl-2 m-0">
+                    <button id="btnShutdown" class="btn btn-block btn-danger ripple">Shutdown</button>
+                </div>
+                
+                <div class="col-sm-3"></div>
+
+
+
+                
+
+                <div class="clear-db d-none col-12 m-0 pt-5 px-0 text-center">
+                    <h2 class="mb-3">CLEAR DATABASE</h2>
+                </div>
+
+                <div class="clear-db d-none col-2 col-sm-4"></div>
+                
+                <div class="clear-db d-none col-8 col-sm-4 mb-5 px-3 m-0">
+                    <button id="btnClearDatabase" class="btn btn-block btn-danger ripple">CLEAR DATABASE</button>
+                </div>
+                
+                <div class="clear-db d-none col-2 col-sm-4"></div>
+
+
+
+
+
+            </div>
+
+        </div>
+
+        <script src="js/dist/bundle.js"></script>
+        <script src="js/x.js"></script>
+
+    </body>
 
 </html>

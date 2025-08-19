@@ -5,11 +5,11 @@
 
 
 h1 {
-	font-size: 1.5rem;
-	padding: 1rem 1.25rem 1rem 4.5rem !important;
-	background-repeat: no-repeat;
-	background-position: 1.25rem center;
-	background-size: 2rem;
+    font-size: 1.5rem;
+    padding: 1rem 1.25rem 1rem 4.5rem !important;
+    background-repeat: no-repeat;
+    background-position: 1.25rem center;
+    background-size: 2rem;
 }
 
 #solar   h1 { background-image: url(../img/ic_solar.png  ); }
@@ -28,20 +28,20 @@ h1 {
 #battery_section_9 span { line-height: 1.2; }
 
 textarea {
-	font-size: 0.875rem !important;
-	min-height: 120px !important;
+    font-size: 0.875rem !important;
+    min-height: 120px !important;
 }
 
 .setting-progress span {
-	font-size: 1.25rem;
-	margin-left: 1rem;
+    font-size: 1.25rem;
+    margin-left: 1rem;
 }
 
 #bxHome.can-import-cloud-data .main-card {
-	height: calc(100% - 3.75rem - 4.5rem) !important;
+    height: calc(100% - 3.75rem - 4.5rem) !important;
 }
 #bxHome.can-import-cloud-data .import-data-card {
-	display: block !important;
+    display: block !important;
 }
 
 
@@ -53,13 +53,13 @@ textarea {
 #system_co_sn,
 #lifepo_bms,
 #lifepo_serialnumbers {
-	text-transform: uppercase;
+    text-transform: uppercase;
 }
 
 #lifepo_bms {
-	min-height: 35px !important;
+    min-height: 35px !important;
 }
 
 #lifepo_serialnumbers {
-	min-height: 360px !important;
+    min-height: 360px !important;
 }

@@ -5,14 +5,14 @@
 
 
 body {
-	min-height: 100vh;
-	display: flex;
-	justify-content: center;
-	align-items: center;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .container {
-	max-width: 720px;
+    max-width: 720px;
 }
 
 
@@ -20,11 +20,11 @@ body {
 
 
 h1 {
-	font-size: 1.5rem;
-	padding: 1rem 1.25rem 1rem 4.5rem !important;
-	background-repeat: no-repeat;
-	background-position: 1.25rem center;
-	background-size: 2rem;
+    font-size: 1.5rem;
+    padding: 1rem 1.25rem 1rem 4.5rem !important;
+    background-repeat: no-repeat;
+    background-position: 1.25rem center;
+    background-size: 2rem;
 }
 
 

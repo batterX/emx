@@ -58,8 +58,12 @@ var reactive_v4     = null;
 var reactive_qutime = null;
 var reactive_qfix   = null;
 
+var isClixV2 = false;
+
 var dataSettings = {};
 var importedData = {};
+
+var previousSettings = null; // Store the previous response, to compare and know when something has changed
 
 
 
@@ -90,7 +94,12 @@ var importedData = {};
 */
 
 function isLiFePO   () { return $("#bx_battery_type_0").is(":checked"); }
+function isCarbon   () { return $("#bx_battery_type_1").is(":checked"); }
+function isOther    () { return $("#bx_battery_type_9").is(":checked"); }
 function isNoBattery() { return $("#bx_battery_type_n").is(":checked"); }
+
+function isUPS      () { return $("#bx_sysmode").val() == "0"; }
+function isBackup   () { return $("#bx_sysmode").val() == "1"; }
 
 function hasExtSol  () { return $("#extsol_check").is(":checked"); }
 
@@ -115,6 +124,8 @@ function isOldSys   () { return $("#system_co_old").is(":checked"); }
     Helper Functions
 */
 
+function elementExists(selector) { return $(selector).length > 0; }
+
 function disableBtnNext() { $("#btn_next").attr("disabled", true); }
 
 
@@ -136,21 +147,48 @@ function allFieldsCorrect() {
     if( $("#installation_date      ").val() == "" ||
         $("#bx_device              ").val() == "" ||
         $("#bx_box                 ").val() == "" ||
+        $("#bx_sysmode             ").val() == "" && elementExists("#bx_sysmode") ||
         $("#solar_wattpeak         ").val() == "" ||
         $("#solar_feedinlimitation ").val() == "" ||
         $("#reactive_mode          ").val() == "" ||
         $("#extended_lfsmoThreshold").val() == "" ||
-        $("#extended_lfsmoDroop    ").val() == ""
+        $("#extended_lfsmoDroop    ").val() == "" && elementExists("#extended_lfsmoDroop") ||
+        $("#extended_lfsmoSlope    ").val() == "" && elementExists("#extended_lfsmoSlope")
     ) return false;
 
-    // Return If Empty Syetem S/N
-    if( isOldSys() && $("#system_co_sn").val() == ""
-    ) return false;
+    // Return If Empty System S/N
+    if(boxType == "livex" && isLiFePO()) { 
+        if( $("bx_system").val() == ""
+        ) return;
+    } else {
+        if( isOldSys() && $("#system_co_sn").val() == ""
+        ) return false;
+    }
 
     // LiFePO
     if(isLiFePO()) {
-        if( $("#lifepo_bms          ").val() == "" ||
+        if( $("#lifepo_bms          ").val() == "" && elementExists("#lifepo_bms") ||
             $("#lifepo_serialnumbers").val() == ""
+        ) return false;
+    }
+    // Carbon
+    else if(isCarbon()) {
+        if( $("#carbon_battery_model   ").val() == "" ||
+            $("#carbon_battery_strings ").val() == "" ||
+            $("#carbon_battery_capacity").val() == ""
+        ) return false;
+    }
+    // Other
+    else if(isOther()) {
+        if( $("#other_battery_capacity                ").val() == "" ||
+            $("#other_battery_maxChargingCurrent      ").val() == "" ||
+            $("#other_battery_maxDischargingCurrent   ").val() == "" ||
+            $("#other_battery_bulkChargingVoltage     ").val() == "" ||
+            $("#other_battery_floatChargingVoltage    ").val() == "" ||
+            $("#other_battery_cutoffVoltage           ").val() == "" ||
+            $("#other_battery_redischargeVoltage      ").val() == "" ||
+            $("#other_battery_cutoffVoltageHybrid     ").val() == "" ||
+            $("#other_battery_redischargeVoltageHybrid").val() == ""
         ) return false;
     }
 
@@ -174,7 +212,7 @@ function allFieldsCorrect() {
             $("#extended_fUnder1Time       ").val() == "" ||
             $("#extended_Ueff              ").val() == "" ||
             $("#extended_gridConnectDelay  ").val() == "" ||
-            $("#extended_gridReconnectDelay").val() == "" ||
+            $("#extended_gridReconnectDelay").val() == "" && elementExists("#extended_gridReconnectDelay") ||
             $("#extended_puTime            ").val() == ""
         ) return false;
     }
@@ -225,8 +263,8 @@ function verifySystem() {
         async: false,
         data: {
             action : "verify_system",
-            user   : customerEmail.trim(),
-            system : isOldSys() ? $("#system_co_sn").val().trim() : "NEW"
+            user   : customerEmail.trim().toLowerCase(),
+            system : boxType == "livex" && isLiFePO() ? $("#bx_system").val().trim() : (isOldSys() ? $("#system_co_sn").val().trim() : "NEW") 
         },
         error: () => { alert("E032. Please refresh the page! (Error while verifying system serialnumber in cloud)"); },
         success: (response) => {
@@ -242,63 +280,65 @@ function verifySystem() {
 
 function verifyModulesLiFePO() {
 
-    var system_serial = $("#system_co_sn").val();
+    var system_serial = boxType == "livex" ? $("#bx_system").val() : $("#system_co_sn").val(); 
+    var batteries = [];
     var bms       = [];
-	var batteries = [];
-	$("#lifepo_bms").val().trim().split("\n").forEach(sn => {
-		if(sn.trim() != "") bms.push(sn.trim());
-	});
-	$("#lifepo_serialnumbers").val().trim().split("\n").forEach(sn => {
-		if(sn.trim() != "") batteries.push(sn.trim());
-	});
+    $("#lifepo_serialnumbers").val().trim().split("\n").forEach(sn => {
+        if(sn.trim() != "") batteries.push(sn.trim());
+    });
+    if(elementExists("#lifepo_bms")) {
+        $("#lifepo_bms").val().trim().split("\n").forEach(sn => {
+            if(sn.trim() != "") bms.push(sn.trim());
+        });
+    }
 
     var canContinue = true;
     batteries.forEach(sn => {
-		if(canContinue) {
-			canContinue = false;
-			$.post({
-				url: "https://api.batterx.app/v2/install.php",
-				async: false,
-				data: {
-					action: "verify_battery",
-					system: system_serial,
-					serialnumber: sn.trim()
-				},
-				error: () => { alert("E015. Please refresh the page! (Error while verifying battery serialnumber in cloud)"); },
-				success: (response) => {
-					if(response === "1") {
-						canContinue = true;
-					} else {
-						$("#errorBatterySerial").val(sn.trim());
-						$("#errorBatteryNotExistOrWithOtherSystem").modal("show");
-					}
-				}
-			});
-		}
-	});
+        if(canContinue) {
+            canContinue = false;
+            $.post({
+                url: "https://api.batterx.app/v2/install.php",
+                async: false,
+                data: {
+                    action: "verify_battery",
+                    system: system_serial,
+                    serialnumber: sn.trim()
+                },
+                error: () => { alert("E015. Please refresh the page! (Error while verifying battery serialnumber in cloud)"); },
+                success: (response) => {
+                    if(response === "1") {
+                        canContinue = true;
+                    } else {
+                        $("#errorBatterySerial").val(sn.trim());
+                        $("#errorBatteryNotExistOrWithOtherSystem").modal("show");
+                    }
+                }
+            });
+        }
+    });
     bms.forEach(sn => {
-		if(canContinue) {
-			canContinue = false;
-			$.post({
-				url: "https://api.batterx.app/v2/install.php",
-				async: false,
-				data: {
-					action: "verify_bms",
-					system: system_serial,
-					serialnumber: sn.trim()
-				},
-				error: () => { alert("E015. Please refresh the page! (Error while verifying bms serialnumber in cloud)"); },
-				success: (response) => {
-					if(response === "1") {
-						canContinue = true;
-					} else {
-						$("#errorBmsSerial").val(sn.trim());
-						$("#errorBmsNotExistOrWithOtherSystem").modal("show");
-					}
-				}
-			});
-		}
-	});
+        if(canContinue) {
+            canContinue = false;
+            $.post({
+                url: "https://api.batterx.app/v2/install.php",
+                async: false,
+                data: {
+                    action: "verify_bms",
+                    system: system_serial,
+                    serialnumber: sn.trim()
+                },
+                error: () => { alert("E015. Please refresh the page! (Error while verifying bms serialnumber in cloud)"); },
+                success: (response) => {
+                    if(response === "1") {
+                        canContinue = true;
+                    } else {
+                        $("#errorBmsSerial").val(sn.trim());
+                        $("#errorBmsNotExistOrWithOtherSystem").modal("show");
+                    }
+                }
+            });
+        }
+    });
 
     if(!canContinue) {
         // Enable Battery Fields
@@ -336,8 +376,37 @@ function verifyModulesCommunication(callback) {
                 $("#btn_next").unbind().removeAttr("form").removeAttr("type").on("click", () => { setup1(); });
                 isSettingParameters = false;
             } else {
-                // Set Session Variables
-                callback(true);
+                if(inverterModel == "10002") { // h10
+                    // Check battery charging voltage
+                    $.get({
+                        url: "api.php?get=settings",
+                        error: () => { alert("E022. Please refresh the page! (Error while reading local settings table)"); },
+                        success: (response) => {
+                            console.log(response);
+                            if(!response || typeof response != "object" || !response.hasOwnProperty("InverterParameters"))
+                                return alert("E023. Please refresh the page! (Missing or malformed data in local settings table)");
+                            dataSettings = JSON.parse(JSON.stringify(response));
+                            response = response["Inverter"];
+                            if(tempDatetime == "") { tempDatetime = response["10"]["s1"]; setTimeout(() => { verifyModulesCommunication(callback); }, 5000); return; }
+                            if(response["10"]["s1"] == tempDatetime) { setTimeout(() => { verifyModulesCommunication(callback); }, 5000); return; }
+                            // Verify Battery Charging Voltage
+                            var floatVoltage = response["416"]["s1"];
+                            console.log(floatVoltage);
+                            if(floatVoltage != "5320" && floatVoltage != "5280") {
+                                $("#notif").removeClass("loading error success").addClass("error");
+                                $("#message").html(lang.system_setup.msg_lifepo_communication_problem).css("color", "red");
+                                $("#btn_next").unbind().removeAttr("form").removeAttr("type").on("click", () => { setup1(); });
+                                isSettingParameters = false;
+                            } else {
+                                // Set Session Variables
+                                callback(true);
+                            }
+                        }
+                    });
+                } else {
+                    // Set Session Variables
+                    callback(true);
+                }
             }
         }
     });
@@ -415,8 +484,15 @@ function showSystemInfo(json) {
     // Set System Info
     if(json.hasOwnProperty("system")) {
         if(json.system.hasOwnProperty("serialnumber")) {
-            $("#system_co_sn").val(json.system.serialnumber).attr("disabled", true);
+            $("#bx_system, #system_co_sn").val(json.system.serialnumber).attr("disabled", true);
             systemSerial = json.system.serialnumber;
+        }
+        if(boxType == "livex") { 
+            if(json.system.hasOwnProperty("model")) {
+                systemType = json.system.model.includes("W") ? "w" : "r";
+                $(`#bx_system_type_${systemType}`).click();
+                $("#bx_system_type_w, #bx_system_type_r").attr("disabled", true);
+            }
         }
     }
 
@@ -442,18 +518,42 @@ function showSystemInfo(json) {
 
     // Set Batteries Info
     if(json.hasOwnProperty("batteries")) {
-        // Multiple Batteries (LiFePO Only)
-        if(json.batteries.length > 0) {
-            var tempArr = [];
-			json.batteries.forEach(battery => { tempArr.push(battery.serialnumber); });
-			$("#lifepo_serialnumbers").val(tempArr.join("\n"));
-			tempArr = [];
-			json.batteries_bms.forEach(bms => { tempArr.push(bms.serialnumber); });
-			$("#lifepo_bms").val(tempArr.join("\n"));
+        // With Batteries
+        if(json.batteries.length > 0 && json.batteries[0].hasOwnProperty("serialnumber") && json.batteries[0].hasOwnProperty("type")) {
+            var battery = json.batteries[0];
+            // LiFePO
+            if(battery.type == 0 || json.batteries_bms.length > 0) {
+                var tempArr = [];
+                json.batteries.forEach(battery => { tempArr.push(battery.serialnumber); });
+                $("#lifepo_serialnumbers").val(tempArr.join("\n"));
+                tempArr = [];
+                json.batteries_bms.forEach(bms => { tempArr.push(bms.serialnumber); });
+                $("#lifepo_bms").val(tempArr.join("\n"));
+            }
+            // Carbon
+            else if(battery.type == 1) {
+                $("#bx_battery_type_1").prop("checked", true).trigger("change");
+                $("#bx_system_type_w ").prop("checked", true).trigger("change");
+                if(battery.hasOwnProperty("capacity")) $("#carbon_battery_capacity").val(`${battery.capacity} Wh`);
+                if(battery.hasOwnProperty("strings" )) $("#carbon_battery_strings ").val(battery.strings).trigger("change");
+                if(battery.hasOwnProperty("model"   )) $("#carbon_battery_model   ").val(battery.model  ).trigger("change");
+            }
+            // Other
+            else if(battery.type == 9) {
+                $("#bx_battery_type_9").prop("checked", true).trigger("change");
+                $("#bx_system_type_w ").prop("checked", true).trigger("change");
+                if(battery.hasOwnProperty("capacity")) $("#other_battery_capacity").val(battery.capacity);
+            }
         }
         // No Batteries
         else {
-            $("#bx_battery_type_n").prop("checked", true).trigger("change");
+            if(boxType == "livex") { 
+                $("#bx_battery_type_9").prop("checked", true).trigger("change");
+                $("#bx_system_type_w ").prop("checked", true).trigger("change");
+                $("#other_battery_capacity").val(0);
+            } else {
+                $("#bx_battery_type_n").prop("checked", true).trigger("change");
+            }
         }
     }
 
@@ -526,9 +626,19 @@ function showSystemSettings(response) {
     // Inverter Parameters
     if(response.hasOwnProperty("Inverter")) {
         var temp = response["Inverter"];
+        // Battery Parameters
+        if(temp.hasOwnProperty("417")) $("#other_battery_maxChargingCurrent      ").val(parseInt(temp["417"].s1) / 100);
+        if(temp.hasOwnProperty("418")) $("#other_battery_maxDischargingCurrent   ").val(parseInt(temp["418"].s1) / 100);
+        if(temp.hasOwnProperty("415")) $("#other_battery_bulkChargingVoltage     ").val(parseInt(temp["415"].s1) / 100);
+        if(temp.hasOwnProperty("416")) $("#other_battery_floatChargingVoltage    ").val(parseInt(temp["416"].s1) / 100);
+        if(temp.hasOwnProperty("411")) $("#other_battery_cutoffVoltageHybrid     ").val(parseInt(temp["411"].s1) / 100);
+        if(temp.hasOwnProperty("413")) $("#other_battery_redischargeVoltageHybrid").val(parseInt(temp["413"].s1) / 100);
+        if(temp.hasOwnProperty("412")) $("#other_battery_cutoffVoltage           ").val(parseInt(temp["412"].s1) / 100);
+        if(temp.hasOwnProperty("414")) $("#other_battery_redischargeVoltage      ").val(parseInt(temp["414"].s1) / 100);
         // Extended Parameters
         if(temp.hasOwnProperty("342")) $("#extended_lfsmoThreshold").val(temp["342"].s1);
         if(temp.hasOwnProperty("349")) $("#extended_lfsmoDroop    ").val(temp["349"].s1);
+        if(temp.hasOwnProperty("350")) $("#extended_lfsmoSlope    ").val(parseInt(temp["350"].s1) / 100);
         // Extended Parameters TOR
         if(isTor && isAlreadyRegistered) {
             if(temp.hasOwnProperty("212")) $("#extended_maxGridVoltage    ").val(parseInt(temp["212"].s1) / 100);
@@ -551,6 +661,20 @@ function showSystemSettings(response) {
             if(temp.hasOwnProperty("215")) $("#extended_gridConnectDelay  ").val(parseInt(temp["215"].s1));
             if(temp.hasOwnProperty("225")) $("#extended_gridReconnectDelay").val(parseInt(temp["225"].s1));
             if(temp.hasOwnProperty("336")) $("#extended_puTime            ").val(parseInt(temp["336"].s1) / 1000);
+        }
+    }
+    
+    // E.Meter Phase Connection (batterX h5)
+    if(response.hasOwnProperty("InjectionMode")) {
+        var temp = response["InjectionMode"];
+        if(temp["0"]["v6"] !== 0) $("#bx_emeter_phase").val(temp["0"]["v6"]);
+    }
+
+    // System Mode (cliX 2.0)
+    if(isClixV2) {
+        if(response.hasOwnProperty("SystemMode")) {
+            var temp = response["SystemMode"];
+            $("#bx_sysmode").val(temp["0"]["mode"]);
         }
     }
 
@@ -584,13 +708,15 @@ function showSystemSettings(response) {
     Show|Hide Import Data From Cloud Button
 */
 
-$("#system_co_sn").on("change", () => showImportDataFromCloud());
+$("#bx_system, #system_co_sn").on("change", () => showImportDataFromCloud());
 
 function showImportDataFromCloud() {
 
     $("#bxHome").removeClass("can-import-cloud-data");
 
-    if(isOldSys() && $("#system_co_sn").val().trim() == "") return;
+    if(boxType == "livex" && isLiFePO() && $("#bx_system").val().trim() == "") return; 
+    else if(isOldSys() && $("#system_co_sn").val().trim() == "") return;
+
     if(Object.keys(dataSettings).length == 0) return;
     if(!dataSettings.hasOwnProperty("CloudSet")) return;
     if(!dataSettings["CloudSet"].hasOwnProperty("0")) return;
@@ -602,14 +728,22 @@ function showImportDataFromCloud() {
         data: {
             action : "get_system_data",
             system : $("#system_co_sn").val().trim(),
-            customer : customerEmail.trim()
+            system : boxType == "livex" && isLiFePO() ? $("#bx_system").val().trim() : $("#system_co_sn").val().trim(), 
+            customer : customerEmail.trim().toLowerCase()
         },
         error: () => { alert("E004. Please refresh the page! (Error while reading system data from cloud)"); },
         success: (json) => {
             console.log(json);
-            if(isOldSys() && !json) {
-                alert(lang.system_setup.msg_system_with_sn_does_not_exist.replace("123", $("#system_co_sn").val().trim()));
-                $("#system_co_sn").val("");
+            if(boxType == "livex") { 
+                if((isCarbon() || isOther()) && isOldSys() && !json) {
+                    alert(lang.system_setup.msg_system_with_sn_does_not_exist.replace("123", $("#system_co_sn").val().trim()));
+                    $("#system_co_sn").val("");
+                }
+            } else {
+                if(isOldSys() && !json) {
+                    alert(lang.system_setup.msg_system_with_sn_does_not_exist.replace("123", $("#system_co_sn").val().trim()));
+                    $("#system_co_sn").val("");
+                }
             }
             if(!json) return;
             importedData = json;
@@ -821,12 +955,56 @@ $("input[name=system_co_radio]").on("change", function() {
 $("input[name=bx_battery_type]").on("change", function() {
 
     // Show Correct Battery Section
-    $(`#battery_section_0, #battery_section_n`).hide();
-    if(this.value == "0") $(`#battery_section_0`).show();
-    else if(this.value == "") $(`#battery_section_n`).show();
+    $(`#battery_section_0, #battery_section_1, #battery_section_9, #battery_section_n`).hide();
+    if(this.value == "") $("#battery_section_n").show();
+    else $(`#battery_section_${this.value}`).show();
 
     // Show|Hide Options
-    $("#system_co_sn").val(systemSerial).trigger("change");
+    if(boxType == "livex") {
+        if(this.value == "0") {
+            // LiFePO
+            $("#system_type, #system_mode").show();
+            $("#system_co_box").hide();
+            $("#bx_system").val(systemSerial).trigger("change");
+            $(`#bx_system_type_${systemType}`).prop("checked", true);
+        } else {
+            // Carbon|Other
+            $("#system_type, #system_mode").hide();
+            $("#system_co_box").show();
+            $("#bx_system").val(systemSerial).trigger("change");
+            $("#bx_system_type_w").prop("checked", true);
+            $("#bx_sysmode").val("0");
+        }
+    } else {
+        $("#system_co_sn").val(systemSerial).trigger("change");
+    }
+
+});
+
+
+
+
+
+
+
+
+
+
+/*
+    Carbon Batteries|Strings OnChange Listener
+*/
+
+$("#carbon_battery_model, #carbon_battery_strings").on("change", function() {
+
+    var batteryModel    = $("#carbon_battery_model").val();
+    var batteryStrings  = $("#carbon_battery_strings").val();
+    var batteryCapacity = 0;
+
+         if(batteryModel == "LC+700"  ) batteryCapacity = 4 * 700 * parseInt(batteryStrings);
+    else if(batteryModel == "LC+1300" ) batteryCapacity = 4 * 1300 * parseInt(batteryStrings);
+    else if(batteryModel == "LC+2V500") batteryCapacity = 24 * 2 * 500 * parseInt(batteryStrings);
+
+    $("#carbon_battery_capacity").val(`${batteryCapacity} Wh`);
 
 });
 
@@ -982,7 +1160,7 @@ function step2() {
 
 
 /*
-    Set EMX Serial-Number
+    Set LiveX Serial-Number
 */
 
 function step3() {
@@ -993,7 +1171,7 @@ function step3() {
             action : "get_box_info",
             apikey : systemApikey
         },
-        error: () => { alert("E005. Please refresh the page! (Error while reading EMX info from cloud)"); },
+        error: () => { alert("E005. Please refresh the page! (Error while reading LiveX info from cloud)"); },
         success: (response) => {
 
             console.log(response);
@@ -1002,7 +1180,27 @@ function step3() {
 
             if(!box_info) return $("#errorBoxNotRegistered").modal("show");
 
-            // Save EMX Serial-Number & Part-Number to Session
+            // Check If cliX v2
+            let clix_info = null;
+            if(PNS_BOX.hasOwnProperty(box_info.partnumber) && PNS_BOX[box_info.partnumber].type == "xc")
+                clix_info = PNS_BOX[box_info.partnumber];
+            isClixV2 = clix_info && clix_info.version > 1;
+            if(!isClixV2) $("#bx_sysmode option[value=1]").remove();
+
+            // Enable|Disable Battery Type Selection
+            if(boxType == "livex") {
+                if(clix_info) {
+                    // Only LiFePO|None
+                } else {
+                    // Only Carbon|Other
+                    $("#bx_battery_type_1").prop("checked", true).trigger("change");
+                    $("#bx_battery_type_0").attr("disabled", true); // disable lifepo
+                }
+            } else {
+                // Do nothing
+            }
+
+            // Save LiveX Serial-Number & Part-Number to Session
             $.post({
                 url: "cmd/session.php",
                 data: {
@@ -1218,11 +1416,41 @@ function mainFormSubmit() {
 }
 
 function mainFormSubmit_2() {
-    mainFormSubmit_3();
+    if(boxType == "livex") {
+        if(isOther() && $("#other_battery_capacity").val() != "0") {
+            $("#modalConfirmOtherBatteries").modal("show");
+            $("#modalConfirmOtherBatteries button").unbind().on("click", () => {
+                $("#modalConfirmOtherBatteries").modal("hide");
+                mainFormSubmit_3();
+            });
+        } else {
+            mainFormSubmit_3();
+        }
+    } else {
+        mainFormSubmit_3();
+    }
 }
 
 function mainFormSubmit_3() {
-    mainFormSubmit_4();
+    if(boxType == "livex") {
+        if(isClixV2 && isUPS()) {
+            $("#modalConfirmUpsMode").modal("show");
+            $("#modalConfirmUpsMode button").unbind().on("click", () => {
+                $("#modalConfirmUpsMode").modal("hide");
+                mainFormSubmit_4();
+            });
+        } else if(isClixV2 && isBackup()) {
+            $("#modalConfirmBackupMode").modal("show");
+            $("#modalConfirmBackupMode button").unbind().on("click", () => {
+                $("#modalConfirmBackupMode").modal("hide");
+                mainFormSubmit_4();
+            });
+        } else {
+            mainFormSubmit_4();
+        }
+    } else {
+        mainFormSubmit_4();
+    }
 }
 
 function mainFormSubmit_4() {
@@ -1262,6 +1490,10 @@ function mainFormSubmit_5() {
         if(!tempFlag) return $("#solar_wattpeak").val("");
     }
 
+    // Check System S/N (For LiFePO)
+    if(boxType == "livex" && isLiFePO() && !isAlreadyRegistered && $("#bx_system").val().length != 14)
+        return $("#errorSystemSerialNotCorrect").modal("show");
+
     // Verify System S/N
     if(!verifySystem()) return;
     
@@ -1274,7 +1506,7 @@ function mainFormSubmit_5() {
         data: {
             action       : "verify_device",
             serialnumber : $("#bx_device").val(),
-            system       : isOldSys() ? $("#system_co_sn").val().trim() : "NEW"
+            system       : boxType == "livex" && isLiFePO() ? $("#bx_system").val().trim() : (isOldSys() ? $("#system_co_sn").val().trim() : "NEW") 
         },
         error: () => { alert("E014. Please refresh the page! (Error while verifying device serialnumber in cloud)"); },
         success: (response) => {
@@ -1307,18 +1539,40 @@ function mainFormSubmit_6() {
 
     // Disable All Fields
 
-    $(` #bx_device,
+    $(` #bx_system,
+        #bx_system_type_r,
+        #bx_system_type_w,
+        #bx_device,
         #bx_box,
+        #bx_sysmode,
         #btnInstallerMemo,
         #installer_memo,
         
         #solar_wattpeak,
+        #solar_wideinputrange,
         #solar_feedinlimitation,
         #solar_info,
+        #bx_emeter_phase,
 
         #bx_battery_type_0,
         #lifepo_bms,
         #lifepo_serialnumbers,
+
+        #bx_battery_type_1,
+        #carbon_battery_model,
+        #carbon_battery_strings,
+        #carbon_battery_capacity,
+        
+        #bx_battery_type_9,
+        #other_battery_capacity,
+        #other_battery_maxChargingCurrent,
+        #other_battery_maxDischargingCurrent,
+        #other_battery_bulkChargingVoltage,
+        #other_battery_floatChargingVoltage,
+        #other_battery_cutoffVoltageHybrid,
+        #other_battery_redischargeVoltageHybrid,
+        #other_battery_cutoffVoltage,
+        #other_battery_redischargeVoltage,
 
         #bx_battery_type_n,
 
@@ -1337,6 +1591,7 @@ function mainFormSubmit_6() {
         #btnExtendedParameters,
         #extended_lfsmoThreshold,
         #extended_lfsmoDroop,
+        #extended_lfsmoSlope,
         #extended_maxGridVoltage,
         #extended_minGridVoltage,
         #extended_maxGridFrequency,
@@ -1437,7 +1692,7 @@ function setValuesToSession() {
 
     // Common Parameters
 
-    tempData.system_serial          = isOldSys() ? $("#system_co_sn").val().trim() : "NEW";
+    tempData.system_serial          = boxType == "livex" && isLiFePO() ? $("#bx_system").val().trim() : (isOldSys() ? $("#system_co_sn").val().trim() : "NEW");
 
     tempData.device_serial          = $("#bx_device             ").val().trim();
     tempData.solar_wattpeak         = $("#solar_wattpeak        ").val().trim();
@@ -1445,6 +1700,9 @@ function setValuesToSession() {
     tempData.solar_info             = $("#solar_info            ").val().trim();
     tempData.note                   = $("#installer_memo        ").val().trim();
     tempData.installation_date      = $("#installation_date     ").val().trim();
+
+    if(elementExists("#solar_wideinputrange")) tempData.solar_wideinputrange = $("#solar_wideinputrange").val().trim();
+    if(elementExists("#bx_sysmode"          )) tempData.system_mode          = $("#bx_sysmode          ").val().trim();
 
 
 
@@ -1494,28 +1752,29 @@ function setValuesToSession() {
     if(reactive_qutime != null) tempData.reactive_qutime = reactive_qutime;
     if(reactive_qfix   != null) tempData.reactive_qfix   = reactive_qfix;
 
-    if($("#extended_lfsmoThreshold    ").val() != "") tempData.extended_lfsmoThreshold     = $("#extended_lfsmoThreshold    ").val();
-    if($("#extended_lfsmoDroop        ").val() != "") tempData.extended_lfsmoDroop         = $("#extended_lfsmoDroop        ").val();
-    if($("#extended_maxGridVoltage    ").val() != "") tempData.extended_maxGridVoltage     = $("#extended_maxGridVoltage    ").val();
-    if($("#extended_minGridVoltage    ").val() != "") tempData.extended_minGridVoltage     = $("#extended_minGridVoltage    ").val();
-    if($("#extended_maxGridFrequency  ").val() != "") tempData.extended_maxGridFrequency   = $("#extended_maxGridFrequency  ").val();
-    if($("#extended_minGridFrequency  ").val() != "") tempData.extended_minGridFrequency   = $("#extended_minGridFrequency  ").val();
-    if($("#extended_UeffOver1         ").val() != "") tempData.extended_UeffOver1          = $("#extended_UeffOver1         ").val();
-    if($("#extended_UeffUnder1        ").val() != "") tempData.extended_UeffUnder1         = $("#extended_UeffUnder1        ").val();
-    if($("#extended_UeffOver2         ").val() != "") tempData.extended_UeffOver2          = $("#extended_UeffOver2         ").val();
-    if($("#extended_UeffUnder2        ").val() != "") tempData.extended_UeffUnder2         = $("#extended_UeffUnder2        ").val();
-    if($("#extended_fOver1            ").val() != "") tempData.extended_fOver1             = $("#extended_fOver1            ").val();
-    if($("#extended_fUnder1           ").val() != "") tempData.extended_fUnder1            = $("#extended_fUnder1           ").val();
-    if($("#extended_UeffOver1Time     ").val() != "") tempData.extended_UeffOver1Time      = $("#extended_UeffOver1Time     ").val();
-    if($("#extended_UeffUnder1Time    ").val() != "") tempData.extended_UeffUnder1Time     = $("#extended_UeffUnder1Time    ").val();
-    if($("#extended_UeffOver2Time     ").val() != "") tempData.extended_UeffOver2Time      = $("#extended_UeffOver2Time     ").val();
-    if($("#extended_UeffUnder2Time    ").val() != "") tempData.extended_UeffUnder2Time     = $("#extended_UeffUnder2Time    ").val();
-    if($("#extended_fOver1Time        ").val() != "") tempData.extended_fOver1Time         = $("#extended_fOver1Time        ").val();
-    if($("#extended_fUnder1Time       ").val() != "") tempData.extended_fUnder1Time        = $("#extended_fUnder1Time       ").val();
-    if($("#extended_Ueff              ").val() != "") tempData.extended_Ueff               = $("#extended_Ueff              ").val();
-    if($("#extended_gridConnectDelay  ").val() != "") tempData.extended_gridConnectDelay   = $("#extended_gridConnectDelay  ").val();
-    if($("#extended_gridReconnectDelay").val() != "") tempData.extended_gridReconnectDelay = $("#extended_gridReconnectDelay").val();
-    if($("#extended_puTime            ").val() != "") tempData.extended_puTime             = $("#extended_puTime            ").val();
+    if(elementExists("#extended_lfsmoThreshold"    ) && $("#extended_lfsmoThreshold    ").val() != "") tempData.extended_lfsmoThreshold     = $("#extended_lfsmoThreshold    ").val();
+    if(elementExists("#extended_lfsmoDroop"        ) && $("#extended_lfsmoDroop        ").val() != "") tempData.extended_lfsmoDroop         = $("#extended_lfsmoDroop        ").val();
+    if(elementExists("#extended_lfsmoSlope"        ) && $("#extended_lfsmoSlope        ").val() != "") tempData.extended_lfsmoSlope         = $("#extended_lfsmoSlope        ").val();
+    if(elementExists("#extended_maxGridVoltage"    ) && $("#extended_maxGridVoltage    ").val() != "") tempData.extended_maxGridVoltage     = $("#extended_maxGridVoltage    ").val();
+    if(elementExists("#extended_minGridVoltage"    ) && $("#extended_minGridVoltage    ").val() != "") tempData.extended_minGridVoltage     = $("#extended_minGridVoltage    ").val();
+    if(elementExists("#extended_maxGridFrequency"  ) && $("#extended_maxGridFrequency  ").val() != "") tempData.extended_maxGridFrequency   = $("#extended_maxGridFrequency  ").val();
+    if(elementExists("#extended_minGridFrequency"  ) && $("#extended_minGridFrequency  ").val() != "") tempData.extended_minGridFrequency   = $("#extended_minGridFrequency  ").val();
+    if(elementExists("#extended_UeffOver1"         ) && $("#extended_UeffOver1         ").val() != "") tempData.extended_UeffOver1          = $("#extended_UeffOver1         ").val();
+    if(elementExists("#extended_UeffUnder1"        ) && $("#extended_UeffUnder1        ").val() != "") tempData.extended_UeffUnder1         = $("#extended_UeffUnder1        ").val();
+    if(elementExists("#extended_UeffOver2"         ) && $("#extended_UeffOver2         ").val() != "") tempData.extended_UeffOver2          = $("#extended_UeffOver2         ").val();
+    if(elementExists("#extended_UeffUnder2"        ) && $("#extended_UeffUnder2        ").val() != "") tempData.extended_UeffUnder2         = $("#extended_UeffUnder2        ").val();
+    if(elementExists("#extended_fOver1"            ) && $("#extended_fOver1            ").val() != "") tempData.extended_fOver1             = $("#extended_fOver1            ").val();
+    if(elementExists("#extended_fUnder1"           ) && $("#extended_fUnder1           ").val() != "") tempData.extended_fUnder1            = $("#extended_fUnder1           ").val();
+    if(elementExists("#extended_UeffOver1Time"     ) && $("#extended_UeffOver1Time     ").val() != "") tempData.extended_UeffOver1Time      = $("#extended_UeffOver1Time     ").val();
+    if(elementExists("#extended_UeffUnder1Time"    ) && $("#extended_UeffUnder1Time    ").val() != "") tempData.extended_UeffUnder1Time     = $("#extended_UeffUnder1Time    ").val();
+    if(elementExists("#extended_UeffOver2Time"     ) && $("#extended_UeffOver2Time     ").val() != "") tempData.extended_UeffOver2Time      = $("#extended_UeffOver2Time     ").val();
+    if(elementExists("#extended_UeffUnder2Time"    ) && $("#extended_UeffUnder2Time    ").val() != "") tempData.extended_UeffUnder2Time     = $("#extended_UeffUnder2Time    ").val();
+    if(elementExists("#extended_fOver1Time"        ) && $("#extended_fOver1Time        ").val() != "") tempData.extended_fOver1Time         = $("#extended_fOver1Time        ").val();
+    if(elementExists("#extended_fUnder1Time"       ) && $("#extended_fUnder1Time       ").val() != "") tempData.extended_fUnder1Time        = $("#extended_fUnder1Time       ").val();
+    if(elementExists("#extended_Ueff"              ) && $("#extended_Ueff              ").val() != "") tempData.extended_Ueff               = $("#extended_Ueff              ").val();
+    if(elementExists("#extended_gridConnectDelay"  ) && $("#extended_gridConnectDelay  ").val() != "") tempData.extended_gridConnectDelay   = $("#extended_gridConnectDelay  ").val();
+    if(elementExists("#extended_gridReconnectDelay") && $("#extended_gridReconnectDelay").val() != "") tempData.extended_gridReconnectDelay = $("#extended_gridReconnectDelay").val();
+    if(elementExists("#extended_puTime"            ) && $("#extended_puTime            ").val() != "") tempData.extended_puTime             = $("#extended_puTime            ").val();
 
 
 
@@ -1525,17 +1784,29 @@ function setValuesToSession() {
 
     if(isLiFePO()) {
         tempData.battery_type    = "lifepo";
-        tempData.battery_voltage = "51";
+        tempData.battery_voltage = inverterModel >= "11000" ? "51" : "48";
         var bms       = [];
-		var batteries = [];
-        $("#lifepo_bms").val().trim().split("\n").forEach(sn => {
-            if(sn.trim() != "") bms.push(sn.trim());
-        });
+        var batteries = [];
+        if(elementExists("#lifepo_bms")) {
+            $("#lifepo_bms").val().trim().split("\n").forEach(sn => {
+                if(sn.trim() != "") bms.push(sn.trim());
+            });
+            tempData.battery_bms = bms.join(",");
+        }
         $("#lifepo_serialnumbers").val().trim().split("\n").forEach(sn => {
             if(sn.trim() != "") batteries.push(sn.trim());
         });
-        tempData.battery_bms           = bms.join(",");
-		tempData.battery_serialnumbers = batteries.join(",");
+        tempData.battery_serialnumbers = batteries.join(",");
+    } else if(isCarbon()) { // only for h-Series
+        tempData.battery_type     = "carbon";
+        tempData.battery_voltage  = "48";
+        tempData.battery_capacity = $("#carbon_battery_capacity").val().split(" ")[0];
+        tempData.battery_model    = $("#carbon_battery_model   ").val();
+        tempData.battery_strings  = $("#carbon_battery_strings ").val();
+    } else if(isOther()) { // only for h-Series
+        tempData.battery_type     = "other";
+        tempData.battery_voltage  = "48";
+        tempData.battery_capacity = $("#other_battery_capacity").val();
     } else {
         // no battery
     }
@@ -1555,15 +1826,24 @@ function setValuesToSession() {
     }
 
     if(deviceModel == "batterx_h10") {
-        tempData.system_model = "batterX h10";
+        if(isLiFePO()) {
+            tempData.system_model = "batterX h10" + ($("#bx_system_type_w").is(":checked") ? "W" : "R") + "-" + (countModules * 3.5).toString().replace(".", ",");
+        } else {
+            tempData.system_model = "batterX h10";
+        }
     } else if(deviceModel == "batterx_h5") {
-        tempData.system_model = "batterX h5";
+        if(isLiFePO()) {
+            tempData.system_model = "batterX h5" + ($("#bx_system_type_w").is(":checked") ? "W" : "R") + "-" + (countModules * 3.5).toString().replace(".", ",");
+        } else {
+            tempData.system_model = "batterX h5";
+        }
     } else if(deviceModel == "batterx_i") {
         tempData.system_model = "batterX";
         var deviceName = PNS_DEVICE.hasOwnProperty(devicePartNumber) ? PNS_DEVICE[devicePartNumber].name : "";
         var batteryCapacity = Math.round(countModules * 2.5 * 10) / 10;
-        if(deviceName != "")
+        if(deviceName != "") {
             tempData.system_model = `${deviceName} basic ${batteryCapacity}kWh`
+        }
     }
 
 
@@ -1657,6 +1937,23 @@ function setup1() {
 
 
 
+    // Set Grid InjectionPhase (batterX h5)
+
+    if(elementExists("#bx_emeter_phase")) {
+        var selectedPhase = $("#bx_emeter_phase").val();
+        if(selectedPhase == "1" || selectedPhase == "2" || selectedPhase == "3") {
+            $.get({
+                url: "api.php?set=command&type=20736&entity=6&text2=" + selectedPhase,
+                error: () => { alert("E016. Please refresh the page! (Error while writing command to local database)"); },
+                success: (response) => { if(response != "1") return alert("E017. Please refresh the page! (Bad response while writing command to local database)"); }
+            });
+        }
+    }
+
+
+
+
+
     // Set Grid MaxInjectionPower
 
     var maxGridFeedInPower = Math.round(Math.max(parseInt($("#solar_wattpeak").val()) * parseInt($("#solar_feedinlimitation").val()) / 100, 50)).toString();
@@ -1666,14 +1963,36 @@ function setup1() {
         success: (response) => { if(response != "1") return alert("E019. Please refresh the page! (Bad response while writing command to local database)"); }
     });
 
+    // Set System Mode
+
+    if(elementExists("#bx_sysmode")) {
+        var newSystemMode = $("#bx_sysmode").val();
+        $.get({
+            url: "api.php?set=command&type=20752&entity=0&text2=" + newSystemMode,
+            error: () => { alert("E018. Please refresh the page! (Error while writing command to local database)"); },
+            success: (response) => { if(response != "1") return alert("E019. Please refresh the page! (Bad response while writing command to local database)"); }
+        });
+    }
+
+    // Set Wide Solar Input Range
+
+    if(elementExists("#solar_wideinputrange")) {
+        var newWideInputRange = $("#solar_wideinputrange").val();
+        $.get({
+            url: "api.php?set=command&type=20752&entity=4&text2=" + newWideInputRange,
+            error: () => { alert("E018. Please refresh the page! (Error while writing command to local database)"); },
+            success: (response) => { if(response != "1") return alert("E019. Please refresh the page! (Bad response while writing command to local database)"); }
+        });
+    }
 
 
 
 
-    // Next Step For Carbon|Other Batteries
 
-    if(isNoBattery()) setup2();
-    
+    // Next Step For Batteries That Are Not LiFePO
+
+    if(!isLiFePO()) setup2();
+
 
 
 
@@ -1681,21 +2000,56 @@ function setup1() {
     // Verify LiFePO Communication
 
     if(isLiFePO()) {
-        setTimeout(() => {
-            $.get({
-                url: "api.php?set=command&type=24064&entity=401&text2=2", // battery type
-                error: () => { alert("E024. Please refresh the page! (Error while writing command to local database)"); },
-                success: (response) => {
-                    if(response != "1") return alert("E025. Please refresh the page! (Bad response while writing command to local database)");
-                    setTimeout(() => {
-                        verifyModulesCommunication((flag) => {
-                            // Next Step For LiFePO Batteries
-                            if(flag) setup2();
-                        });
-                    }, 10000);
-                }
-            });
-        }, 5000);
+        if(inverterModel >= "11000") { // i-Series
+            setTimeout(() => {
+                $.get({
+                    url: "api.php?set=command&type=24064&entity=401&text2=2", // battery type
+                    error: () => { alert("E024. Please refresh the page! (Error while writing command to local database)"); },
+                    success: (response) => {
+                        if(response != "1") return alert("E025. Please refresh the page! (Bad response while writing command to local database)");
+                        setTimeout(() => {
+                            verifyModulesCommunication((flag) => {
+                                // Next Step For LiFePO Batteries
+                                if(flag) setup2();
+                            });
+                        }, 10000);
+                    }
+                });
+            }, 5000);
+        } else { // h-Series
+            setTimeout(() => {
+                $.get({
+                    url: "api.php?set=command&type=24064&entity=401&text2=1", // battery type
+                    error: () => { alert("E024. Please refresh the page! (Error while writing command to local database)"); },
+                    success: (response) => {
+                        if(response != "1") return alert("E025. Please refresh the page! (Bad response while writing command to local database)");
+                        setTimeout(() => {
+                            $.get({
+                                url: "api.php?set=command&type=24064&entity=10003&text2=1", // bms battery connect
+                                error: () => { alert("E024. Please refresh the page! (Error while writing command to local database)"); },
+                                success: (response) => {
+                                    if(response != "1") return alert("E025. Please refresh the page! (Bad response while writing command to local database)");
+                                    setTimeout(() => {
+                                        $.get({
+                                            url: "api.php?set=command&type=24064&entity=416&text2=5300", // battery voltage
+                                            error: () => { alert("E020. Please refresh the page! (Error while writing command to local database)"); },
+                                            success: (response) => {
+                                                if(response != "1") return alert("E021. Please refresh the page! (Bad response while writing command to local database)");
+                                                tempDatetime = "";
+                                                verifyModulesCommunication((flag) => {
+                                                    // Next Step For LiFePO Batteries
+                                                    if(flag) setup2();
+                                                });
+                                            }
+                                        });
+                                    }, 10000);
+                                }
+                            });
+                        }, 5000);
+                    }
+                });
+            }, 5000);
+        }
     }
 
 
@@ -1736,6 +2090,50 @@ function setup2() {
 
     newParameters = {};
 
+    if(inverterModel == "10001" || inverterModel == "10002") { // for h5 and h10
+        var maxChargingCurrent    = inverterModel == "10002" ? 20000 :  6000; // x0.01A
+        var maxDischargingCurrent = inverterModel == "10002" ? 30000 : 15000; // x0.01A
+        if(isLiFePO()) {
+            var numberOfModules = 0;
+            $("#lifepo_serialnumbers").val().trim().split("\n").forEach(sn => {
+                if(sn.trim() != "") numberOfModules += 1;
+            });
+            if(dataSettings.hasOwnProperty("Inverter") && dataSettings["Inverter"].hasOwnProperty("414")) {
+                newParameters["battery_cutoff_voltage_ongrid"] = dataSettings["Inverter"]["414"].s1; // battery_cutoff_voltage_offgrid
+            }
+            newParameters["battery_recovery_voltage_ongrid"     ] = "4800";
+            newParameters["battery_recovery_voltage_offgrid"    ] = "4800";
+            newParameters["battery_max_discharge_current_ongrid"] = Math.min(numberOfModules * 37 * 100, maxDischargingCurrent).toString();
+        } else if(isCarbon()) {
+            var batteryCapacity = parseInt($("#carbon_battery_capacity").val().split(" ")[0]);
+            newParameters["battery_bulk_charge_voltage"         ] = "5600";
+            newParameters["battery_float_charge_voltage"        ] = "5400";
+            newParameters["battery_cutoff_voltage_ongrid"       ] = "4680";
+            newParameters["battery_recovery_voltage_ongrid"     ] = "5200";
+            newParameters["battery_cutoff_voltage_offgrid"      ] = "4300";
+            newParameters["battery_recovery_voltage_offgrid"    ] = "4800";
+            newParameters["battery_max_charge_current"          ] = Math.min(Math.max(Math.round(batteryCapacity * 0.15 / 48), 10) * 100, maxChargingCurrent).toString();
+            newParameters["battery_max_discharge_current_ongrid"] = Math.min(Math.max(Math.round(batteryCapacity * 0.20 / 48), 20) * 100, maxDischargingCurrent).toString();
+        } else if(isOther()) {
+            var custom_maxChargingCurrent       =                Math.round(parseFloat($("#other_battery_maxChargingCurrent      ").val()) *  1) * 100 ;
+            var custom_maxDischargingCurrent    =                Math.round(parseFloat($("#other_battery_maxDischargingCurrent   ").val()) *  1) * 100 ;
+            var custom_bulkChargingVoltage      = Math.min(6000, Math.round(parseFloat($("#other_battery_bulkChargingVoltage     ").val()) * 10) *  10);
+            var custom_floatChargingVoltage     = Math.min(6000, Math.round(parseFloat($("#other_battery_floatChargingVoltage    ").val()) * 10) *  10);
+            var custom_cutoffVoltage            = Math.min(6000, Math.round(parseFloat($("#other_battery_cutoffVoltage           ").val()) * 10) *  10);
+            var custom_redischargeVoltage       = Math.min(6000, Math.round(parseFloat($("#other_battery_redischargeVoltage      ").val()) * 10) *  10);
+            var custom_cutoffVoltageHybrid      = Math.min(6000, Math.round(parseFloat($("#other_battery_cutoffVoltageHybrid     ").val()) * 10) *  10);
+            var custom_redischargeVoltageHybrid = Math.min(6000, Math.round(parseFloat($("#other_battery_redischargeVoltageHybrid").val()) * 10) *  10);
+            newParameters["battery_bulk_charge_voltage"         ] = custom_bulkChargingVoltage;
+            newParameters["battery_float_charge_voltage"        ] = custom_floatChargingVoltage;
+            newParameters["battery_cutoff_voltage_ongrid"       ] = custom_cutoffVoltageHybrid;
+            newParameters["battery_recovery_voltage_ongrid"     ] = custom_redischargeVoltageHybrid;
+            newParameters["battery_cutoff_voltage_offgrid"      ] = custom_cutoffVoltage;
+            newParameters["battery_recovery_voltage_offgrid"    ] = custom_redischargeVoltage;
+            newParameters["battery_max_charge_current"          ] = Math.min(custom_maxChargingCurrent, maxChargingCurrent).toString();
+            newParameters["battery_max_discharge_current_ongrid"] = Math.min(custom_maxDischargingCurrent, maxDischargingCurrent);
+        }
+    }
+
     newParameters["regulationMode"] = $("#regulation_check").is(":checked") ? "1" : "0";
     newParameters["extsolMode"    ] = $("#extsol_check    ").is(":checked") ? "1" : "0";
     newParameters["meter1Mode"    ] = $("#meter1_mode     ").val();
@@ -1753,12 +2151,12 @@ function setup2() {
     newParameters["prepareBatteryExtension"] = "0";
     newParameters["cloudSet"               ] = "1";
 
-    newParameters["battery_type" ] = "2"; // 2=lifepo i-Series, for h5 or h10 should be 0=carbon 1=lifepo
+    newParameters["battery_type" ] = inverterModel >= "11000" ? "2" : (isLiFePO() ? "1" : "0"); // 2=lifepo i-Series, for h5 or h10 should be 0=carbon 1=lifepo
     newParameters["reactive_mode"] = "0"; // Reactive mode off
 
     if(isVde4105) {
         newParameters["stage_1_ov_threshold"        ] = "26450";
-        newParameters["qu_time_constant"            ] = "10000";
+        newParameters["qu_time_constant"            ] = inverterModel >= "11000" ? "10000" : "5000";
         newParameters["qu_enter_power"              ] = "0";
         newParameters["qu_exit_power"               ] = "0";
         newParameters["cosfp_enter_voltage"         ] = "23200";
@@ -1783,7 +2181,7 @@ function setup2() {
         newParameters["grid_connect_upper_frequency"] = "5150";
         newParameters["grid_reconnect_upper_voltage"] = "25070";
         newParameters["stage_1_ov_threshold"        ] = "25540";
-        newParameters["qu_time_constant"            ] = "10000";
+        newParameters["qu_time_constant"            ] = inverterModel >= "11000" ? "10000" : "5000";
         newParameters["cosfp_enter_voltage"         ] = "25070";
         newParameters["cosfp_exit_voltage"          ] = "20700";
         newParameters["lvrt_enter_voltage"          ] = "18400";
@@ -1797,10 +2195,10 @@ function setup2() {
     } else if(isEstonia) {
         newParameters["grid_connect_lower_voltage"  ] = "19550";
         newParameters["grid_connect_upper_voltage"  ] = "26450";
-        newParameters["grid_connect_lower_frequency"] = "4700";
-        newParameters["grid_connect_upper_frequency"] = "5200";
+        newParameters["grid_connect_lower_frequency"] = inverterModel >= "11000" ? "4700" : "4750";
+        newParameters["grid_connect_upper_frequency"] = inverterModel >= "11000" ? "5200" : "5150";
         newParameters["stage_1_uv_threshold"        ] = "19550";
-        newParameters["stage_1_ov_threshold"        ] = "25530";
+        newParameters["stage_1_ov_threshold"        ] = inverterModel >= "11000" ? "25530" : "26500";
         newParameters["stage_1_uf_threshold"        ] = "4740";
         newParameters["stage_1_of_threshold"        ] = "5160";
         newParameters["stage_1_uv_duration"         ] = "1200";
@@ -1808,7 +2206,7 @@ function setup2() {
         newParameters["stage_1_uf_duration"         ] = "360";
         newParameters["stage_1_of_duration"         ] = "160";
         newParameters["stage_2_uv_threshold"        ] = "4600";
-        newParameters["stage_2_ov_threshold"        ] = "26450";
+        newParameters["stage_2_ov_threshold"        ] = inverterModel >= "11000" ? "26450" : "28500";
         newParameters["stage_2_uv_duration"         ] = "360";
         newParameters["stage_2_ov_duration"         ] = "100";
         newParameters["lvrt_switch"                 ] = "1";
@@ -1840,7 +2238,8 @@ function setup2() {
     }
 
     newParameters["lfsmo_threshold"] = Math.round($("#extended_lfsmoThreshold").val());
-    newParameters["lfsmo_droop"    ] = Math.round($("#extended_lfsmoDroop").val());
+    if(elementExists("#extended_lfsmoDroop")) newParameters["lfsmo_droop"] = Math.round($("#extended_lfsmoDroop").val());
+    if(elementExists("#extended_lfsmoSlope")) newParameters["lfsmo_slope"] = Math.round(parseFloat($("#extended_lfsmoSlope").val()) * 100);
 
     if(isTor) {
         newParameters["grid_connect_upper_voltage"     ] = Math.round(parseFloat($("#extended_maxGridVoltage").val()) * 100);
@@ -1882,7 +2281,8 @@ function setup2() {
             dataSettings = JSON.parse(JSON.stringify(response));
             
             var temp = response["Inverter"];
-            deviceDatetime = temp["10"]["s1"];
+            
+            previousSettings = JSON.stringify(response);
 
             oldParameters["regulationMode"] = !response.hasOwnProperty("InjectionMode"       ) ? "0" : response["InjectionMode"       ]["0"]["v5"  ];
             oldParameters["extsolMode"    ] = !response.hasOwnProperty("ModbusExtSolarDevice") ? "0" : response["ModbusExtSolarDevice"]["0"]["mode"];
@@ -1901,64 +2301,72 @@ function setup2() {
             oldParameters["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
             oldParameters["cloudSet"               ] = !response.hasOwnProperty("CloudSet"               ) || !response["CloudSet"               ].hasOwnProperty("0") ? ""  : response["CloudSet"               ]["0"]["mode"];
 
-            if(temp.hasOwnProperty("202")) oldParameters["reactive_mode"                  ] = temp["202"].s1;
-            if(temp.hasOwnProperty("203")) oldParameters["pf_mode_power_factor"           ] = temp["203"].s1;
-            if(temp.hasOwnProperty("204")) oldParameters["qt_mode_reactive_power"         ] = temp["204"].s1;
-            if(temp.hasOwnProperty("205")) oldParameters["overvoltage_10min_threshold"    ] = temp["205"].s1;
-            if(temp.hasOwnProperty("211")) oldParameters["grid_connect_lower_voltage"     ] = temp["211"].s1;
-            if(temp.hasOwnProperty("212")) oldParameters["grid_connect_upper_voltage"     ] = temp["212"].s1;
-            if(temp.hasOwnProperty("213")) oldParameters["grid_connect_lower_frequency"   ] = temp["213"].s1;
-            if(temp.hasOwnProperty("214")) oldParameters["grid_connect_upper_frequency"   ] = temp["214"].s1;
-            if(temp.hasOwnProperty("215")) oldParameters["wait_time_before_grid_connect"  ] = temp["215"].s1;
-            if(temp.hasOwnProperty("222")) oldParameters["grid_reconnect_upper_voltage"   ] = temp["222"].s1;
-            if(temp.hasOwnProperty("225")) oldParameters["wait_time_before_grid_reconnect"] = temp["225"].s1;
-            if(temp.hasOwnProperty("231")) oldParameters["stage_1_uv_threshold"           ] = temp["231"].s1;
-            if(temp.hasOwnProperty("232")) oldParameters["stage_1_ov_threshold"           ] = temp["232"].s1;
-            if(temp.hasOwnProperty("233")) oldParameters["stage_1_uf_threshold"           ] = temp["233"].s1;
-            if(temp.hasOwnProperty("234")) oldParameters["stage_1_of_threshold"           ] = temp["234"].s1;
-            if(temp.hasOwnProperty("235")) oldParameters["stage_1_uv_duration"            ] = temp["235"].s1;
-            if(temp.hasOwnProperty("236")) oldParameters["stage_1_ov_duration"            ] = temp["236"].s1;
-            if(temp.hasOwnProperty("237")) oldParameters["stage_1_uf_duration"            ] = temp["237"].s1;
-            if(temp.hasOwnProperty("238")) oldParameters["stage_1_of_duration"            ] = temp["238"].s1;
-            if(temp.hasOwnProperty("239")) oldParameters["stage_2_uv_threshold"           ] = temp["239"].s1;
-            if(temp.hasOwnProperty("240")) oldParameters["stage_2_ov_threshold"           ] = temp["240"].s1;
-            if(temp.hasOwnProperty("243")) oldParameters["stage_2_uv_duration"            ] = temp["243"].s1;
-            if(temp.hasOwnProperty("244")) oldParameters["stage_2_ov_duration"            ] = temp["244"].s1;
-            if(temp.hasOwnProperty("251")) oldParameters["qu_point_1_voltage"             ] = temp["251"].s1;
-            if(temp.hasOwnProperty("252")) oldParameters["qu_point_2_voltage"             ] = temp["252"].s1;
-            if(temp.hasOwnProperty("253")) oldParameters["qu_point_3_voltage"             ] = temp["253"].s1;
-            if(temp.hasOwnProperty("254")) oldParameters["qu_point_4_voltage"             ] = temp["254"].s1;
-            if(temp.hasOwnProperty("255")) oldParameters["qu_point_1_reactive_power"      ] = temp["255"].s1;
-            if(temp.hasOwnProperty("258")) oldParameters["qu_point_4_reactive_power"      ] = temp["258"].s1;
-            if(temp.hasOwnProperty("260")) oldParameters["qu_time_constant"               ] = temp["260"].s1;
-            if(temp.hasOwnProperty("261")) oldParameters["qu_enter_power"                 ] = temp["261"].s1;
-            if(temp.hasOwnProperty("262")) oldParameters["qu_exit_power"                  ] = temp["262"].s1;
-            if(temp.hasOwnProperty("272")) oldParameters["cosfp_point_b_power"            ] = temp["272"].s1;
-            if(temp.hasOwnProperty("277")) oldParameters["cosfp_enter_voltage"            ] = temp["277"].s1;
-            if(temp.hasOwnProperty("278")) oldParameters["cosfp_exit_voltage"             ] = temp["278"].s1;
-            if(temp.hasOwnProperty("291")) oldParameters["lvrt_switch"                    ] = temp["291"].s1;
-            if(temp.hasOwnProperty("292")) oldParameters["lvrt_enter_voltage"             ] = temp["292"].s1;
-            if(temp.hasOwnProperty("293")) oldParameters["lvrt_exit_voltage"              ] = temp["293"].s1;
-            if(temp.hasOwnProperty("298")) oldParameters["lvrt_point_5_voltage"           ] = temp["298"].s1;
-            if(temp.hasOwnProperty("299")) oldParameters["lvrt_point_1_duration"          ] = temp["299"].s1;
-            if(temp.hasOwnProperty("300")) oldParameters["lvrt_point_2_duration"          ] = temp["300"].s1;
-            if(temp.hasOwnProperty("301")) oldParameters["lvrt_point_3_duration"          ] = temp["301"].s1;
-            if(temp.hasOwnProperty("302")) oldParameters["lvrt_point_4_duration"          ] = temp["302"].s1;
-            if(temp.hasOwnProperty("303")) oldParameters["lvrt_point_5_duration"          ] = temp["303"].s1;
-            if(temp.hasOwnProperty("311")) oldParameters["hvrt_switch"                    ] = temp["311"].s1;
-            if(temp.hasOwnProperty("312")) oldParameters["hvrt_enter_voltage"             ] = temp["312"].s1;
-            if(temp.hasOwnProperty("313")) oldParameters["hvrt_exit_voltage"              ] = temp["313"].s1;
-            if(temp.hasOwnProperty("314")) oldParameters["hvrt_point_1_voltage"           ] = temp["314"].s1;
-            if(temp.hasOwnProperty("315")) oldParameters["hvrt_point_2_voltage"           ] = temp["315"].s1;
-            if(temp.hasOwnProperty("316")) oldParameters["hvrt_point_3_voltage"           ] = temp["316"].s1;
-            if(temp.hasOwnProperty("319")) oldParameters["hvrt_point_3_duration"          ] = temp["319"].s1;
-            if(temp.hasOwnProperty("336")) oldParameters["pu_time_constant"               ] = temp["336"].s1;
-            if(temp.hasOwnProperty("342")) oldParameters["lfsmo_threshold"                ] = temp["342"].s1;
-            if(temp.hasOwnProperty("344")) oldParameters["lfsmo_end_point_frequency"      ] = temp["344"].s1;
-            if(temp.hasOwnProperty("348")) oldParameters["lfsmo_power_recovery_rate"      ] = temp["348"].s1;
-            if(temp.hasOwnProperty("349")) oldParameters["lfsmo_droop"                    ] = temp["349"].s1;
-            if(temp.hasOwnProperty("401")) oldParameters["battery_type"                   ] = temp["401"].s1;
-
+            if(temp.hasOwnProperty("202")) oldParameters["reactive_mode"                       ] = temp["202"].s1;
+            if(temp.hasOwnProperty("203")) oldParameters["pf_mode_power_factor"                ] = temp["203"].s1;
+            if(temp.hasOwnProperty("204")) oldParameters["qt_mode_reactive_power"              ] = temp["204"].s1;
+            if(temp.hasOwnProperty("205")) oldParameters["overvoltage_10min_threshold"         ] = temp["205"].s1;
+            if(temp.hasOwnProperty("211")) oldParameters["grid_connect_lower_voltage"          ] = temp["211"].s1;
+            if(temp.hasOwnProperty("212")) oldParameters["grid_connect_upper_voltage"          ] = temp["212"].s1;
+            if(temp.hasOwnProperty("213")) oldParameters["grid_connect_lower_frequency"        ] = temp["213"].s1;
+            if(temp.hasOwnProperty("214")) oldParameters["grid_connect_upper_frequency"        ] = temp["214"].s1;
+            if(temp.hasOwnProperty("215")) oldParameters["wait_time_before_grid_connect"       ] = temp["215"].s1;
+            if(temp.hasOwnProperty("222")) oldParameters["grid_reconnect_upper_voltage"        ] = temp["222"].s1;
+            if(temp.hasOwnProperty("225")) oldParameters["wait_time_before_grid_reconnect"     ] = temp["225"].s1;
+            if(temp.hasOwnProperty("231")) oldParameters["stage_1_uv_threshold"                ] = temp["231"].s1;
+            if(temp.hasOwnProperty("232")) oldParameters["stage_1_ov_threshold"                ] = temp["232"].s1;
+            if(temp.hasOwnProperty("233")) oldParameters["stage_1_uf_threshold"                ] = temp["233"].s1;
+            if(temp.hasOwnProperty("234")) oldParameters["stage_1_of_threshold"                ] = temp["234"].s1;
+            if(temp.hasOwnProperty("235")) oldParameters["stage_1_uv_duration"                 ] = temp["235"].s1;
+            if(temp.hasOwnProperty("236")) oldParameters["stage_1_ov_duration"                 ] = temp["236"].s1;
+            if(temp.hasOwnProperty("237")) oldParameters["stage_1_uf_duration"                 ] = temp["237"].s1;
+            if(temp.hasOwnProperty("238")) oldParameters["stage_1_of_duration"                 ] = temp["238"].s1;
+            if(temp.hasOwnProperty("239")) oldParameters["stage_2_uv_threshold"                ] = temp["239"].s1;
+            if(temp.hasOwnProperty("240")) oldParameters["stage_2_ov_threshold"                ] = temp["240"].s1;
+            if(temp.hasOwnProperty("243")) oldParameters["stage_2_uv_duration"                 ] = temp["243"].s1;
+            if(temp.hasOwnProperty("244")) oldParameters["stage_2_ov_duration"                 ] = temp["244"].s1;
+            if(temp.hasOwnProperty("251")) oldParameters["qu_point_1_voltage"                  ] = temp["251"].s1;
+            if(temp.hasOwnProperty("252")) oldParameters["qu_point_2_voltage"                  ] = temp["252"].s1;
+            if(temp.hasOwnProperty("253")) oldParameters["qu_point_3_voltage"                  ] = temp["253"].s1;
+            if(temp.hasOwnProperty("254")) oldParameters["qu_point_4_voltage"                  ] = temp["254"].s1;
+            if(temp.hasOwnProperty("255")) oldParameters["qu_point_1_reactive_power"           ] = temp["255"].s1;
+            if(temp.hasOwnProperty("258")) oldParameters["qu_point_4_reactive_power"           ] = temp["258"].s1;
+            if(temp.hasOwnProperty("260")) oldParameters["qu_time_constant"                    ] = temp["260"].s1;
+            if(temp.hasOwnProperty("261")) oldParameters["qu_enter_power"                      ] = temp["261"].s1;
+            if(temp.hasOwnProperty("262")) oldParameters["qu_exit_power"                       ] = temp["262"].s1;
+            if(temp.hasOwnProperty("272")) oldParameters["cosfp_point_b_power"                 ] = temp["272"].s1;
+            if(temp.hasOwnProperty("277")) oldParameters["cosfp_enter_voltage"                 ] = temp["277"].s1;
+            if(temp.hasOwnProperty("278")) oldParameters["cosfp_exit_voltage"                  ] = temp["278"].s1;
+            if(temp.hasOwnProperty("291")) oldParameters["lvrt_switch"                         ] = temp["291"].s1;
+            if(temp.hasOwnProperty("292")) oldParameters["lvrt_enter_voltage"                  ] = temp["292"].s1;
+            if(temp.hasOwnProperty("293")) oldParameters["lvrt_exit_voltage"                   ] = temp["293"].s1;
+            if(temp.hasOwnProperty("298")) oldParameters["lvrt_point_5_voltage"                ] = temp["298"].s1;
+            if(temp.hasOwnProperty("299")) oldParameters["lvrt_point_1_duration"               ] = temp["299"].s1;
+            if(temp.hasOwnProperty("300")) oldParameters["lvrt_point_2_duration"               ] = temp["300"].s1;
+            if(temp.hasOwnProperty("301")) oldParameters["lvrt_point_3_duration"               ] = temp["301"].s1;
+            if(temp.hasOwnProperty("302")) oldParameters["lvrt_point_4_duration"               ] = temp["302"].s1;
+            if(temp.hasOwnProperty("303")) oldParameters["lvrt_point_5_duration"               ] = temp["303"].s1;
+            if(temp.hasOwnProperty("311")) oldParameters["hvrt_switch"                         ] = temp["311"].s1;
+            if(temp.hasOwnProperty("312")) oldParameters["hvrt_enter_voltage"                  ] = temp["312"].s1;
+            if(temp.hasOwnProperty("313")) oldParameters["hvrt_exit_voltage"                   ] = temp["313"].s1;
+            if(temp.hasOwnProperty("314")) oldParameters["hvrt_point_1_voltage"                ] = temp["314"].s1;
+            if(temp.hasOwnProperty("315")) oldParameters["hvrt_point_2_voltage"                ] = temp["315"].s1;
+            if(temp.hasOwnProperty("316")) oldParameters["hvrt_point_3_voltage"                ] = temp["316"].s1;
+            if(temp.hasOwnProperty("319")) oldParameters["hvrt_point_3_duration"               ] = temp["319"].s1;
+            if(temp.hasOwnProperty("336")) oldParameters["pu_time_constant"                    ] = temp["336"].s1;
+            if(temp.hasOwnProperty("342")) oldParameters["lfsmo_threshold"                     ] = temp["342"].s1;
+            if(temp.hasOwnProperty("344")) oldParameters["lfsmo_end_point_frequency"           ] = temp["344"].s1;
+            if(temp.hasOwnProperty("348")) oldParameters["lfsmo_power_recovery_rate"           ] = temp["348"].s1;
+            if(temp.hasOwnProperty("349")) oldParameters["lfsmo_droop"                         ] = temp["349"].s1;
+            if(temp.hasOwnProperty("350")) oldParameters["lfsmo_slope"                         ] = temp["350"].s1;
+            if(temp.hasOwnProperty("401")) oldParameters["battery_type"                        ] = temp["401"].s1;
+            if(temp.hasOwnProperty("411")) oldParameters["battery_cutoff_voltage_ongrid"       ] = temp["411"].s1;
+            if(temp.hasOwnProperty("412")) oldParameters["battery_cutoff_voltage_offgrid"      ] = temp["412"].s1;
+            if(temp.hasOwnProperty("413")) oldParameters["battery_recovery_voltage_ongrid"     ] = temp["413"].s1;
+            if(temp.hasOwnProperty("414")) oldParameters["battery_recovery_voltage_offgrid"    ] = temp["414"].s1;
+            if(temp.hasOwnProperty("415")) oldParameters["battery_bulk_charge_voltage"         ] = temp["415"].s1;
+            if(temp.hasOwnProperty("416")) oldParameters["battery_float_charge_voltage"        ] = temp["416"].s1;
+            if(temp.hasOwnProperty("417")) oldParameters["battery_max_charge_current"          ] = temp["417"].s1;
+            if(temp.hasOwnProperty("418")) oldParameters["battery_max_discharge_current_ongrid"] = temp["418"].s1;
         }
     });
 
@@ -1984,63 +2392,72 @@ function setup2() {
     if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]) }
     if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]) }
 
-    if(newParameters.hasOwnProperty("reactive_mode"                  ) && oldParameters.hasOwnProperty("reactive_mode"                  ) && newParameters["reactive_mode"                  ] != oldParameters["reactive_mode"                  ]) { retry = true; setup_sendCommand(24064, 202, "", newParameters["reactive_mode"                  ]); }
-    if(newParameters.hasOwnProperty("pf_mode_power_factor"           ) && oldParameters.hasOwnProperty("pf_mode_power_factor"           ) && newParameters["pf_mode_power_factor"           ] != oldParameters["pf_mode_power_factor"           ]) { retry = true; setup_sendCommand(24064, 203, "", newParameters["pf_mode_power_factor"           ]); }
-    if(newParameters.hasOwnProperty("qt_mode_reactive_power"         ) && oldParameters.hasOwnProperty("qt_mode_reactive_power"         ) && newParameters["qt_mode_reactive_power"         ] != oldParameters["qt_mode_reactive_power"         ]) { retry = true; setup_sendCommand(24064, 204, "", newParameters["qt_mode_reactive_power"         ]); }
-    if(newParameters.hasOwnProperty("overvoltage_10min_threshold"    ) && oldParameters.hasOwnProperty("overvoltage_10min_threshold"    ) && newParameters["overvoltage_10min_threshold"    ] != oldParameters["overvoltage_10min_threshold"    ]) { retry = true; setup_sendCommand(24064, 205, "", newParameters["overvoltage_10min_threshold"    ]); }
-    if(newParameters.hasOwnProperty("grid_connect_lower_voltage"     ) && oldParameters.hasOwnProperty("grid_connect_lower_voltage"     ) && newParameters["grid_connect_lower_voltage"     ] != oldParameters["grid_connect_lower_voltage"     ]) { retry = true; setup_sendCommand(24064, 211, "", newParameters["grid_connect_lower_voltage"     ]); }
-    if(newParameters.hasOwnProperty("grid_connect_upper_voltage"     ) && oldParameters.hasOwnProperty("grid_connect_upper_voltage"     ) && newParameters["grid_connect_upper_voltage"     ] != oldParameters["grid_connect_upper_voltage"     ]) { retry = true; setup_sendCommand(24064, 212, "", newParameters["grid_connect_upper_voltage"     ]); }
-    if(newParameters.hasOwnProperty("grid_connect_lower_frequency"   ) && oldParameters.hasOwnProperty("grid_connect_lower_frequency"   ) && newParameters["grid_connect_lower_frequency"   ] != oldParameters["grid_connect_lower_frequency"   ]) { retry = true; setup_sendCommand(24064, 213, "", newParameters["grid_connect_lower_frequency"   ]); }
-    if(newParameters.hasOwnProperty("grid_connect_upper_frequency"   ) && oldParameters.hasOwnProperty("grid_connect_upper_frequency"   ) && newParameters["grid_connect_upper_frequency"   ] != oldParameters["grid_connect_upper_frequency"   ]) { retry = true; setup_sendCommand(24064, 214, "", newParameters["grid_connect_upper_frequency"   ]); }
-    if(newParameters.hasOwnProperty("wait_time_before_grid_connect"  ) && oldParameters.hasOwnProperty("wait_time_before_grid_connect"  ) && newParameters["wait_time_before_grid_connect"  ] != oldParameters["wait_time_before_grid_connect"  ]) { retry = true; setup_sendCommand(24064, 215, "", newParameters["wait_time_before_grid_connect"  ]); }
-    if(newParameters.hasOwnProperty("grid_reconnect_upper_voltage"   ) && oldParameters.hasOwnProperty("grid_reconnect_upper_voltage"   ) && newParameters["grid_reconnect_upper_voltage"   ] != oldParameters["grid_reconnect_upper_voltage"   ]) { retry = true; setup_sendCommand(24064, 222, "", newParameters["grid_reconnect_upper_voltage"   ]); }
-    if(newParameters.hasOwnProperty("wait_time_before_grid_reconnect") && oldParameters.hasOwnProperty("wait_time_before_grid_reconnect") && newParameters["wait_time_before_grid_reconnect"] != oldParameters["wait_time_before_grid_reconnect"]) { retry = true; setup_sendCommand(24064, 225, "", newParameters["wait_time_before_grid_reconnect"]); }
-    if(newParameters.hasOwnProperty("stage_1_uv_threshold"           ) && oldParameters.hasOwnProperty("stage_1_uv_threshold"           ) && newParameters["stage_1_uv_threshold"           ] != oldParameters["stage_1_uv_threshold"           ]) { retry = true; setup_sendCommand(24064, 231, "", newParameters["stage_1_uv_threshold"           ]); }
-    if(newParameters.hasOwnProperty("stage_1_ov_threshold"           ) && oldParameters.hasOwnProperty("stage_1_ov_threshold"           ) && newParameters["stage_1_ov_threshold"           ] != oldParameters["stage_1_ov_threshold"           ]) { retry = true; setup_sendCommand(24064, 232, "", newParameters["stage_1_ov_threshold"           ]); }
-    if(newParameters.hasOwnProperty("stage_1_uf_threshold"           ) && oldParameters.hasOwnProperty("stage_1_uf_threshold"           ) && newParameters["stage_1_uf_threshold"           ] != oldParameters["stage_1_uf_threshold"           ]) { retry = true; setup_sendCommand(24064, 233, "", newParameters["stage_1_uf_threshold"           ]); }
-    if(newParameters.hasOwnProperty("stage_1_of_threshold"           ) && oldParameters.hasOwnProperty("stage_1_of_threshold"           ) && newParameters["stage_1_of_threshold"           ] != oldParameters["stage_1_of_threshold"           ]) { retry = true; setup_sendCommand(24064, 234, "", newParameters["stage_1_of_threshold"           ]); }
-    if(newParameters.hasOwnProperty("stage_1_uv_duration"            ) && oldParameters.hasOwnProperty("stage_1_uv_duration"            ) && newParameters["stage_1_uv_duration"            ] != oldParameters["stage_1_uv_duration"            ]) { retry = true; setup_sendCommand(24064, 235, "", newParameters["stage_1_uv_duration"            ]); }
-    if(newParameters.hasOwnProperty("stage_1_ov_duration"            ) && oldParameters.hasOwnProperty("stage_1_ov_duration"            ) && newParameters["stage_1_ov_duration"            ] != oldParameters["stage_1_ov_duration"            ]) { retry = true; setup_sendCommand(24064, 236, "", newParameters["stage_1_ov_duration"            ]); }
-    if(newParameters.hasOwnProperty("stage_1_uf_duration"            ) && oldParameters.hasOwnProperty("stage_1_uf_duration"            ) && newParameters["stage_1_uf_duration"            ] != oldParameters["stage_1_uf_duration"            ]) { retry = true; setup_sendCommand(24064, 237, "", newParameters["stage_1_uf_duration"            ]); }
-    if(newParameters.hasOwnProperty("stage_1_of_duration"            ) && oldParameters.hasOwnProperty("stage_1_of_duration"            ) && newParameters["stage_1_of_duration"            ] != oldParameters["stage_1_of_duration"            ]) { retry = true; setup_sendCommand(24064, 238, "", newParameters["stage_1_of_duration"            ]); }
-    if(newParameters.hasOwnProperty("stage_2_uv_threshold"           ) && oldParameters.hasOwnProperty("stage_2_uv_threshold"           ) && newParameters["stage_2_uv_threshold"           ] != oldParameters["stage_2_uv_threshold"           ]) { retry = true; setup_sendCommand(24064, 239, "", newParameters["stage_2_uv_threshold"           ]); }
-    if(newParameters.hasOwnProperty("stage_2_ov_threshold"           ) && oldParameters.hasOwnProperty("stage_2_ov_threshold"           ) && newParameters["stage_2_ov_threshold"           ] != oldParameters["stage_2_ov_threshold"           ]) { retry = true; setup_sendCommand(24064, 240, "", newParameters["stage_2_ov_threshold"           ]); }
-    if(newParameters.hasOwnProperty("stage_2_uv_duration"            ) && oldParameters.hasOwnProperty("stage_2_uv_duration"            ) && newParameters["stage_2_uv_duration"            ] != oldParameters["stage_2_uv_duration"            ]) { retry = true; setup_sendCommand(24064, 243, "", newParameters["stage_2_uv_duration"            ]); }
-    if(newParameters.hasOwnProperty("stage_2_ov_duration"            ) && oldParameters.hasOwnProperty("stage_2_ov_duration"            ) && newParameters["stage_2_ov_duration"            ] != oldParameters["stage_2_ov_duration"            ]) { retry = true; setup_sendCommand(24064, 244, "", newParameters["stage_2_ov_duration"            ]); }
-    if(newParameters.hasOwnProperty("qu_point_1_voltage"             ) && oldParameters.hasOwnProperty("qu_point_1_voltage"             ) && newParameters["qu_point_1_voltage"             ] != oldParameters["qu_point_1_voltage"             ]) { retry = true; setup_sendCommand(24064, 251, "", newParameters["qu_point_1_voltage"             ]); }
-    if(newParameters.hasOwnProperty("qu_point_2_voltage"             ) && oldParameters.hasOwnProperty("qu_point_2_voltage"             ) && newParameters["qu_point_2_voltage"             ] != oldParameters["qu_point_2_voltage"             ]) { retry = true; setup_sendCommand(24064, 252, "", newParameters["qu_point_2_voltage"             ]); }
-    if(newParameters.hasOwnProperty("qu_point_3_voltage"             ) && oldParameters.hasOwnProperty("qu_point_3_voltage"             ) && newParameters["qu_point_3_voltage"             ] != oldParameters["qu_point_3_voltage"             ]) { retry = true; setup_sendCommand(24064, 253, "", newParameters["qu_point_3_voltage"             ]); }
-    if(newParameters.hasOwnProperty("qu_point_4_voltage"             ) && oldParameters.hasOwnProperty("qu_point_4_voltage"             ) && newParameters["qu_point_4_voltage"             ] != oldParameters["qu_point_4_voltage"             ]) { retry = true; setup_sendCommand(24064, 254, "", newParameters["qu_point_4_voltage"             ]); }
-    if(newParameters.hasOwnProperty("qu_point_1_reactive_power"      ) && oldParameters.hasOwnProperty("qu_point_1_reactive_power"      ) && newParameters["qu_point_1_reactive_power"      ] != oldParameters["qu_point_1_reactive_power"      ]) { retry = true; setup_sendCommand(24064, 255, "", newParameters["qu_point_1_reactive_power"      ]); }
-    if(newParameters.hasOwnProperty("qu_point_4_reactive_power"      ) && oldParameters.hasOwnProperty("qu_point_4_reactive_power"      ) && newParameters["qu_point_4_reactive_power"      ] != oldParameters["qu_point_4_reactive_power"      ]) { retry = true; setup_sendCommand(24064, 258, "", newParameters["qu_point_4_reactive_power"      ]); }
-    if(newParameters.hasOwnProperty("qu_time_constant"               ) && oldParameters.hasOwnProperty("qu_time_constant"               ) && newParameters["qu_time_constant"               ] != oldParameters["qu_time_constant"               ]) { retry = true; setup_sendCommand(24064, 260, "", newParameters["qu_time_constant"               ]); }
-    if(newParameters.hasOwnProperty("qu_enter_power"                 ) && oldParameters.hasOwnProperty("qu_enter_power"                 ) && newParameters["qu_enter_power"                 ] != oldParameters["qu_enter_power"                 ]) { retry = true; setup_sendCommand(24064, 261, "", newParameters["qu_enter_power"                 ]); }
-    if(newParameters.hasOwnProperty("qu_exit_power"                  ) && oldParameters.hasOwnProperty("qu_exit_power"                  ) && newParameters["qu_exit_power"                  ] != oldParameters["qu_exit_power"                  ]) { retry = true; setup_sendCommand(24064, 262, "", newParameters["qu_exit_power"                  ]); }
-    if(newParameters.hasOwnProperty("cosfp_point_b_power"            ) && oldParameters.hasOwnProperty("cosfp_point_b_power"            ) && newParameters["cosfp_point_b_power"            ] != oldParameters["cosfp_point_b_power"            ]) { retry = true; setup_sendCommand(24064, 272, "", newParameters["cosfp_point_b_power"            ]); }
-    if(newParameters.hasOwnProperty("cosfp_enter_voltage"            ) && oldParameters.hasOwnProperty("cosfp_enter_voltage"            ) && newParameters["cosfp_enter_voltage"            ] != oldParameters["cosfp_enter_voltage"            ]) { retry = true; setup_sendCommand(24064, 277, "", newParameters["cosfp_enter_voltage"            ]); }
-    if(newParameters.hasOwnProperty("cosfp_exit_voltage"             ) && oldParameters.hasOwnProperty("cosfp_exit_voltage"             ) && newParameters["cosfp_exit_voltage"             ] != oldParameters["cosfp_exit_voltage"             ]) { retry = true; setup_sendCommand(24064, 278, "", newParameters["cosfp_exit_voltage"             ]); }
-    if(newParameters.hasOwnProperty("lvrt_switch"                    ) && oldParameters.hasOwnProperty("lvrt_switch"                    ) && newParameters["lvrt_switch"                    ] != oldParameters["lvrt_switch"                    ]) { retry = true; setup_sendCommand(24064, 291, "", newParameters["lvrt_switch"                    ]); }
-    if(newParameters.hasOwnProperty("lvrt_enter_voltage"             ) && oldParameters.hasOwnProperty("lvrt_enter_voltage"             ) && newParameters["lvrt_enter_voltage"             ] != oldParameters["lvrt_enter_voltage"             ]) { retry = true; setup_sendCommand(24064, 292, "", newParameters["lvrt_enter_voltage"             ]); }
-    if(newParameters.hasOwnProperty("lvrt_exit_voltage"              ) && oldParameters.hasOwnProperty("lvrt_exit_voltage"              ) && newParameters["lvrt_exit_voltage"              ] != oldParameters["lvrt_exit_voltage"              ]) { retry = true; setup_sendCommand(24064, 293, "", newParameters["lvrt_exit_voltage"              ]); }
-    if(newParameters.hasOwnProperty("lvrt_point_5_voltage"           ) && oldParameters.hasOwnProperty("lvrt_point_5_voltage"           ) && newParameters["lvrt_point_5_voltage"           ] != oldParameters["lvrt_point_5_voltage"           ]) { retry = true; setup_sendCommand(24064, 298, "", newParameters["lvrt_point_5_voltage"           ]); }
-    if(newParameters.hasOwnProperty("lvrt_point_1_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_1_duration"          ) && newParameters["lvrt_point_1_duration"          ] != oldParameters["lvrt_point_1_duration"          ]) { retry = true; setup_sendCommand(24064, 299, "", newParameters["lvrt_point_1_duration"          ]); }
-    if(newParameters.hasOwnProperty("lvrt_point_2_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_2_duration"          ) && newParameters["lvrt_point_2_duration"          ] != oldParameters["lvrt_point_2_duration"          ]) { retry = true; setup_sendCommand(24064, 300, "", newParameters["lvrt_point_2_duration"          ]); }
-    if(newParameters.hasOwnProperty("lvrt_point_3_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_3_duration"          ) && newParameters["lvrt_point_3_duration"          ] != oldParameters["lvrt_point_3_duration"          ]) { retry = true; setup_sendCommand(24064, 301, "", newParameters["lvrt_point_3_duration"          ]); }
-    if(newParameters.hasOwnProperty("lvrt_point_4_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_4_duration"          ) && newParameters["lvrt_point_4_duration"          ] != oldParameters["lvrt_point_4_duration"          ]) { retry = true; setup_sendCommand(24064, 302, "", newParameters["lvrt_point_4_duration"          ]); }
-    if(newParameters.hasOwnProperty("lvrt_point_5_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_5_duration"          ) && newParameters["lvrt_point_5_duration"          ] != oldParameters["lvrt_point_5_duration"          ]) { retry = true; setup_sendCommand(24064, 303, "", newParameters["lvrt_point_5_duration"          ]); }
-    if(newParameters.hasOwnProperty("hvrt_switch"                    ) && oldParameters.hasOwnProperty("hvrt_switch"                    ) && newParameters["hvrt_switch"                    ] != oldParameters["hvrt_switch"                    ]) { retry = true; setup_sendCommand(24064, 311, "", newParameters["hvrt_switch"                    ]); }
-    if(newParameters.hasOwnProperty("hvrt_enter_voltage"             ) && oldParameters.hasOwnProperty("hvrt_enter_voltage"             ) && newParameters["hvrt_enter_voltage"             ] != oldParameters["hvrt_enter_voltage"             ]) { retry = true; setup_sendCommand(24064, 312, "", newParameters["hvrt_enter_voltage"             ]); }
-    if(newParameters.hasOwnProperty("hvrt_exit_voltage"              ) && oldParameters.hasOwnProperty("hvrt_exit_voltage"              ) && newParameters["hvrt_exit_voltage"              ] != oldParameters["hvrt_exit_voltage"              ]) { retry = true; setup_sendCommand(24064, 313, "", newParameters["hvrt_exit_voltage"              ]); }
-    if(newParameters.hasOwnProperty("hvrt_point_1_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_1_voltage"           ) && newParameters["hvrt_point_1_voltage"           ] != oldParameters["hvrt_point_1_voltage"           ]) { retry = true; setup_sendCommand(24064, 314, "", newParameters["hvrt_point_1_voltage"           ]); }
-    if(newParameters.hasOwnProperty("hvrt_point_2_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_2_voltage"           ) && newParameters["hvrt_point_2_voltage"           ] != oldParameters["hvrt_point_2_voltage"           ]) { retry = true; setup_sendCommand(24064, 315, "", newParameters["hvrt_point_2_voltage"           ]); }
-    if(newParameters.hasOwnProperty("hvrt_point_3_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_3_voltage"           ) && newParameters["hvrt_point_3_voltage"           ] != oldParameters["hvrt_point_3_voltage"           ]) { retry = true; setup_sendCommand(24064, 316, "", newParameters["hvrt_point_3_voltage"           ]); }
-    if(newParameters.hasOwnProperty("hvrt_point_3_duration"          ) && oldParameters.hasOwnProperty("hvrt_point_3_duration"          ) && newParameters["hvrt_point_3_duration"          ] != oldParameters["hvrt_point_3_duration"          ]) { retry = true; setup_sendCommand(24064, 319, "", newParameters["hvrt_point_3_duration"          ]); }
-    if(newParameters.hasOwnProperty("pu_time_constant"               ) && oldParameters.hasOwnProperty("pu_time_constant"               ) && newParameters["pu_time_constant"               ] != oldParameters["pu_time_constant"               ]) { retry = true; setup_sendCommand(24064, 336, "", newParameters["pu_time_constant"               ]); }
-    if(newParameters.hasOwnProperty("lfsmo_threshold"                ) && oldParameters.hasOwnProperty("lfsmo_threshold"                ) && newParameters["lfsmo_threshold"                ] != oldParameters["lfsmo_threshold"                ]) { retry = true; setup_sendCommand(24064, 342, "", newParameters["lfsmo_threshold"                ]); }
-    if(newParameters.hasOwnProperty("lfsmo_end_point_frequency"      ) && oldParameters.hasOwnProperty("lfsmo_end_point_frequency"      ) && newParameters["lfsmo_end_point_frequency"      ] != oldParameters["lfsmo_end_point_frequency"      ]) { retry = true; setup_sendCommand(24064, 344, "", newParameters["lfsmo_end_point_frequency"      ]); }
-    if(newParameters.hasOwnProperty("lfsmo_power_recovery_rate"      ) && oldParameters.hasOwnProperty("lfsmo_power_recovery_rate"      ) && newParameters["lfsmo_power_recovery_rate"      ] != oldParameters["lfsmo_power_recovery_rate"      ]) { retry = true; setup_sendCommand(24064, 348, "", newParameters["lfsmo_power_recovery_rate"      ]); }
-    if(newParameters.hasOwnProperty("lfsmo_droop"                    ) && oldParameters.hasOwnProperty("lfsmo_droop"                    ) && newParameters["lfsmo_droop"                    ] != oldParameters["lfsmo_droop"                    ]) { retry = true; setup_sendCommand(24064, 349, "", newParameters["lfsmo_droop"                    ]); }
-    if(newParameters.hasOwnProperty("battery_type"                   ) && oldParameters.hasOwnProperty("battery_type"                   ) && newParameters["battery_type"                   ] != oldParameters["battery_type"                   ]) { retry = true; setup_sendCommand(24064, 401, "", newParameters["battery_type"                   ]); }
+    if(newParameters.hasOwnProperty("reactive_mode"                       ) && oldParameters.hasOwnProperty("reactive_mode"                       ) && newParameters["reactive_mode"                       ] != oldParameters["reactive_mode"                       ]) { retry = true; setup_sendCommand(24064, 202, "", newParameters["reactive_mode"                       ]); }
+    if(newParameters.hasOwnProperty("pf_mode_power_factor"                ) && oldParameters.hasOwnProperty("pf_mode_power_factor"                ) && newParameters["pf_mode_power_factor"                ] != oldParameters["pf_mode_power_factor"                ]) { retry = true; setup_sendCommand(24064, 203, "", newParameters["pf_mode_power_factor"                ]); }
+    if(newParameters.hasOwnProperty("qt_mode_reactive_power"              ) && oldParameters.hasOwnProperty("qt_mode_reactive_power"              ) && newParameters["qt_mode_reactive_power"              ] != oldParameters["qt_mode_reactive_power"              ]) { retry = true; setup_sendCommand(24064, 204, "", newParameters["qt_mode_reactive_power"              ]); }
+    if(newParameters.hasOwnProperty("overvoltage_10min_threshold"         ) && oldParameters.hasOwnProperty("overvoltage_10min_threshold"         ) && newParameters["overvoltage_10min_threshold"         ] != oldParameters["overvoltage_10min_threshold"         ]) { retry = true; setup_sendCommand(24064, 205, "", newParameters["overvoltage_10min_threshold"         ]); }
+    if(newParameters.hasOwnProperty("grid_connect_lower_voltage"          ) && oldParameters.hasOwnProperty("grid_connect_lower_voltage"          ) && newParameters["grid_connect_lower_voltage"          ] != oldParameters["grid_connect_lower_voltage"          ]) { retry = true; setup_sendCommand(24064, 211, "", newParameters["grid_connect_lower_voltage"          ]); }
+    if(newParameters.hasOwnProperty("grid_connect_upper_voltage"          ) && oldParameters.hasOwnProperty("grid_connect_upper_voltage"          ) && newParameters["grid_connect_upper_voltage"          ] != oldParameters["grid_connect_upper_voltage"          ]) { retry = true; setup_sendCommand(24064, 212, "", newParameters["grid_connect_upper_voltage"          ]); }
+    if(newParameters.hasOwnProperty("grid_connect_lower_frequency"        ) && oldParameters.hasOwnProperty("grid_connect_lower_frequency"        ) && newParameters["grid_connect_lower_frequency"        ] != oldParameters["grid_connect_lower_frequency"        ]) { retry = true; setup_sendCommand(24064, 213, "", newParameters["grid_connect_lower_frequency"        ]); }
+    if(newParameters.hasOwnProperty("grid_connect_upper_frequency"        ) && oldParameters.hasOwnProperty("grid_connect_upper_frequency"        ) && newParameters["grid_connect_upper_frequency"        ] != oldParameters["grid_connect_upper_frequency"        ]) { retry = true; setup_sendCommand(24064, 214, "", newParameters["grid_connect_upper_frequency"        ]); }
+    if(newParameters.hasOwnProperty("wait_time_before_grid_connect"       ) && oldParameters.hasOwnProperty("wait_time_before_grid_connect"       ) && newParameters["wait_time_before_grid_connect"       ] != oldParameters["wait_time_before_grid_connect"       ]) { retry = true; setup_sendCommand(24064, 215, "", newParameters["wait_time_before_grid_connect"       ]); }
+    if(newParameters.hasOwnProperty("grid_reconnect_upper_voltage"        ) && oldParameters.hasOwnProperty("grid_reconnect_upper_voltage"        ) && newParameters["grid_reconnect_upper_voltage"        ] != oldParameters["grid_reconnect_upper_voltage"        ]) { retry = true; setup_sendCommand(24064, 222, "", newParameters["grid_reconnect_upper_voltage"        ]); }
+    if(newParameters.hasOwnProperty("wait_time_before_grid_reconnect"     ) && oldParameters.hasOwnProperty("wait_time_before_grid_reconnect"     ) && newParameters["wait_time_before_grid_reconnect"     ] != oldParameters["wait_time_before_grid_reconnect"     ]) { retry = true; setup_sendCommand(24064, 225, "", newParameters["wait_time_before_grid_reconnect"     ]); }
+    if(newParameters.hasOwnProperty("stage_1_uv_threshold"                ) && oldParameters.hasOwnProperty("stage_1_uv_threshold"                ) && newParameters["stage_1_uv_threshold"                ] != oldParameters["stage_1_uv_threshold"                ]) { retry = true; setup_sendCommand(24064, 231, "", newParameters["stage_1_uv_threshold"                ]); }
+    if(newParameters.hasOwnProperty("stage_1_ov_threshold"                ) && oldParameters.hasOwnProperty("stage_1_ov_threshold"                ) && newParameters["stage_1_ov_threshold"                ] != oldParameters["stage_1_ov_threshold"                ]) { retry = true; setup_sendCommand(24064, 232, "", newParameters["stage_1_ov_threshold"                ]); }
+    if(newParameters.hasOwnProperty("stage_1_uf_threshold"                ) && oldParameters.hasOwnProperty("stage_1_uf_threshold"                ) && newParameters["stage_1_uf_threshold"                ] != oldParameters["stage_1_uf_threshold"                ]) { retry = true; setup_sendCommand(24064, 233, "", newParameters["stage_1_uf_threshold"                ]); }
+    if(newParameters.hasOwnProperty("stage_1_of_threshold"                ) && oldParameters.hasOwnProperty("stage_1_of_threshold"                ) && newParameters["stage_1_of_threshold"                ] != oldParameters["stage_1_of_threshold"                ]) { retry = true; setup_sendCommand(24064, 234, "", newParameters["stage_1_of_threshold"                ]); }
+    if(newParameters.hasOwnProperty("stage_1_uv_duration"                 ) && oldParameters.hasOwnProperty("stage_1_uv_duration"                 ) && newParameters["stage_1_uv_duration"                 ] != oldParameters["stage_1_uv_duration"                 ]) { retry = true; setup_sendCommand(24064, 235, "", newParameters["stage_1_uv_duration"                 ]); }
+    if(newParameters.hasOwnProperty("stage_1_ov_duration"                 ) && oldParameters.hasOwnProperty("stage_1_ov_duration"                 ) && newParameters["stage_1_ov_duration"                 ] != oldParameters["stage_1_ov_duration"                 ]) { retry = true; setup_sendCommand(24064, 236, "", newParameters["stage_1_ov_duration"                 ]); }
+    if(newParameters.hasOwnProperty("stage_1_uf_duration"                 ) && oldParameters.hasOwnProperty("stage_1_uf_duration"                 ) && newParameters["stage_1_uf_duration"                 ] != oldParameters["stage_1_uf_duration"                 ]) { retry = true; setup_sendCommand(24064, 237, "", newParameters["stage_1_uf_duration"                 ]); }
+    if(newParameters.hasOwnProperty("stage_1_of_duration"                 ) && oldParameters.hasOwnProperty("stage_1_of_duration"                 ) && newParameters["stage_1_of_duration"                 ] != oldParameters["stage_1_of_duration"                 ]) { retry = true; setup_sendCommand(24064, 238, "", newParameters["stage_1_of_duration"                 ]); }
+    if(newParameters.hasOwnProperty("stage_2_uv_threshold"                ) && oldParameters.hasOwnProperty("stage_2_uv_threshold"                ) && newParameters["stage_2_uv_threshold"                ] != oldParameters["stage_2_uv_threshold"                ]) { retry = true; setup_sendCommand(24064, 239, "", newParameters["stage_2_uv_threshold"                ]); }
+    if(newParameters.hasOwnProperty("stage_2_ov_threshold"                ) && oldParameters.hasOwnProperty("stage_2_ov_threshold"                ) && newParameters["stage_2_ov_threshold"                ] != oldParameters["stage_2_ov_threshold"                ]) { retry = true; setup_sendCommand(24064, 240, "", newParameters["stage_2_ov_threshold"                ]); }
+    if(newParameters.hasOwnProperty("stage_2_uv_duration"                 ) && oldParameters.hasOwnProperty("stage_2_uv_duration"                 ) && newParameters["stage_2_uv_duration"                 ] != oldParameters["stage_2_uv_duration"                 ]) { retry = true; setup_sendCommand(24064, 243, "", newParameters["stage_2_uv_duration"                 ]); }
+    if(newParameters.hasOwnProperty("stage_2_ov_duration"                 ) && oldParameters.hasOwnProperty("stage_2_ov_duration"                 ) && newParameters["stage_2_ov_duration"                 ] != oldParameters["stage_2_ov_duration"                 ]) { retry = true; setup_sendCommand(24064, 244, "", newParameters["stage_2_ov_duration"                 ]); }
+    if(newParameters.hasOwnProperty("qu_point_1_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_1_voltage"                  ) && newParameters["qu_point_1_voltage"                  ] != oldParameters["qu_point_1_voltage"                  ]) { retry = true; setup_sendCommand(24064, 251, "", newParameters["qu_point_1_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("qu_point_2_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_2_voltage"                  ) && newParameters["qu_point_2_voltage"                  ] != oldParameters["qu_point_2_voltage"                  ]) { retry = true; setup_sendCommand(24064, 252, "", newParameters["qu_point_2_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("qu_point_3_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_3_voltage"                  ) && newParameters["qu_point_3_voltage"                  ] != oldParameters["qu_point_3_voltage"                  ]) { retry = true; setup_sendCommand(24064, 253, "", newParameters["qu_point_3_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("qu_point_4_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_4_voltage"                  ) && newParameters["qu_point_4_voltage"                  ] != oldParameters["qu_point_4_voltage"                  ]) { retry = true; setup_sendCommand(24064, 254, "", newParameters["qu_point_4_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("qu_point_1_reactive_power"           ) && oldParameters.hasOwnProperty("qu_point_1_reactive_power"           ) && newParameters["qu_point_1_reactive_power"           ] != oldParameters["qu_point_1_reactive_power"           ]) { retry = true; setup_sendCommand(24064, 255, "", newParameters["qu_point_1_reactive_power"           ]); }
+    if(newParameters.hasOwnProperty("qu_point_4_reactive_power"           ) && oldParameters.hasOwnProperty("qu_point_4_reactive_power"           ) && newParameters["qu_point_4_reactive_power"           ] != oldParameters["qu_point_4_reactive_power"           ]) { retry = true; setup_sendCommand(24064, 258, "", newParameters["qu_point_4_reactive_power"           ]); }
+    if(newParameters.hasOwnProperty("qu_time_constant"                    ) && oldParameters.hasOwnProperty("qu_time_constant"                    ) && newParameters["qu_time_constant"                    ] != oldParameters["qu_time_constant"                    ]) { retry = true; setup_sendCommand(24064, 260, "", newParameters["qu_time_constant"                    ]); }
+    if(newParameters.hasOwnProperty("qu_enter_power"                      ) && oldParameters.hasOwnProperty("qu_enter_power"                      ) && newParameters["qu_enter_power"                      ] != oldParameters["qu_enter_power"                      ]) { retry = true; setup_sendCommand(24064, 261, "", newParameters["qu_enter_power"                      ]); }
+    if(newParameters.hasOwnProperty("qu_exit_power"                       ) && oldParameters.hasOwnProperty("qu_exit_power"                       ) && newParameters["qu_exit_power"                       ] != oldParameters["qu_exit_power"                       ]) { retry = true; setup_sendCommand(24064, 262, "", newParameters["qu_exit_power"                       ]); }
+    if(newParameters.hasOwnProperty("cosfp_point_b_power"                 ) && oldParameters.hasOwnProperty("cosfp_point_b_power"                 ) && newParameters["cosfp_point_b_power"                 ] != oldParameters["cosfp_point_b_power"                 ]) { retry = true; setup_sendCommand(24064, 272, "", newParameters["cosfp_point_b_power"                 ]); }
+    if(newParameters.hasOwnProperty("cosfp_enter_voltage"                 ) && oldParameters.hasOwnProperty("cosfp_enter_voltage"                 ) && newParameters["cosfp_enter_voltage"                 ] != oldParameters["cosfp_enter_voltage"                 ]) { retry = true; setup_sendCommand(24064, 277, "", newParameters["cosfp_enter_voltage"                 ]); }
+    if(newParameters.hasOwnProperty("cosfp_exit_voltage"                  ) && oldParameters.hasOwnProperty("cosfp_exit_voltage"                  ) && newParameters["cosfp_exit_voltage"                  ] != oldParameters["cosfp_exit_voltage"                  ]) { retry = true; setup_sendCommand(24064, 278, "", newParameters["cosfp_exit_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("lvrt_switch"                         ) && oldParameters.hasOwnProperty("lvrt_switch"                         ) && newParameters["lvrt_switch"                         ] != oldParameters["lvrt_switch"                         ]) { retry = true; setup_sendCommand(24064, 291, "", newParameters["lvrt_switch"                         ]); }
+    if(newParameters.hasOwnProperty("lvrt_enter_voltage"                  ) && oldParameters.hasOwnProperty("lvrt_enter_voltage"                  ) && newParameters["lvrt_enter_voltage"                  ] != oldParameters["lvrt_enter_voltage"                  ]) { retry = true; setup_sendCommand(24064, 292, "", newParameters["lvrt_enter_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("lvrt_exit_voltage"                   ) && oldParameters.hasOwnProperty("lvrt_exit_voltage"                   ) && newParameters["lvrt_exit_voltage"                   ] != oldParameters["lvrt_exit_voltage"                   ]) { retry = true; setup_sendCommand(24064, 293, "", newParameters["lvrt_exit_voltage"                   ]); }
+    if(newParameters.hasOwnProperty("lvrt_point_5_voltage"                ) && oldParameters.hasOwnProperty("lvrt_point_5_voltage"                ) && newParameters["lvrt_point_5_voltage"                ] != oldParameters["lvrt_point_5_voltage"                ]) { retry = true; setup_sendCommand(24064, 298, "", newParameters["lvrt_point_5_voltage"                ]); }
+    if(newParameters.hasOwnProperty("lvrt_point_1_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_1_duration"               ) && newParameters["lvrt_point_1_duration"               ] != oldParameters["lvrt_point_1_duration"               ]) { retry = true; setup_sendCommand(24064, 299, "", newParameters["lvrt_point_1_duration"               ]); }
+    if(newParameters.hasOwnProperty("lvrt_point_2_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_2_duration"               ) && newParameters["lvrt_point_2_duration"               ] != oldParameters["lvrt_point_2_duration"               ]) { retry = true; setup_sendCommand(24064, 300, "", newParameters["lvrt_point_2_duration"               ]); }
+    if(newParameters.hasOwnProperty("lvrt_point_3_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_3_duration"               ) && newParameters["lvrt_point_3_duration"               ] != oldParameters["lvrt_point_3_duration"               ]) { retry = true; setup_sendCommand(24064, 301, "", newParameters["lvrt_point_3_duration"               ]); }
+    if(newParameters.hasOwnProperty("lvrt_point_4_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_4_duration"               ) && newParameters["lvrt_point_4_duration"               ] != oldParameters["lvrt_point_4_duration"               ]) { retry = true; setup_sendCommand(24064, 302, "", newParameters["lvrt_point_4_duration"               ]); }
+    if(newParameters.hasOwnProperty("lvrt_point_5_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_5_duration"               ) && newParameters["lvrt_point_5_duration"               ] != oldParameters["lvrt_point_5_duration"               ]) { retry = true; setup_sendCommand(24064, 303, "", newParameters["lvrt_point_5_duration"               ]); }
+    if(newParameters.hasOwnProperty("hvrt_switch"                         ) && oldParameters.hasOwnProperty("hvrt_switch"                         ) && newParameters["hvrt_switch"                         ] != oldParameters["hvrt_switch"                         ]) { retry = true; setup_sendCommand(24064, 311, "", newParameters["hvrt_switch"                         ]); }
+    if(newParameters.hasOwnProperty("hvrt_enter_voltage"                  ) && oldParameters.hasOwnProperty("hvrt_enter_voltage"                  ) && newParameters["hvrt_enter_voltage"                  ] != oldParameters["hvrt_enter_voltage"                  ]) { retry = true; setup_sendCommand(24064, 312, "", newParameters["hvrt_enter_voltage"                  ]); }
+    if(newParameters.hasOwnProperty("hvrt_exit_voltage"                   ) && oldParameters.hasOwnProperty("hvrt_exit_voltage"                   ) && newParameters["hvrt_exit_voltage"                   ] != oldParameters["hvrt_exit_voltage"                   ]) { retry = true; setup_sendCommand(24064, 313, "", newParameters["hvrt_exit_voltage"                   ]); }
+    if(newParameters.hasOwnProperty("hvrt_point_1_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_1_voltage"                ) && newParameters["hvrt_point_1_voltage"                ] != oldParameters["hvrt_point_1_voltage"                ]) { retry = true; setup_sendCommand(24064, 314, "", newParameters["hvrt_point_1_voltage"                ]); }
+    if(newParameters.hasOwnProperty("hvrt_point_2_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_2_voltage"                ) && newParameters["hvrt_point_2_voltage"                ] != oldParameters["hvrt_point_2_voltage"                ]) { retry = true; setup_sendCommand(24064, 315, "", newParameters["hvrt_point_2_voltage"                ]); }
+    if(newParameters.hasOwnProperty("hvrt_point_3_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_3_voltage"                ) && newParameters["hvrt_point_3_voltage"                ] != oldParameters["hvrt_point_3_voltage"                ]) { retry = true; setup_sendCommand(24064, 316, "", newParameters["hvrt_point_3_voltage"                ]); }
+    if(newParameters.hasOwnProperty("hvrt_point_3_duration"               ) && oldParameters.hasOwnProperty("hvrt_point_3_duration"               ) && newParameters["hvrt_point_3_duration"               ] != oldParameters["hvrt_point_3_duration"               ]) { retry = true; setup_sendCommand(24064, 319, "", newParameters["hvrt_point_3_duration"               ]); }
+    if(newParameters.hasOwnProperty("pu_time_constant"                    ) && oldParameters.hasOwnProperty("pu_time_constant"                    ) && newParameters["pu_time_constant"                    ] != oldParameters["pu_time_constant"                    ]) { retry = true; setup_sendCommand(24064, 336, "", newParameters["pu_time_constant"                    ]); }
+    if(newParameters.hasOwnProperty("lfsmo_threshold"                     ) && oldParameters.hasOwnProperty("lfsmo_threshold"                     ) && newParameters["lfsmo_threshold"                     ] != oldParameters["lfsmo_threshold"                     ]) { retry = true; setup_sendCommand(24064, 342, "", newParameters["lfsmo_threshold"                     ]); }
+    if(newParameters.hasOwnProperty("lfsmo_end_point_frequency"           ) && oldParameters.hasOwnProperty("lfsmo_end_point_frequency"           ) && newParameters["lfsmo_end_point_frequency"           ] != oldParameters["lfsmo_end_point_frequency"           ]) { retry = true; setup_sendCommand(24064, 344, "", newParameters["lfsmo_end_point_frequency"           ]); }
+    if(newParameters.hasOwnProperty("lfsmo_power_recovery_rate"           ) && oldParameters.hasOwnProperty("lfsmo_power_recovery_rate"           ) && newParameters["lfsmo_power_recovery_rate"           ] != oldParameters["lfsmo_power_recovery_rate"           ]) { retry = true; setup_sendCommand(24064, 348, "", newParameters["lfsmo_power_recovery_rate"           ]); }
+    if(newParameters.hasOwnProperty("lfsmo_droop"                         ) && oldParameters.hasOwnProperty("lfsmo_droop"                         ) && newParameters["lfsmo_droop"                         ] != oldParameters["lfsmo_droop"                         ]) { retry = true; setup_sendCommand(24064, 349, "", newParameters["lfsmo_droop"                         ]); }
+    if(newParameters.hasOwnProperty("lfsmo_slope"                         ) && oldParameters.hasOwnProperty("lfsmo_slope"                         ) && newParameters["lfsmo_slope"                         ] != oldParameters["lfsmo_slope"                         ]) { retry = true; setup_sendCommand(24064, 350, "", newParameters["lfsmo_slope"                         ]); }
+    if(newParameters.hasOwnProperty("battery_type"                        ) && oldParameters.hasOwnProperty("battery_type"                        ) && newParameters["battery_type"                        ] != oldParameters["battery_type"                        ]) { retry = true; setup_sendCommand(24064, 401, "", newParameters["battery_type"                        ]); }
+    if(newParameters.hasOwnProperty("battery_cutoff_voltage_ongrid"       ) && oldParameters.hasOwnProperty("battery_cutoff_voltage_ongrid"       ) && newParameters["battery_cutoff_voltage_ongrid"       ] != oldParameters["battery_cutoff_voltage_ongrid"       ]) { retry = true; setup_sendCommand(24064, 411, "", newParameters["battery_cutoff_voltage_ongrid"       ]); }
+    if(newParameters.hasOwnProperty("battery_cutoff_voltage_offgrid"      ) && oldParameters.hasOwnProperty("battery_cutoff_voltage_offgrid"      ) && newParameters["battery_cutoff_voltage_offgrid"      ] != oldParameters["battery_cutoff_voltage_offgrid"      ]) { retry = true; setup_sendCommand(24064, 412, "", newParameters["battery_cutoff_voltage_offgrid"      ]); }
+    if(newParameters.hasOwnProperty("battery_recovery_voltage_ongrid"     ) && oldParameters.hasOwnProperty("battery_recovery_voltage_ongrid"     ) && newParameters["battery_recovery_voltage_ongrid"     ] != oldParameters["battery_recovery_voltage_ongrid"     ]) { retry = true; setup_sendCommand(24064, 413, "", newParameters["battery_recovery_voltage_ongrid"     ]); }
+    if(newParameters.hasOwnProperty("battery_recovery_voltage_offgrid"    ) && oldParameters.hasOwnProperty("battery_recovery_voltage_offgrid"    ) && newParameters["battery_recovery_voltage_offgrid"    ] != oldParameters["battery_recovery_voltage_offgrid"    ]) { retry = true; setup_sendCommand(24064, 414, "", newParameters["battery_recovery_voltage_offgrid"    ]); }
+    if(newParameters.hasOwnProperty("battery_bulk_charge_voltage"         ) && oldParameters.hasOwnProperty("battery_bulk_charge_voltage"         ) && newParameters["battery_bulk_charge_voltage"         ] != oldParameters["battery_bulk_charge_voltage"         ]) { retry = true; setup_sendCommand(24064, 415, "", newParameters["battery_bulk_charge_voltage"         ]); }
+    if(newParameters.hasOwnProperty("battery_float_charge_voltage"        ) && oldParameters.hasOwnProperty("battery_float_charge_voltage"        ) && newParameters["battery_float_charge_voltage"        ] != oldParameters["battery_float_charge_voltage"        ]) { retry = true; setup_sendCommand(24064, 416, "", newParameters["battery_float_charge_voltage"        ]); }
+    if(newParameters.hasOwnProperty("battery_max_charge_current"          ) && oldParameters.hasOwnProperty("battery_max_charge_current"          ) && newParameters["battery_max_charge_current"          ] != oldParameters["battery_max_charge_current"          ]) { retry = true; setup_sendCommand(24064, 417, "", newParameters["battery_max_charge_current"          ]); }
+    if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) { retry = true; setup_sendCommand(24064, 418, "", newParameters["battery_max_discharge_current_ongrid"]); }
 
     if(!retry) {
         $(".setting-progress span").html(lang.system_setup.msg_setting_success).css("color", "#28a745");
@@ -2097,6 +2514,8 @@ function setup_sendSetting(varname, entity, field, value) {
     Check Parameters
 */
 
+var tempCheckCounter = 0;
+
 function setup_checkParameters() {
 
     $.get({
@@ -2110,8 +2529,21 @@ function setup_checkParameters() {
             dataSettings = JSON.parse(JSON.stringify(response));
 
             var temp = response["Inverter"];
-            if(temp["10"]["s1"] == deviceDatetime) return false;
-            deviceDatetime = temp["10"]["s1"];
+
+            if(JSON.stringify(response) == previousSettings) {
+                tempCheckCounter += 1;
+                if(tempCheckCounter > 10) {
+                    setTimeout(() => {
+                        $.get({
+                            url: "api.php?set=command&type=12&entity=0&text2=1", // reload settings (to avoid waiting 5 minutes)
+                            success: (response) => { console.log(response); }
+                        });
+                    }, 1000);
+                    tempCheckCounter = 0;
+                }
+                return false;
+            }
+            previousSettings = JSON.stringify(response);
 
             oldParameters["regulationMode"] = !response.hasOwnProperty("InjectionMode"       ) ? "0" : response["InjectionMode"       ]["0"]["v5"  ];
             oldParameters["extsolMode"    ] = !response.hasOwnProperty("ModbusExtSolarDevice") ? "0" : response["ModbusExtSolarDevice"]["0"]["mode"];
@@ -2130,63 +2562,72 @@ function setup_checkParameters() {
             oldParameters["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
             oldParameters["cloudSet"               ] = !response.hasOwnProperty("CloudSet"               ) || !response["CloudSet"               ].hasOwnProperty("0") ? ""  : response["CloudSet"               ]["0"]["mode"];
 
-            if(temp.hasOwnProperty("202")) oldParameters["reactive_mode"                  ] = temp["202"].s1;
-            if(temp.hasOwnProperty("203")) oldParameters["pf_mode_power_factor"           ] = temp["203"].s1;
-            if(temp.hasOwnProperty("204")) oldParameters["qt_mode_reactive_power"         ] = temp["204"].s1;
-            if(temp.hasOwnProperty("205")) oldParameters["overvoltage_10min_threshold"    ] = temp["205"].s1;
-            if(temp.hasOwnProperty("211")) oldParameters["grid_connect_lower_voltage"     ] = temp["211"].s1;
-            if(temp.hasOwnProperty("212")) oldParameters["grid_connect_upper_voltage"     ] = temp["212"].s1;
-            if(temp.hasOwnProperty("213")) oldParameters["grid_connect_lower_frequency"   ] = temp["213"].s1;
-            if(temp.hasOwnProperty("214")) oldParameters["grid_connect_upper_frequency"   ] = temp["214"].s1;
-            if(temp.hasOwnProperty("215")) oldParameters["wait_time_before_grid_connect"  ] = temp["215"].s1;
-            if(temp.hasOwnProperty("222")) oldParameters["grid_reconnect_upper_voltage"   ] = temp["222"].s1;
-            if(temp.hasOwnProperty("225")) oldParameters["wait_time_before_grid_reconnect"] = temp["225"].s1;
-            if(temp.hasOwnProperty("231")) oldParameters["stage_1_uv_threshold"           ] = temp["231"].s1;
-            if(temp.hasOwnProperty("232")) oldParameters["stage_1_ov_threshold"           ] = temp["232"].s1;
-            if(temp.hasOwnProperty("233")) oldParameters["stage_1_uf_threshold"           ] = temp["233"].s1;
-            if(temp.hasOwnProperty("234")) oldParameters["stage_1_of_threshold"           ] = temp["234"].s1;
-            if(temp.hasOwnProperty("235")) oldParameters["stage_1_uv_duration"            ] = temp["235"].s1;
-            if(temp.hasOwnProperty("236")) oldParameters["stage_1_ov_duration"            ] = temp["236"].s1;
-            if(temp.hasOwnProperty("237")) oldParameters["stage_1_uf_duration"            ] = temp["237"].s1;
-            if(temp.hasOwnProperty("238")) oldParameters["stage_1_of_duration"            ] = temp["238"].s1;
-            if(temp.hasOwnProperty("239")) oldParameters["stage_2_uv_threshold"           ] = temp["239"].s1;
-            if(temp.hasOwnProperty("240")) oldParameters["stage_2_ov_threshold"           ] = temp["240"].s1;
-            if(temp.hasOwnProperty("243")) oldParameters["stage_2_uv_duration"            ] = temp["243"].s1;
-            if(temp.hasOwnProperty("244")) oldParameters["stage_2_ov_duration"            ] = temp["244"].s1;
-            if(temp.hasOwnProperty("251")) oldParameters["qu_point_1_voltage"             ] = temp["251"].s1;
-            if(temp.hasOwnProperty("252")) oldParameters["qu_point_2_voltage"             ] = temp["252"].s1;
-            if(temp.hasOwnProperty("253")) oldParameters["qu_point_3_voltage"             ] = temp["253"].s1;
-            if(temp.hasOwnProperty("254")) oldParameters["qu_point_4_voltage"             ] = temp["254"].s1;
-            if(temp.hasOwnProperty("255")) oldParameters["qu_point_1_reactive_power"      ] = temp["255"].s1;
-            if(temp.hasOwnProperty("258")) oldParameters["qu_point_4_reactive_power"      ] = temp["258"].s1;
-            if(temp.hasOwnProperty("260")) oldParameters["qu_time_constant"               ] = temp["260"].s1;
-            if(temp.hasOwnProperty("261")) oldParameters["qu_enter_power"                 ] = temp["261"].s1;
-            if(temp.hasOwnProperty("262")) oldParameters["qu_exit_power"                  ] = temp["262"].s1;
-            if(temp.hasOwnProperty("272")) oldParameters["cosfp_point_b_power"            ] = temp["272"].s1;
-            if(temp.hasOwnProperty("277")) oldParameters["cosfp_enter_voltage"            ] = temp["277"].s1;
-            if(temp.hasOwnProperty("278")) oldParameters["cosfp_exit_voltage"             ] = temp["278"].s1;
-            if(temp.hasOwnProperty("291")) oldParameters["lvrt_switch"                    ] = temp["291"].s1;
-            if(temp.hasOwnProperty("292")) oldParameters["lvrt_enter_voltage"             ] = temp["292"].s1;
-            if(temp.hasOwnProperty("293")) oldParameters["lvrt_exit_voltage"              ] = temp["293"].s1;
-            if(temp.hasOwnProperty("298")) oldParameters["lvrt_point_5_voltage"           ] = temp["298"].s1;
-            if(temp.hasOwnProperty("299")) oldParameters["lvrt_point_1_duration"          ] = temp["299"].s1;
-            if(temp.hasOwnProperty("300")) oldParameters["lvrt_point_2_duration"          ] = temp["300"].s1;
-            if(temp.hasOwnProperty("301")) oldParameters["lvrt_point_3_duration"          ] = temp["301"].s1;
-            if(temp.hasOwnProperty("302")) oldParameters["lvrt_point_4_duration"          ] = temp["302"].s1;
-            if(temp.hasOwnProperty("303")) oldParameters["lvrt_point_5_duration"          ] = temp["303"].s1;
-            if(temp.hasOwnProperty("311")) oldParameters["hvrt_switch"                    ] = temp["311"].s1;
-            if(temp.hasOwnProperty("312")) oldParameters["hvrt_enter_voltage"             ] = temp["312"].s1;
-            if(temp.hasOwnProperty("313")) oldParameters["hvrt_exit_voltage"              ] = temp["313"].s1;
-            if(temp.hasOwnProperty("314")) oldParameters["hvrt_point_1_voltage"           ] = temp["314"].s1;
-            if(temp.hasOwnProperty("315")) oldParameters["hvrt_point_2_voltage"           ] = temp["315"].s1;
-            if(temp.hasOwnProperty("316")) oldParameters["hvrt_point_3_voltage"           ] = temp["316"].s1;
-            if(temp.hasOwnProperty("319")) oldParameters["hvrt_point_3_duration"          ] = temp["319"].s1;
-            if(temp.hasOwnProperty("336")) oldParameters["pu_time_constant"               ] = temp["336"].s1;
-            if(temp.hasOwnProperty("342")) oldParameters["lfsmo_threshold"                ] = temp["342"].s1;
-            if(temp.hasOwnProperty("344")) oldParameters["lfsmo_end_point_frequency"      ] = temp["344"].s1;
-            if(temp.hasOwnProperty("348")) oldParameters["lfsmo_power_recovery_rate"      ] = temp["348"].s1;
-            if(temp.hasOwnProperty("349")) oldParameters["lfsmo_droop"                    ] = temp["349"].s1;
-            if(temp.hasOwnProperty("401")) oldParameters["battery_type"                   ] = temp["401"].s1;
+            if(temp.hasOwnProperty("202")) oldParameters["reactive_mode"                       ] = temp["202"].s1;
+            if(temp.hasOwnProperty("203")) oldParameters["pf_mode_power_factor"                ] = temp["203"].s1;
+            if(temp.hasOwnProperty("204")) oldParameters["qt_mode_reactive_power"              ] = temp["204"].s1;
+            if(temp.hasOwnProperty("205")) oldParameters["overvoltage_10min_threshold"         ] = temp["205"].s1;
+            if(temp.hasOwnProperty("211")) oldParameters["grid_connect_lower_voltage"          ] = temp["211"].s1;
+            if(temp.hasOwnProperty("212")) oldParameters["grid_connect_upper_voltage"          ] = temp["212"].s1;
+            if(temp.hasOwnProperty("213")) oldParameters["grid_connect_lower_frequency"        ] = temp["213"].s1;
+            if(temp.hasOwnProperty("214")) oldParameters["grid_connect_upper_frequency"        ] = temp["214"].s1;
+            if(temp.hasOwnProperty("215")) oldParameters["wait_time_before_grid_connect"       ] = temp["215"].s1;
+            if(temp.hasOwnProperty("222")) oldParameters["grid_reconnect_upper_voltage"        ] = temp["222"].s1;
+            if(temp.hasOwnProperty("225")) oldParameters["wait_time_before_grid_reconnect"     ] = temp["225"].s1;
+            if(temp.hasOwnProperty("231")) oldParameters["stage_1_uv_threshold"                ] = temp["231"].s1;
+            if(temp.hasOwnProperty("232")) oldParameters["stage_1_ov_threshold"                ] = temp["232"].s1;
+            if(temp.hasOwnProperty("233")) oldParameters["stage_1_uf_threshold"                ] = temp["233"].s1;
+            if(temp.hasOwnProperty("234")) oldParameters["stage_1_of_threshold"                ] = temp["234"].s1;
+            if(temp.hasOwnProperty("235")) oldParameters["stage_1_uv_duration"                 ] = temp["235"].s1;
+            if(temp.hasOwnProperty("236")) oldParameters["stage_1_ov_duration"                 ] = temp["236"].s1;
+            if(temp.hasOwnProperty("237")) oldParameters["stage_1_uf_duration"                 ] = temp["237"].s1;
+            if(temp.hasOwnProperty("238")) oldParameters["stage_1_of_duration"                 ] = temp["238"].s1;
+            if(temp.hasOwnProperty("239")) oldParameters["stage_2_uv_threshold"                ] = temp["239"].s1;
+            if(temp.hasOwnProperty("240")) oldParameters["stage_2_ov_threshold"                ] = temp["240"].s1;
+            if(temp.hasOwnProperty("243")) oldParameters["stage_2_uv_duration"                 ] = temp["243"].s1;
+            if(temp.hasOwnProperty("244")) oldParameters["stage_2_ov_duration"                 ] = temp["244"].s1;
+            if(temp.hasOwnProperty("251")) oldParameters["qu_point_1_voltage"                  ] = temp["251"].s1;
+            if(temp.hasOwnProperty("252")) oldParameters["qu_point_2_voltage"                  ] = temp["252"].s1;
+            if(temp.hasOwnProperty("253")) oldParameters["qu_point_3_voltage"                  ] = temp["253"].s1;
+            if(temp.hasOwnProperty("254")) oldParameters["qu_point_4_voltage"                  ] = temp["254"].s1;
+            if(temp.hasOwnProperty("255")) oldParameters["qu_point_1_reactive_power"           ] = temp["255"].s1;
+            if(temp.hasOwnProperty("258")) oldParameters["qu_point_4_reactive_power"           ] = temp["258"].s1;
+            if(temp.hasOwnProperty("260")) oldParameters["qu_time_constant"                    ] = temp["260"].s1;
+            if(temp.hasOwnProperty("261")) oldParameters["qu_enter_power"                      ] = temp["261"].s1;
+            if(temp.hasOwnProperty("262")) oldParameters["qu_exit_power"                       ] = temp["262"].s1;
+            if(temp.hasOwnProperty("272")) oldParameters["cosfp_point_b_power"                 ] = temp["272"].s1;
+            if(temp.hasOwnProperty("277")) oldParameters["cosfp_enter_voltage"                 ] = temp["277"].s1;
+            if(temp.hasOwnProperty("278")) oldParameters["cosfp_exit_voltage"                  ] = temp["278"].s1;
+            if(temp.hasOwnProperty("291")) oldParameters["lvrt_switch"                         ] = temp["291"].s1;
+            if(temp.hasOwnProperty("292")) oldParameters["lvrt_enter_voltage"                  ] = temp["292"].s1;
+            if(temp.hasOwnProperty("293")) oldParameters["lvrt_exit_voltage"                   ] = temp["293"].s1;
+            if(temp.hasOwnProperty("298")) oldParameters["lvrt_point_5_voltage"                ] = temp["298"].s1;
+            if(temp.hasOwnProperty("299")) oldParameters["lvrt_point_1_duration"               ] = temp["299"].s1;
+            if(temp.hasOwnProperty("300")) oldParameters["lvrt_point_2_duration"               ] = temp["300"].s1;
+            if(temp.hasOwnProperty("301")) oldParameters["lvrt_point_3_duration"               ] = temp["301"].s1;
+            if(temp.hasOwnProperty("302")) oldParameters["lvrt_point_4_duration"               ] = temp["302"].s1;
+            if(temp.hasOwnProperty("303")) oldParameters["lvrt_point_5_duration"               ] = temp["303"].s1;
+            if(temp.hasOwnProperty("311")) oldParameters["hvrt_switch"                         ] = temp["311"].s1;
+            if(temp.hasOwnProperty("312")) oldParameters["hvrt_enter_voltage"                  ] = temp["312"].s1;
+            if(temp.hasOwnProperty("313")) oldParameters["hvrt_exit_voltage"                   ] = temp["313"].s1;
+            if(temp.hasOwnProperty("314")) oldParameters["hvrt_point_1_voltage"                ] = temp["314"].s1;
+            if(temp.hasOwnProperty("315")) oldParameters["hvrt_point_2_voltage"                ] = temp["315"].s1;
+            if(temp.hasOwnProperty("316")) oldParameters["hvrt_point_3_voltage"                ] = temp["316"].s1;
+            if(temp.hasOwnProperty("319")) oldParameters["hvrt_point_3_duration"               ] = temp["319"].s1;
+            if(temp.hasOwnProperty("336")) oldParameters["pu_time_constant"                    ] = temp["336"].s1;
+            if(temp.hasOwnProperty("342")) oldParameters["lfsmo_threshold"                     ] = temp["342"].s1;
+            if(temp.hasOwnProperty("344")) oldParameters["lfsmo_end_point_frequency"           ] = temp["344"].s1;
+            if(temp.hasOwnProperty("348")) oldParameters["lfsmo_power_recovery_rate"           ] = temp["348"].s1;
+            if(temp.hasOwnProperty("349")) oldParameters["lfsmo_droop"                         ] = temp["349"].s1;
+            if(temp.hasOwnProperty("350")) oldParameters["lfsmo_slope"                         ] = temp["350"].s1;
+            if(temp.hasOwnProperty("401")) oldParameters["battery_type"                        ] = temp["401"].s1;
+            if(temp.hasOwnProperty("411")) oldParameters["battery_cutoff_voltage_ongrid"       ] = temp["411"].s1;
+            if(temp.hasOwnProperty("412")) oldParameters["battery_cutoff_voltage_offgrid"      ] = temp["412"].s1;
+            if(temp.hasOwnProperty("413")) oldParameters["battery_recovery_voltage_ongrid"     ] = temp["413"].s1;
+            if(temp.hasOwnProperty("414")) oldParameters["battery_recovery_voltage_offgrid"    ] = temp["414"].s1;
+            if(temp.hasOwnProperty("415")) oldParameters["battery_bulk_charge_voltage"         ] = temp["415"].s1;
+            if(temp.hasOwnProperty("416")) oldParameters["battery_float_charge_voltage"        ] = temp["416"].s1;
+            if(temp.hasOwnProperty("417")) oldParameters["battery_max_charge_current"          ] = temp["417"].s1;
+            if(temp.hasOwnProperty("418")) oldParameters["battery_max_discharge_current_ongrid"] = temp["418"].s1;
 
             console.log("newParameters"); console.log(newParameters);
             console.log("oldParameters"); console.log(oldParameters);
@@ -2210,63 +2651,72 @@ function setup_checkParameters() {
             if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]) }
             if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]) }
 
-            if(newParameters.hasOwnProperty("reactive_mode"                  ) && oldParameters.hasOwnProperty("reactive_mode"                  ) && newParameters["reactive_mode"                  ] != oldParameters["reactive_mode"                  ]) { retry = true; setup_sendCommand(24064, 202, "", newParameters["reactive_mode"                  ]); }
-            if(newParameters.hasOwnProperty("pf_mode_power_factor"           ) && oldParameters.hasOwnProperty("pf_mode_power_factor"           ) && newParameters["pf_mode_power_factor"           ] != oldParameters["pf_mode_power_factor"           ]) { retry = true; setup_sendCommand(24064, 203, "", newParameters["pf_mode_power_factor"           ]); }
-            if(newParameters.hasOwnProperty("qt_mode_reactive_power"         ) && oldParameters.hasOwnProperty("qt_mode_reactive_power"         ) && newParameters["qt_mode_reactive_power"         ] != oldParameters["qt_mode_reactive_power"         ]) { retry = true; setup_sendCommand(24064, 204, "", newParameters["qt_mode_reactive_power"         ]); }
-            if(newParameters.hasOwnProperty("overvoltage_10min_threshold"    ) && oldParameters.hasOwnProperty("overvoltage_10min_threshold"    ) && newParameters["overvoltage_10min_threshold"    ] != oldParameters["overvoltage_10min_threshold"    ]) { retry = true; setup_sendCommand(24064, 205, "", newParameters["overvoltage_10min_threshold"    ]); }
-            if(newParameters.hasOwnProperty("grid_connect_lower_voltage"     ) && oldParameters.hasOwnProperty("grid_connect_lower_voltage"     ) && newParameters["grid_connect_lower_voltage"     ] != oldParameters["grid_connect_lower_voltage"     ]) { retry = true; setup_sendCommand(24064, 211, "", newParameters["grid_connect_lower_voltage"     ]); }
-            if(newParameters.hasOwnProperty("grid_connect_upper_voltage"     ) && oldParameters.hasOwnProperty("grid_connect_upper_voltage"     ) && newParameters["grid_connect_upper_voltage"     ] != oldParameters["grid_connect_upper_voltage"     ]) { retry = true; setup_sendCommand(24064, 212, "", newParameters["grid_connect_upper_voltage"     ]); }
-            if(newParameters.hasOwnProperty("grid_connect_lower_frequency"   ) && oldParameters.hasOwnProperty("grid_connect_lower_frequency"   ) && newParameters["grid_connect_lower_frequency"   ] != oldParameters["grid_connect_lower_frequency"   ]) { retry = true; setup_sendCommand(24064, 213, "", newParameters["grid_connect_lower_frequency"   ]); }
-            if(newParameters.hasOwnProperty("grid_connect_upper_frequency"   ) && oldParameters.hasOwnProperty("grid_connect_upper_frequency"   ) && newParameters["grid_connect_upper_frequency"   ] != oldParameters["grid_connect_upper_frequency"   ]) { retry = true; setup_sendCommand(24064, 214, "", newParameters["grid_connect_upper_frequency"   ]); }
-            if(newParameters.hasOwnProperty("wait_time_before_grid_connect"  ) && oldParameters.hasOwnProperty("wait_time_before_grid_connect"  ) && newParameters["wait_time_before_grid_connect"  ] != oldParameters["wait_time_before_grid_connect"  ]) { retry = true; setup_sendCommand(24064, 215, "", newParameters["wait_time_before_grid_connect"  ]); }
-            if(newParameters.hasOwnProperty("grid_reconnect_upper_voltage"   ) && oldParameters.hasOwnProperty("grid_reconnect_upper_voltage"   ) && newParameters["grid_reconnect_upper_voltage"   ] != oldParameters["grid_reconnect_upper_voltage"   ]) { retry = true; setup_sendCommand(24064, 222, "", newParameters["grid_reconnect_upper_voltage"   ]); }
-            if(newParameters.hasOwnProperty("wait_time_before_grid_reconnect") && oldParameters.hasOwnProperty("wait_time_before_grid_reconnect") && newParameters["wait_time_before_grid_reconnect"] != oldParameters["wait_time_before_grid_reconnect"]) { retry = true; setup_sendCommand(24064, 225, "", newParameters["wait_time_before_grid_reconnect"]); }
-            if(newParameters.hasOwnProperty("stage_1_uv_threshold"           ) && oldParameters.hasOwnProperty("stage_1_uv_threshold"           ) && newParameters["stage_1_uv_threshold"           ] != oldParameters["stage_1_uv_threshold"           ]) { retry = true; setup_sendCommand(24064, 231, "", newParameters["stage_1_uv_threshold"           ]); }
-            if(newParameters.hasOwnProperty("stage_1_ov_threshold"           ) && oldParameters.hasOwnProperty("stage_1_ov_threshold"           ) && newParameters["stage_1_ov_threshold"           ] != oldParameters["stage_1_ov_threshold"           ]) { retry = true; setup_sendCommand(24064, 232, "", newParameters["stage_1_ov_threshold"           ]); }
-            if(newParameters.hasOwnProperty("stage_1_uf_threshold"           ) && oldParameters.hasOwnProperty("stage_1_uf_threshold"           ) && newParameters["stage_1_uf_threshold"           ] != oldParameters["stage_1_uf_threshold"           ]) { retry = true; setup_sendCommand(24064, 233, "", newParameters["stage_1_uf_threshold"           ]); }
-            if(newParameters.hasOwnProperty("stage_1_of_threshold"           ) && oldParameters.hasOwnProperty("stage_1_of_threshold"           ) && newParameters["stage_1_of_threshold"           ] != oldParameters["stage_1_of_threshold"           ]) { retry = true; setup_sendCommand(24064, 234, "", newParameters["stage_1_of_threshold"           ]); }
-            if(newParameters.hasOwnProperty("stage_1_uv_duration"            ) && oldParameters.hasOwnProperty("stage_1_uv_duration"            ) && newParameters["stage_1_uv_duration"            ] != oldParameters["stage_1_uv_duration"            ]) { retry = true; setup_sendCommand(24064, 235, "", newParameters["stage_1_uv_duration"            ]); }
-            if(newParameters.hasOwnProperty("stage_1_ov_duration"            ) && oldParameters.hasOwnProperty("stage_1_ov_duration"            ) && newParameters["stage_1_ov_duration"            ] != oldParameters["stage_1_ov_duration"            ]) { retry = true; setup_sendCommand(24064, 236, "", newParameters["stage_1_ov_duration"            ]); }
-            if(newParameters.hasOwnProperty("stage_1_uf_duration"            ) && oldParameters.hasOwnProperty("stage_1_uf_duration"            ) && newParameters["stage_1_uf_duration"            ] != oldParameters["stage_1_uf_duration"            ]) { retry = true; setup_sendCommand(24064, 237, "", newParameters["stage_1_uf_duration"            ]); }
-            if(newParameters.hasOwnProperty("stage_1_of_duration"            ) && oldParameters.hasOwnProperty("stage_1_of_duration"            ) && newParameters["stage_1_of_duration"            ] != oldParameters["stage_1_of_duration"            ]) { retry = true; setup_sendCommand(24064, 238, "", newParameters["stage_1_of_duration"            ]); }
-            if(newParameters.hasOwnProperty("stage_2_uv_threshold"           ) && oldParameters.hasOwnProperty("stage_2_uv_threshold"           ) && newParameters["stage_2_uv_threshold"           ] != oldParameters["stage_2_uv_threshold"           ]) { retry = true; setup_sendCommand(24064, 239, "", newParameters["stage_2_uv_threshold"           ]); }
-            if(newParameters.hasOwnProperty("stage_2_ov_threshold"           ) && oldParameters.hasOwnProperty("stage_2_ov_threshold"           ) && newParameters["stage_2_ov_threshold"           ] != oldParameters["stage_2_ov_threshold"           ]) { retry = true; setup_sendCommand(24064, 240, "", newParameters["stage_2_ov_threshold"           ]); }
-            if(newParameters.hasOwnProperty("stage_2_uv_duration"            ) && oldParameters.hasOwnProperty("stage_2_uv_duration"            ) && newParameters["stage_2_uv_duration"            ] != oldParameters["stage_2_uv_duration"            ]) { retry = true; setup_sendCommand(24064, 243, "", newParameters["stage_2_uv_duration"            ]); }
-            if(newParameters.hasOwnProperty("stage_2_ov_duration"            ) && oldParameters.hasOwnProperty("stage_2_ov_duration"            ) && newParameters["stage_2_ov_duration"            ] != oldParameters["stage_2_ov_duration"            ]) { retry = true; setup_sendCommand(24064, 244, "", newParameters["stage_2_ov_duration"            ]); }
-            if(newParameters.hasOwnProperty("qu_point_1_voltage"             ) && oldParameters.hasOwnProperty("qu_point_1_voltage"             ) && newParameters["qu_point_1_voltage"             ] != oldParameters["qu_point_1_voltage"             ]) { retry = true; setup_sendCommand(24064, 251, "", newParameters["qu_point_1_voltage"             ]); }
-            if(newParameters.hasOwnProperty("qu_point_2_voltage"             ) && oldParameters.hasOwnProperty("qu_point_2_voltage"             ) && newParameters["qu_point_2_voltage"             ] != oldParameters["qu_point_2_voltage"             ]) { retry = true; setup_sendCommand(24064, 252, "", newParameters["qu_point_2_voltage"             ]); }
-            if(newParameters.hasOwnProperty("qu_point_3_voltage"             ) && oldParameters.hasOwnProperty("qu_point_3_voltage"             ) && newParameters["qu_point_3_voltage"             ] != oldParameters["qu_point_3_voltage"             ]) { retry = true; setup_sendCommand(24064, 253, "", newParameters["qu_point_3_voltage"             ]); }
-            if(newParameters.hasOwnProperty("qu_point_4_voltage"             ) && oldParameters.hasOwnProperty("qu_point_4_voltage"             ) && newParameters["qu_point_4_voltage"             ] != oldParameters["qu_point_4_voltage"             ]) { retry = true; setup_sendCommand(24064, 254, "", newParameters["qu_point_4_voltage"             ]); }
-            if(newParameters.hasOwnProperty("qu_point_1_reactive_power"      ) && oldParameters.hasOwnProperty("qu_point_1_reactive_power"      ) && newParameters["qu_point_1_reactive_power"      ] != oldParameters["qu_point_1_reactive_power"      ]) { retry = true; setup_sendCommand(24064, 255, "", newParameters["qu_point_1_reactive_power"      ]); }
-            if(newParameters.hasOwnProperty("qu_point_4_reactive_power"      ) && oldParameters.hasOwnProperty("qu_point_4_reactive_power"      ) && newParameters["qu_point_4_reactive_power"      ] != oldParameters["qu_point_4_reactive_power"      ]) { retry = true; setup_sendCommand(24064, 258, "", newParameters["qu_point_4_reactive_power"      ]); }
-            if(newParameters.hasOwnProperty("qu_time_constant"               ) && oldParameters.hasOwnProperty("qu_time_constant"               ) && newParameters["qu_time_constant"               ] != oldParameters["qu_time_constant"               ]) { retry = true; setup_sendCommand(24064, 260, "", newParameters["qu_time_constant"               ]); }
-            if(newParameters.hasOwnProperty("qu_enter_power"                 ) && oldParameters.hasOwnProperty("qu_enter_power"                 ) && newParameters["qu_enter_power"                 ] != oldParameters["qu_enter_power"                 ]) { retry = true; setup_sendCommand(24064, 261, "", newParameters["qu_enter_power"                 ]); }
-            if(newParameters.hasOwnProperty("qu_exit_power"                  ) && oldParameters.hasOwnProperty("qu_exit_power"                  ) && newParameters["qu_exit_power"                  ] != oldParameters["qu_exit_power"                  ]) { retry = true; setup_sendCommand(24064, 262, "", newParameters["qu_exit_power"                  ]); }
-            if(newParameters.hasOwnProperty("cosfp_point_b_power"            ) && oldParameters.hasOwnProperty("cosfp_point_b_power"            ) && newParameters["cosfp_point_b_power"            ] != oldParameters["cosfp_point_b_power"            ]) { retry = true; setup_sendCommand(24064, 272, "", newParameters["cosfp_point_b_power"            ]); }
-            if(newParameters.hasOwnProperty("cosfp_enter_voltage"            ) && oldParameters.hasOwnProperty("cosfp_enter_voltage"            ) && newParameters["cosfp_enter_voltage"            ] != oldParameters["cosfp_enter_voltage"            ]) { retry = true; setup_sendCommand(24064, 277, "", newParameters["cosfp_enter_voltage"            ]); }
-            if(newParameters.hasOwnProperty("cosfp_exit_voltage"             ) && oldParameters.hasOwnProperty("cosfp_exit_voltage"             ) && newParameters["cosfp_exit_voltage"             ] != oldParameters["cosfp_exit_voltage"             ]) { retry = true; setup_sendCommand(24064, 278, "", newParameters["cosfp_exit_voltage"             ]); }
-            if(newParameters.hasOwnProperty("lvrt_switch"                    ) && oldParameters.hasOwnProperty("lvrt_switch"                    ) && newParameters["lvrt_switch"                    ] != oldParameters["lvrt_switch"                    ]) { retry = true; setup_sendCommand(24064, 291, "", newParameters["lvrt_switch"                    ]); }
-            if(newParameters.hasOwnProperty("lvrt_enter_voltage"             ) && oldParameters.hasOwnProperty("lvrt_enter_voltage"             ) && newParameters["lvrt_enter_voltage"             ] != oldParameters["lvrt_enter_voltage"             ]) { retry = true; setup_sendCommand(24064, 292, "", newParameters["lvrt_enter_voltage"             ]); }
-            if(newParameters.hasOwnProperty("lvrt_exit_voltage"              ) && oldParameters.hasOwnProperty("lvrt_exit_voltage"              ) && newParameters["lvrt_exit_voltage"              ] != oldParameters["lvrt_exit_voltage"              ]) { retry = true; setup_sendCommand(24064, 293, "", newParameters["lvrt_exit_voltage"              ]); }
-            if(newParameters.hasOwnProperty("lvrt_point_5_voltage"           ) && oldParameters.hasOwnProperty("lvrt_point_5_voltage"           ) && newParameters["lvrt_point_5_voltage"           ] != oldParameters["lvrt_point_5_voltage"           ]) { retry = true; setup_sendCommand(24064, 298, "", newParameters["lvrt_point_5_voltage"           ]); }
-            if(newParameters.hasOwnProperty("lvrt_point_1_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_1_duration"          ) && newParameters["lvrt_point_1_duration"          ] != oldParameters["lvrt_point_1_duration"          ]) { retry = true; setup_sendCommand(24064, 299, "", newParameters["lvrt_point_1_duration"          ]); }
-            if(newParameters.hasOwnProperty("lvrt_point_2_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_2_duration"          ) && newParameters["lvrt_point_2_duration"          ] != oldParameters["lvrt_point_2_duration"          ]) { retry = true; setup_sendCommand(24064, 300, "", newParameters["lvrt_point_2_duration"          ]); }
-            if(newParameters.hasOwnProperty("lvrt_point_3_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_3_duration"          ) && newParameters["lvrt_point_3_duration"          ] != oldParameters["lvrt_point_3_duration"          ]) { retry = true; setup_sendCommand(24064, 301, "", newParameters["lvrt_point_3_duration"          ]); }
-            if(newParameters.hasOwnProperty("lvrt_point_4_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_4_duration"          ) && newParameters["lvrt_point_4_duration"          ] != oldParameters["lvrt_point_4_duration"          ]) { retry = true; setup_sendCommand(24064, 302, "", newParameters["lvrt_point_4_duration"          ]); }
-            if(newParameters.hasOwnProperty("lvrt_point_5_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_5_duration"          ) && newParameters["lvrt_point_5_duration"          ] != oldParameters["lvrt_point_5_duration"          ]) { retry = true; setup_sendCommand(24064, 303, "", newParameters["lvrt_point_5_duration"          ]); }
-            if(newParameters.hasOwnProperty("hvrt_switch"                    ) && oldParameters.hasOwnProperty("hvrt_switch"                    ) && newParameters["hvrt_switch"                    ] != oldParameters["hvrt_switch"                    ]) { retry = true; setup_sendCommand(24064, 311, "", newParameters["hvrt_switch"                    ]); }
-            if(newParameters.hasOwnProperty("hvrt_enter_voltage"             ) && oldParameters.hasOwnProperty("hvrt_enter_voltage"             ) && newParameters["hvrt_enter_voltage"             ] != oldParameters["hvrt_enter_voltage"             ]) { retry = true; setup_sendCommand(24064, 312, "", newParameters["hvrt_enter_voltage"             ]); }
-            if(newParameters.hasOwnProperty("hvrt_exit_voltage"              ) && oldParameters.hasOwnProperty("hvrt_exit_voltage"              ) && newParameters["hvrt_exit_voltage"              ] != oldParameters["hvrt_exit_voltage"              ]) { retry = true; setup_sendCommand(24064, 313, "", newParameters["hvrt_exit_voltage"              ]); }
-            if(newParameters.hasOwnProperty("hvrt_point_1_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_1_voltage"           ) && newParameters["hvrt_point_1_voltage"           ] != oldParameters["hvrt_point_1_voltage"           ]) { retry = true; setup_sendCommand(24064, 314, "", newParameters["hvrt_point_1_voltage"           ]); }
-            if(newParameters.hasOwnProperty("hvrt_point_2_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_2_voltage"           ) && newParameters["hvrt_point_2_voltage"           ] != oldParameters["hvrt_point_2_voltage"           ]) { retry = true; setup_sendCommand(24064, 315, "", newParameters["hvrt_point_2_voltage"           ]); }
-            if(newParameters.hasOwnProperty("hvrt_point_3_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_3_voltage"           ) && newParameters["hvrt_point_3_voltage"           ] != oldParameters["hvrt_point_3_voltage"           ]) { retry = true; setup_sendCommand(24064, 316, "", newParameters["hvrt_point_3_voltage"           ]); }
-            if(newParameters.hasOwnProperty("hvrt_point_3_duration"          ) && oldParameters.hasOwnProperty("hvrt_point_3_duration"          ) && newParameters["hvrt_point_3_duration"          ] != oldParameters["hvrt_point_3_duration"          ]) { retry = true; setup_sendCommand(24064, 319, "", newParameters["hvrt_point_3_duration"          ]); }
-            if(newParameters.hasOwnProperty("pu_time_constant"               ) && oldParameters.hasOwnProperty("pu_time_constant"               ) && newParameters["pu_time_constant"               ] != oldParameters["pu_time_constant"               ]) { retry = true; setup_sendCommand(24064, 336, "", newParameters["pu_time_constant"               ]); }
-            if(newParameters.hasOwnProperty("lfsmo_threshold"                ) && oldParameters.hasOwnProperty("lfsmo_threshold"                ) && newParameters["lfsmo_threshold"                ] != oldParameters["lfsmo_threshold"                ]) { retry = true; setup_sendCommand(24064, 342, "", newParameters["lfsmo_threshold"                ]); }
-            if(newParameters.hasOwnProperty("lfsmo_end_point_frequency"      ) && oldParameters.hasOwnProperty("lfsmo_end_point_frequency"      ) && newParameters["lfsmo_end_point_frequency"      ] != oldParameters["lfsmo_end_point_frequency"      ]) { retry = true; setup_sendCommand(24064, 344, "", newParameters["lfsmo_end_point_frequency"      ]); }
-            if(newParameters.hasOwnProperty("lfsmo_power_recovery_rate"      ) && oldParameters.hasOwnProperty("lfsmo_power_recovery_rate"      ) && newParameters["lfsmo_power_recovery_rate"      ] != oldParameters["lfsmo_power_recovery_rate"      ]) { retry = true; setup_sendCommand(24064, 348, "", newParameters["lfsmo_power_recovery_rate"      ]); }
-            if(newParameters.hasOwnProperty("lfsmo_droop"                    ) && oldParameters.hasOwnProperty("lfsmo_droop"                    ) && newParameters["lfsmo_droop"                    ] != oldParameters["lfsmo_droop"                    ]) { retry = true; setup_sendCommand(24064, 349, "", newParameters["lfsmo_droop"                    ]); }
-            if(newParameters.hasOwnProperty("battery_type"                   ) && oldParameters.hasOwnProperty("battery_type"                   ) && newParameters["battery_type"                   ] != oldParameters["battery_type"                   ]) { retry = true; setup_sendCommand(24064, 401, "", newParameters["battery_type"                   ]); }
+            if(newParameters.hasOwnProperty("reactive_mode"                       ) && oldParameters.hasOwnProperty("reactive_mode"                       ) && newParameters["reactive_mode"                       ] != oldParameters["reactive_mode"                       ]) { retry = true; setup_sendCommand(24064, 202, "", newParameters["reactive_mode"                       ]); }
+            if(newParameters.hasOwnProperty("pf_mode_power_factor"                ) && oldParameters.hasOwnProperty("pf_mode_power_factor"                ) && newParameters["pf_mode_power_factor"                ] != oldParameters["pf_mode_power_factor"                ]) { retry = true; setup_sendCommand(24064, 203, "", newParameters["pf_mode_power_factor"                ]); }
+            if(newParameters.hasOwnProperty("qt_mode_reactive_power"              ) && oldParameters.hasOwnProperty("qt_mode_reactive_power"              ) && newParameters["qt_mode_reactive_power"              ] != oldParameters["qt_mode_reactive_power"              ]) { retry = true; setup_sendCommand(24064, 204, "", newParameters["qt_mode_reactive_power"              ]); }
+            if(newParameters.hasOwnProperty("overvoltage_10min_threshold"         ) && oldParameters.hasOwnProperty("overvoltage_10min_threshold"         ) && newParameters["overvoltage_10min_threshold"         ] != oldParameters["overvoltage_10min_threshold"         ]) { retry = true; setup_sendCommand(24064, 205, "", newParameters["overvoltage_10min_threshold"         ]); }
+            if(newParameters.hasOwnProperty("grid_connect_lower_voltage"          ) && oldParameters.hasOwnProperty("grid_connect_lower_voltage"          ) && newParameters["grid_connect_lower_voltage"          ] != oldParameters["grid_connect_lower_voltage"          ]) { retry = true; setup_sendCommand(24064, 211, "", newParameters["grid_connect_lower_voltage"          ]); }
+            if(newParameters.hasOwnProperty("grid_connect_upper_voltage"          ) && oldParameters.hasOwnProperty("grid_connect_upper_voltage"          ) && newParameters["grid_connect_upper_voltage"          ] != oldParameters["grid_connect_upper_voltage"          ]) { retry = true; setup_sendCommand(24064, 212, "", newParameters["grid_connect_upper_voltage"          ]); }
+            if(newParameters.hasOwnProperty("grid_connect_lower_frequency"        ) && oldParameters.hasOwnProperty("grid_connect_lower_frequency"        ) && newParameters["grid_connect_lower_frequency"        ] != oldParameters["grid_connect_lower_frequency"        ]) { retry = true; setup_sendCommand(24064, 213, "", newParameters["grid_connect_lower_frequency"        ]); }
+            if(newParameters.hasOwnProperty("grid_connect_upper_frequency"        ) && oldParameters.hasOwnProperty("grid_connect_upper_frequency"        ) && newParameters["grid_connect_upper_frequency"        ] != oldParameters["grid_connect_upper_frequency"        ]) { retry = true; setup_sendCommand(24064, 214, "", newParameters["grid_connect_upper_frequency"        ]); }
+            if(newParameters.hasOwnProperty("wait_time_before_grid_connect"       ) && oldParameters.hasOwnProperty("wait_time_before_grid_connect"       ) && newParameters["wait_time_before_grid_connect"       ] != oldParameters["wait_time_before_grid_connect"       ]) { retry = true; setup_sendCommand(24064, 215, "", newParameters["wait_time_before_grid_connect"       ]); }
+            if(newParameters.hasOwnProperty("grid_reconnect_upper_voltage"        ) && oldParameters.hasOwnProperty("grid_reconnect_upper_voltage"        ) && newParameters["grid_reconnect_upper_voltage"        ] != oldParameters["grid_reconnect_upper_voltage"        ]) { retry = true; setup_sendCommand(24064, 222, "", newParameters["grid_reconnect_upper_voltage"        ]); }
+            if(newParameters.hasOwnProperty("wait_time_before_grid_reconnect"     ) && oldParameters.hasOwnProperty("wait_time_before_grid_reconnect"     ) && newParameters["wait_time_before_grid_reconnect"     ] != oldParameters["wait_time_before_grid_reconnect"     ]) { retry = true; setup_sendCommand(24064, 225, "", newParameters["wait_time_before_grid_reconnect"     ]); }
+            if(newParameters.hasOwnProperty("stage_1_uv_threshold"                ) && oldParameters.hasOwnProperty("stage_1_uv_threshold"                ) && newParameters["stage_1_uv_threshold"                ] != oldParameters["stage_1_uv_threshold"                ]) { retry = true; setup_sendCommand(24064, 231, "", newParameters["stage_1_uv_threshold"                ]); }
+            if(newParameters.hasOwnProperty("stage_1_ov_threshold"                ) && oldParameters.hasOwnProperty("stage_1_ov_threshold"                ) && newParameters["stage_1_ov_threshold"                ] != oldParameters["stage_1_ov_threshold"                ]) { retry = true; setup_sendCommand(24064, 232, "", newParameters["stage_1_ov_threshold"                ]); }
+            if(newParameters.hasOwnProperty("stage_1_uf_threshold"                ) && oldParameters.hasOwnProperty("stage_1_uf_threshold"                ) && newParameters["stage_1_uf_threshold"                ] != oldParameters["stage_1_uf_threshold"                ]) { retry = true; setup_sendCommand(24064, 233, "", newParameters["stage_1_uf_threshold"                ]); }
+            if(newParameters.hasOwnProperty("stage_1_of_threshold"                ) && oldParameters.hasOwnProperty("stage_1_of_threshold"                ) && newParameters["stage_1_of_threshold"                ] != oldParameters["stage_1_of_threshold"                ]) { retry = true; setup_sendCommand(24064, 234, "", newParameters["stage_1_of_threshold"                ]); }
+            if(newParameters.hasOwnProperty("stage_1_uv_duration"                 ) && oldParameters.hasOwnProperty("stage_1_uv_duration"                 ) && newParameters["stage_1_uv_duration"                 ] != oldParameters["stage_1_uv_duration"                 ]) { retry = true; setup_sendCommand(24064, 235, "", newParameters["stage_1_uv_duration"                 ]); }
+            if(newParameters.hasOwnProperty("stage_1_ov_duration"                 ) && oldParameters.hasOwnProperty("stage_1_ov_duration"                 ) && newParameters["stage_1_ov_duration"                 ] != oldParameters["stage_1_ov_duration"                 ]) { retry = true; setup_sendCommand(24064, 236, "", newParameters["stage_1_ov_duration"                 ]); }
+            if(newParameters.hasOwnProperty("stage_1_uf_duration"                 ) && oldParameters.hasOwnProperty("stage_1_uf_duration"                 ) && newParameters["stage_1_uf_duration"                 ] != oldParameters["stage_1_uf_duration"                 ]) { retry = true; setup_sendCommand(24064, 237, "", newParameters["stage_1_uf_duration"                 ]); }
+            if(newParameters.hasOwnProperty("stage_1_of_duration"                 ) && oldParameters.hasOwnProperty("stage_1_of_duration"                 ) && newParameters["stage_1_of_duration"                 ] != oldParameters["stage_1_of_duration"                 ]) { retry = true; setup_sendCommand(24064, 238, "", newParameters["stage_1_of_duration"                 ]); }
+            if(newParameters.hasOwnProperty("stage_2_uv_threshold"                ) && oldParameters.hasOwnProperty("stage_2_uv_threshold"                ) && newParameters["stage_2_uv_threshold"                ] != oldParameters["stage_2_uv_threshold"                ]) { retry = true; setup_sendCommand(24064, 239, "", newParameters["stage_2_uv_threshold"                ]); }
+            if(newParameters.hasOwnProperty("stage_2_ov_threshold"                ) && oldParameters.hasOwnProperty("stage_2_ov_threshold"                ) && newParameters["stage_2_ov_threshold"                ] != oldParameters["stage_2_ov_threshold"                ]) { retry = true; setup_sendCommand(24064, 240, "", newParameters["stage_2_ov_threshold"                ]); }
+            if(newParameters.hasOwnProperty("stage_2_uv_duration"                 ) && oldParameters.hasOwnProperty("stage_2_uv_duration"                 ) && newParameters["stage_2_uv_duration"                 ] != oldParameters["stage_2_uv_duration"                 ]) { retry = true; setup_sendCommand(24064, 243, "", newParameters["stage_2_uv_duration"                 ]); }
+            if(newParameters.hasOwnProperty("stage_2_ov_duration"                 ) && oldParameters.hasOwnProperty("stage_2_ov_duration"                 ) && newParameters["stage_2_ov_duration"                 ] != oldParameters["stage_2_ov_duration"                 ]) { retry = true; setup_sendCommand(24064, 244, "", newParameters["stage_2_ov_duration"                 ]); }
+            if(newParameters.hasOwnProperty("qu_point_1_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_1_voltage"                  ) && newParameters["qu_point_1_voltage"                  ] != oldParameters["qu_point_1_voltage"                  ]) { retry = true; setup_sendCommand(24064, 251, "", newParameters["qu_point_1_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("qu_point_2_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_2_voltage"                  ) && newParameters["qu_point_2_voltage"                  ] != oldParameters["qu_point_2_voltage"                  ]) { retry = true; setup_sendCommand(24064, 252, "", newParameters["qu_point_2_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("qu_point_3_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_3_voltage"                  ) && newParameters["qu_point_3_voltage"                  ] != oldParameters["qu_point_3_voltage"                  ]) { retry = true; setup_sendCommand(24064, 253, "", newParameters["qu_point_3_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("qu_point_4_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_4_voltage"                  ) && newParameters["qu_point_4_voltage"                  ] != oldParameters["qu_point_4_voltage"                  ]) { retry = true; setup_sendCommand(24064, 254, "", newParameters["qu_point_4_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("qu_point_1_reactive_power"           ) && oldParameters.hasOwnProperty("qu_point_1_reactive_power"           ) && newParameters["qu_point_1_reactive_power"           ] != oldParameters["qu_point_1_reactive_power"           ]) { retry = true; setup_sendCommand(24064, 255, "", newParameters["qu_point_1_reactive_power"           ]); }
+            if(newParameters.hasOwnProperty("qu_point_4_reactive_power"           ) && oldParameters.hasOwnProperty("qu_point_4_reactive_power"           ) && newParameters["qu_point_4_reactive_power"           ] != oldParameters["qu_point_4_reactive_power"           ]) { retry = true; setup_sendCommand(24064, 258, "", newParameters["qu_point_4_reactive_power"           ]); }
+            if(newParameters.hasOwnProperty("qu_time_constant"                    ) && oldParameters.hasOwnProperty("qu_time_constant"                    ) && newParameters["qu_time_constant"                    ] != oldParameters["qu_time_constant"                    ]) { retry = true; setup_sendCommand(24064, 260, "", newParameters["qu_time_constant"                    ]); }
+            if(newParameters.hasOwnProperty("qu_enter_power"                      ) && oldParameters.hasOwnProperty("qu_enter_power"                      ) && newParameters["qu_enter_power"                      ] != oldParameters["qu_enter_power"                      ]) { retry = true; setup_sendCommand(24064, 261, "", newParameters["qu_enter_power"                      ]); }
+            if(newParameters.hasOwnProperty("qu_exit_power"                       ) && oldParameters.hasOwnProperty("qu_exit_power"                       ) && newParameters["qu_exit_power"                       ] != oldParameters["qu_exit_power"                       ]) { retry = true; setup_sendCommand(24064, 262, "", newParameters["qu_exit_power"                       ]); }
+            if(newParameters.hasOwnProperty("cosfp_point_b_power"                 ) && oldParameters.hasOwnProperty("cosfp_point_b_power"                 ) && newParameters["cosfp_point_b_power"                 ] != oldParameters["cosfp_point_b_power"                 ]) { retry = true; setup_sendCommand(24064, 272, "", newParameters["cosfp_point_b_power"                 ]); }
+            if(newParameters.hasOwnProperty("cosfp_enter_voltage"                 ) && oldParameters.hasOwnProperty("cosfp_enter_voltage"                 ) && newParameters["cosfp_enter_voltage"                 ] != oldParameters["cosfp_enter_voltage"                 ]) { retry = true; setup_sendCommand(24064, 277, "", newParameters["cosfp_enter_voltage"                 ]); }
+            if(newParameters.hasOwnProperty("cosfp_exit_voltage"                  ) && oldParameters.hasOwnProperty("cosfp_exit_voltage"                  ) && newParameters["cosfp_exit_voltage"                  ] != oldParameters["cosfp_exit_voltage"                  ]) { retry = true; setup_sendCommand(24064, 278, "", newParameters["cosfp_exit_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("lvrt_switch"                         ) && oldParameters.hasOwnProperty("lvrt_switch"                         ) && newParameters["lvrt_switch"                         ] != oldParameters["lvrt_switch"                         ]) { retry = true; setup_sendCommand(24064, 291, "", newParameters["lvrt_switch"                         ]); }
+            if(newParameters.hasOwnProperty("lvrt_enter_voltage"                  ) && oldParameters.hasOwnProperty("lvrt_enter_voltage"                  ) && newParameters["lvrt_enter_voltage"                  ] != oldParameters["lvrt_enter_voltage"                  ]) { retry = true; setup_sendCommand(24064, 292, "", newParameters["lvrt_enter_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("lvrt_exit_voltage"                   ) && oldParameters.hasOwnProperty("lvrt_exit_voltage"                   ) && newParameters["lvrt_exit_voltage"                   ] != oldParameters["lvrt_exit_voltage"                   ]) { retry = true; setup_sendCommand(24064, 293, "", newParameters["lvrt_exit_voltage"                   ]); }
+            if(newParameters.hasOwnProperty("lvrt_point_5_voltage"                ) && oldParameters.hasOwnProperty("lvrt_point_5_voltage"                ) && newParameters["lvrt_point_5_voltage"                ] != oldParameters["lvrt_point_5_voltage"                ]) { retry = true; setup_sendCommand(24064, 298, "", newParameters["lvrt_point_5_voltage"                ]); }
+            if(newParameters.hasOwnProperty("lvrt_point_1_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_1_duration"               ) && newParameters["lvrt_point_1_duration"               ] != oldParameters["lvrt_point_1_duration"               ]) { retry = true; setup_sendCommand(24064, 299, "", newParameters["lvrt_point_1_duration"               ]); }
+            if(newParameters.hasOwnProperty("lvrt_point_2_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_2_duration"               ) && newParameters["lvrt_point_2_duration"               ] != oldParameters["lvrt_point_2_duration"               ]) { retry = true; setup_sendCommand(24064, 300, "", newParameters["lvrt_point_2_duration"               ]); }
+            if(newParameters.hasOwnProperty("lvrt_point_3_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_3_duration"               ) && newParameters["lvrt_point_3_duration"               ] != oldParameters["lvrt_point_3_duration"               ]) { retry = true; setup_sendCommand(24064, 301, "", newParameters["lvrt_point_3_duration"               ]); }
+            if(newParameters.hasOwnProperty("lvrt_point_4_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_4_duration"               ) && newParameters["lvrt_point_4_duration"               ] != oldParameters["lvrt_point_4_duration"               ]) { retry = true; setup_sendCommand(24064, 302, "", newParameters["lvrt_point_4_duration"               ]); }
+            if(newParameters.hasOwnProperty("lvrt_point_5_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_5_duration"               ) && newParameters["lvrt_point_5_duration"               ] != oldParameters["lvrt_point_5_duration"               ]) { retry = true; setup_sendCommand(24064, 303, "", newParameters["lvrt_point_5_duration"               ]); }
+            if(newParameters.hasOwnProperty("hvrt_switch"                         ) && oldParameters.hasOwnProperty("hvrt_switch"                         ) && newParameters["hvrt_switch"                         ] != oldParameters["hvrt_switch"                         ]) { retry = true; setup_sendCommand(24064, 311, "", newParameters["hvrt_switch"                         ]); }
+            if(newParameters.hasOwnProperty("hvrt_enter_voltage"                  ) && oldParameters.hasOwnProperty("hvrt_enter_voltage"                  ) && newParameters["hvrt_enter_voltage"                  ] != oldParameters["hvrt_enter_voltage"                  ]) { retry = true; setup_sendCommand(24064, 312, "", newParameters["hvrt_enter_voltage"                  ]); }
+            if(newParameters.hasOwnProperty("hvrt_exit_voltage"                   ) && oldParameters.hasOwnProperty("hvrt_exit_voltage"                   ) && newParameters["hvrt_exit_voltage"                   ] != oldParameters["hvrt_exit_voltage"                   ]) { retry = true; setup_sendCommand(24064, 313, "", newParameters["hvrt_exit_voltage"                   ]); }
+            if(newParameters.hasOwnProperty("hvrt_point_1_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_1_voltage"                ) && newParameters["hvrt_point_1_voltage"                ] != oldParameters["hvrt_point_1_voltage"                ]) { retry = true; setup_sendCommand(24064, 314, "", newParameters["hvrt_point_1_voltage"                ]); }
+            if(newParameters.hasOwnProperty("hvrt_point_2_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_2_voltage"                ) && newParameters["hvrt_point_2_voltage"                ] != oldParameters["hvrt_point_2_voltage"                ]) { retry = true; setup_sendCommand(24064, 315, "", newParameters["hvrt_point_2_voltage"                ]); }
+            if(newParameters.hasOwnProperty("hvrt_point_3_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_3_voltage"                ) && newParameters["hvrt_point_3_voltage"                ] != oldParameters["hvrt_point_3_voltage"                ]) { retry = true; setup_sendCommand(24064, 316, "", newParameters["hvrt_point_3_voltage"                ]); }
+            if(newParameters.hasOwnProperty("hvrt_point_3_duration"               ) && oldParameters.hasOwnProperty("hvrt_point_3_duration"               ) && newParameters["hvrt_point_3_duration"               ] != oldParameters["hvrt_point_3_duration"               ]) { retry = true; setup_sendCommand(24064, 319, "", newParameters["hvrt_point_3_duration"               ]); }
+            if(newParameters.hasOwnProperty("pu_time_constant"                    ) && oldParameters.hasOwnProperty("pu_time_constant"                    ) && newParameters["pu_time_constant"                    ] != oldParameters["pu_time_constant"                    ]) { retry = true; setup_sendCommand(24064, 336, "", newParameters["pu_time_constant"                    ]); }
+            if(newParameters.hasOwnProperty("lfsmo_threshold"                     ) && oldParameters.hasOwnProperty("lfsmo_threshold"                     ) && newParameters["lfsmo_threshold"                     ] != oldParameters["lfsmo_threshold"                     ]) { retry = true; setup_sendCommand(24064, 342, "", newParameters["lfsmo_threshold"                     ]); }
+            if(newParameters.hasOwnProperty("lfsmo_end_point_frequency"           ) && oldParameters.hasOwnProperty("lfsmo_end_point_frequency"           ) && newParameters["lfsmo_end_point_frequency"           ] != oldParameters["lfsmo_end_point_frequency"           ]) { retry = true; setup_sendCommand(24064, 344, "", newParameters["lfsmo_end_point_frequency"           ]); }
+            if(newParameters.hasOwnProperty("lfsmo_power_recovery_rate"           ) && oldParameters.hasOwnProperty("lfsmo_power_recovery_rate"           ) && newParameters["lfsmo_power_recovery_rate"           ] != oldParameters["lfsmo_power_recovery_rate"           ]) { retry = true; setup_sendCommand(24064, 348, "", newParameters["lfsmo_power_recovery_rate"           ]); }
+            if(newParameters.hasOwnProperty("lfsmo_droop"                         ) && oldParameters.hasOwnProperty("lfsmo_droop"                         ) && newParameters["lfsmo_droop"                         ] != oldParameters["lfsmo_droop"                         ]) { retry = true; setup_sendCommand(24064, 349, "", newParameters["lfsmo_droop"                         ]); }
+            if(newParameters.hasOwnProperty("lfsmo_slope"                         ) && oldParameters.hasOwnProperty("lfsmo_slope"                         ) && newParameters["lfsmo_slope"                         ] != oldParameters["lfsmo_slope"                         ]) { retry = true; setup_sendCommand(24064, 350, "", newParameters["lfsmo_slope"                         ]); }
+            if(newParameters.hasOwnProperty("battery_type"                        ) && oldParameters.hasOwnProperty("battery_type"                        ) && newParameters["battery_type"                        ] != oldParameters["battery_type"                        ]) { retry = true; setup_sendCommand(24064, 401, "", newParameters["battery_type"                        ]); }
+            if(newParameters.hasOwnProperty("battery_cutoff_voltage_ongrid"       ) && oldParameters.hasOwnProperty("battery_cutoff_voltage_ongrid"       ) && newParameters["battery_cutoff_voltage_ongrid"       ] != oldParameters["battery_cutoff_voltage_ongrid"       ]) { retry = true; setup_sendCommand(24064, 411, "", newParameters["battery_cutoff_voltage_ongrid"       ]); }
+            if(newParameters.hasOwnProperty("battery_cutoff_voltage_offgrid"      ) && oldParameters.hasOwnProperty("battery_cutoff_voltage_offgrid"      ) && newParameters["battery_cutoff_voltage_offgrid"      ] != oldParameters["battery_cutoff_voltage_offgrid"      ]) { retry = true; setup_sendCommand(24064, 412, "", newParameters["battery_cutoff_voltage_offgrid"      ]); }
+            if(newParameters.hasOwnProperty("battery_recovery_voltage_ongrid"     ) && oldParameters.hasOwnProperty("battery_recovery_voltage_ongrid"     ) && newParameters["battery_recovery_voltage_ongrid"     ] != oldParameters["battery_recovery_voltage_ongrid"     ]) { retry = true; setup_sendCommand(24064, 413, "", newParameters["battery_recovery_voltage_ongrid"     ]); }
+            if(newParameters.hasOwnProperty("battery_recovery_voltage_offgrid"    ) && oldParameters.hasOwnProperty("battery_recovery_voltage_offgrid"    ) && newParameters["battery_recovery_voltage_offgrid"    ] != oldParameters["battery_recovery_voltage_offgrid"    ]) { retry = true; setup_sendCommand(24064, 414, "", newParameters["battery_recovery_voltage_offgrid"    ]); }
+            if(newParameters.hasOwnProperty("battery_bulk_charge_voltage"         ) && oldParameters.hasOwnProperty("battery_bulk_charge_voltage"         ) && newParameters["battery_bulk_charge_voltage"         ] != oldParameters["battery_bulk_charge_voltage"         ]) { retry = true; setup_sendCommand(24064, 415, "", newParameters["battery_bulk_charge_voltage"         ]); }
+            if(newParameters.hasOwnProperty("battery_float_charge_voltage"        ) && oldParameters.hasOwnProperty("battery_float_charge_voltage"        ) && newParameters["battery_float_charge_voltage"        ] != oldParameters["battery_float_charge_voltage"        ]) { retry = true; setup_sendCommand(24064, 416, "", newParameters["battery_float_charge_voltage"        ]); }
+            if(newParameters.hasOwnProperty("battery_max_charge_current"          ) && oldParameters.hasOwnProperty("battery_max_charge_current"          ) && newParameters["battery_max_charge_current"          ] != oldParameters["battery_max_charge_current"          ]) { retry = true; setup_sendCommand(24064, 417, "", newParameters["battery_max_charge_current"          ]); }
+            if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) { retry = true; setup_sendCommand(24064, 418, "", newParameters["battery_max_discharge_current_ongrid"]); }
 
             if(!retry) {
                 $(".setting-progress span").html(lang.system_setup.msg_setting_success).css("color", "#28a745");
@@ -2298,63 +2748,72 @@ function setup_checkParameters() {
                     else if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) showSettingParametersError("Problem when setting prepareBatteryExtension");
                     else if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) showSettingParametersError("Problem when setting cloudSet"               );
 
-                    else if(newParameters.hasOwnProperty("reactive_mode"                  ) && oldParameters.hasOwnProperty("reactive_mode"                  ) && newParameters["reactive_mode"                  ] != oldParameters["reactive_mode"                  ]) showSettingParametersError("Problem when setting reactive_mode"                  );
-                    else if(newParameters.hasOwnProperty("pf_mode_power_factor"           ) && oldParameters.hasOwnProperty("pf_mode_power_factor"           ) && newParameters["pf_mode_power_factor"           ] != oldParameters["pf_mode_power_factor"           ]) showSettingParametersError("Problem when setting pf_mode_power_factor"           );
-                    else if(newParameters.hasOwnProperty("qt_mode_reactive_power"         ) && oldParameters.hasOwnProperty("qt_mode_reactive_power"         ) && newParameters["qt_mode_reactive_power"         ] != oldParameters["qt_mode_reactive_power"         ]) showSettingParametersError("Problem when setting qt_mode_reactive_power"         );
-                    else if(newParameters.hasOwnProperty("overvoltage_10min_threshold"    ) && oldParameters.hasOwnProperty("overvoltage_10min_threshold"    ) && newParameters["overvoltage_10min_threshold"    ] != oldParameters["overvoltage_10min_threshold"    ]) showSettingParametersError("Problem when setting overvoltage_10min_threshold"    );
-                    else if(newParameters.hasOwnProperty("grid_connect_lower_voltage"     ) && oldParameters.hasOwnProperty("grid_connect_lower_voltage"     ) && newParameters["grid_connect_lower_voltage"     ] != oldParameters["grid_connect_lower_voltage"     ]) showSettingParametersError("Problem when setting grid_connect_lower_voltage"     );
-                    else if(newParameters.hasOwnProperty("grid_connect_upper_voltage"     ) && oldParameters.hasOwnProperty("grid_connect_upper_voltage"     ) && newParameters["grid_connect_upper_voltage"     ] != oldParameters["grid_connect_upper_voltage"     ]) showSettingParametersError("Problem when setting grid_connect_upper_voltage"     );
-                    else if(newParameters.hasOwnProperty("grid_connect_lower_frequency"   ) && oldParameters.hasOwnProperty("grid_connect_lower_frequency"   ) && newParameters["grid_connect_lower_frequency"   ] != oldParameters["grid_connect_lower_frequency"   ]) showSettingParametersError("Problem when setting grid_connect_lower_frequency"   );
-                    else if(newParameters.hasOwnProperty("grid_connect_upper_frequency"   ) && oldParameters.hasOwnProperty("grid_connect_upper_frequency"   ) && newParameters["grid_connect_upper_frequency"   ] != oldParameters["grid_connect_upper_frequency"   ]) showSettingParametersError("Problem when setting grid_connect_upper_frequency"   );
-                    else if(newParameters.hasOwnProperty("wait_time_before_grid_connect"  ) && oldParameters.hasOwnProperty("wait_time_before_grid_connect"  ) && newParameters["wait_time_before_grid_connect"  ] != oldParameters["wait_time_before_grid_connect"  ]) showSettingParametersError("Problem when setting wait_time_before_grid_connect"  );
-                    else if(newParameters.hasOwnProperty("grid_reconnect_upper_voltage"   ) && oldParameters.hasOwnProperty("grid_reconnect_upper_voltage"   ) && newParameters["grid_reconnect_upper_voltage"   ] != oldParameters["grid_reconnect_upper_voltage"   ]) showSettingParametersError("Problem when setting grid_reconnect_upper_voltage"   );
-                    else if(newParameters.hasOwnProperty("wait_time_before_grid_reconnect") && oldParameters.hasOwnProperty("wait_time_before_grid_reconnect") && newParameters["wait_time_before_grid_reconnect"] != oldParameters["wait_time_before_grid_reconnect"]) showSettingParametersError("Problem when setting wait_time_before_grid_reconnect");
-                    else if(newParameters.hasOwnProperty("stage_1_uv_threshold"           ) && oldParameters.hasOwnProperty("stage_1_uv_threshold"           ) && newParameters["stage_1_uv_threshold"           ] != oldParameters["stage_1_uv_threshold"           ]) showSettingParametersError("Problem when setting stage_1_uv_threshold"           );
-                    else if(newParameters.hasOwnProperty("stage_1_ov_threshold"           ) && oldParameters.hasOwnProperty("stage_1_ov_threshold"           ) && newParameters["stage_1_ov_threshold"           ] != oldParameters["stage_1_ov_threshold"           ]) showSettingParametersError("Problem when setting stage_1_ov_threshold"           );
-                    else if(newParameters.hasOwnProperty("stage_1_uf_threshold"           ) && oldParameters.hasOwnProperty("stage_1_uf_threshold"           ) && newParameters["stage_1_uf_threshold"           ] != oldParameters["stage_1_uf_threshold"           ]) showSettingParametersError("Problem when setting stage_1_uf_threshold"           );
-                    else if(newParameters.hasOwnProperty("stage_1_of_threshold"           ) && oldParameters.hasOwnProperty("stage_1_of_threshold"           ) && newParameters["stage_1_of_threshold"           ] != oldParameters["stage_1_of_threshold"           ]) showSettingParametersError("Problem when setting stage_1_of_threshold"           );
-                    else if(newParameters.hasOwnProperty("stage_1_uv_duration"            ) && oldParameters.hasOwnProperty("stage_1_uv_duration"            ) && newParameters["stage_1_uv_duration"            ] != oldParameters["stage_1_uv_duration"            ]) showSettingParametersError("Problem when setting stage_1_uv_duration"            );
-                    else if(newParameters.hasOwnProperty("stage_1_ov_duration"            ) && oldParameters.hasOwnProperty("stage_1_ov_duration"            ) && newParameters["stage_1_ov_duration"            ] != oldParameters["stage_1_ov_duration"            ]) showSettingParametersError("Problem when setting stage_1_ov_duration"            );
-                    else if(newParameters.hasOwnProperty("stage_1_uf_duration"            ) && oldParameters.hasOwnProperty("stage_1_uf_duration"            ) && newParameters["stage_1_uf_duration"            ] != oldParameters["stage_1_uf_duration"            ]) showSettingParametersError("Problem when setting stage_1_uf_duration"            );
-                    else if(newParameters.hasOwnProperty("stage_1_of_duration"            ) && oldParameters.hasOwnProperty("stage_1_of_duration"            ) && newParameters["stage_1_of_duration"            ] != oldParameters["stage_1_of_duration"            ]) showSettingParametersError("Problem when setting stage_1_of_duration"            );
-                    else if(newParameters.hasOwnProperty("stage_2_uv_threshold"           ) && oldParameters.hasOwnProperty("stage_2_uv_threshold"           ) && newParameters["stage_2_uv_threshold"           ] != oldParameters["stage_2_uv_threshold"           ]) showSettingParametersError("Problem when setting stage_2_uv_threshold"           );
-                    else if(newParameters.hasOwnProperty("stage_2_ov_threshold"           ) && oldParameters.hasOwnProperty("stage_2_ov_threshold"           ) && newParameters["stage_2_ov_threshold"           ] != oldParameters["stage_2_ov_threshold"           ]) showSettingParametersError("Problem when setting stage_2_ov_threshold"           );
-                    else if(newParameters.hasOwnProperty("stage_2_uv_duration"            ) && oldParameters.hasOwnProperty("stage_2_uv_duration"            ) && newParameters["stage_2_uv_duration"            ] != oldParameters["stage_2_uv_duration"            ]) showSettingParametersError("Problem when setting stage_2_uv_duration"            );
-                    else if(newParameters.hasOwnProperty("stage_2_ov_duration"            ) && oldParameters.hasOwnProperty("stage_2_ov_duration"            ) && newParameters["stage_2_ov_duration"            ] != oldParameters["stage_2_ov_duration"            ]) showSettingParametersError("Problem when setting stage_2_ov_duration"            );
-                    else if(newParameters.hasOwnProperty("qu_point_1_voltage"             ) && oldParameters.hasOwnProperty("qu_point_1_voltage"             ) && newParameters["qu_point_1_voltage"             ] != oldParameters["qu_point_1_voltage"             ]) showSettingParametersError("Problem when setting qu_point_1_voltage"             );
-                    else if(newParameters.hasOwnProperty("qu_point_2_voltage"             ) && oldParameters.hasOwnProperty("qu_point_2_voltage"             ) && newParameters["qu_point_2_voltage"             ] != oldParameters["qu_point_2_voltage"             ]) showSettingParametersError("Problem when setting qu_point_2_voltage"             );
-                    else if(newParameters.hasOwnProperty("qu_point_3_voltage"             ) && oldParameters.hasOwnProperty("qu_point_3_voltage"             ) && newParameters["qu_point_3_voltage"             ] != oldParameters["qu_point_3_voltage"             ]) showSettingParametersError("Problem when setting qu_point_3_voltage"             );
-                    else if(newParameters.hasOwnProperty("qu_point_4_voltage"             ) && oldParameters.hasOwnProperty("qu_point_4_voltage"             ) && newParameters["qu_point_4_voltage"             ] != oldParameters["qu_point_4_voltage"             ]) showSettingParametersError("Problem when setting qu_point_4_voltage"             );
-                    else if(newParameters.hasOwnProperty("qu_point_1_reactive_power"      ) && oldParameters.hasOwnProperty("qu_point_1_reactive_power"      ) && newParameters["qu_point_1_reactive_power"      ] != oldParameters["qu_point_1_reactive_power"      ]) showSettingParametersError("Problem when setting qu_point_1_reactive_power"      );
-                    else if(newParameters.hasOwnProperty("qu_point_4_reactive_power"      ) && oldParameters.hasOwnProperty("qu_point_4_reactive_power"      ) && newParameters["qu_point_4_reactive_power"      ] != oldParameters["qu_point_4_reactive_power"      ]) showSettingParametersError("Problem when setting qu_point_4_reactive_power"      );
-                    else if(newParameters.hasOwnProperty("qu_time_constant"               ) && oldParameters.hasOwnProperty("qu_time_constant"               ) && newParameters["qu_time_constant"               ] != oldParameters["qu_time_constant"               ]) showSettingParametersError("Problem when setting qu_time_constant"               );
-                    else if(newParameters.hasOwnProperty("qu_enter_power"                 ) && oldParameters.hasOwnProperty("qu_enter_power"                 ) && newParameters["qu_enter_power"                 ] != oldParameters["qu_enter_power"                 ]) showSettingParametersError("Problem when setting qu_enter_power"                 );
-                    else if(newParameters.hasOwnProperty("qu_exit_power"                  ) && oldParameters.hasOwnProperty("qu_exit_power"                  ) && newParameters["qu_exit_power"                  ] != oldParameters["qu_exit_power"                  ]) showSettingParametersError("Problem when setting qu_exit_power"                  );
-                    else if(newParameters.hasOwnProperty("cosfp_point_b_power"            ) && oldParameters.hasOwnProperty("cosfp_point_b_power"            ) && newParameters["cosfp_point_b_power"            ] != oldParameters["cosfp_point_b_power"            ]) showSettingParametersError("Problem when setting cosfp_point_b_power"            );
-                    else if(newParameters.hasOwnProperty("cosfp_enter_voltage"            ) && oldParameters.hasOwnProperty("cosfp_enter_voltage"            ) && newParameters["cosfp_enter_voltage"            ] != oldParameters["cosfp_enter_voltage"            ]) showSettingParametersError("Problem when setting cosfp_enter_voltage"            );
-                    else if(newParameters.hasOwnProperty("cosfp_exit_voltage"             ) && oldParameters.hasOwnProperty("cosfp_exit_voltage"             ) && newParameters["cosfp_exit_voltage"             ] != oldParameters["cosfp_exit_voltage"             ]) showSettingParametersError("Problem when setting cosfp_exit_voltage"             );
-                    else if(newParameters.hasOwnProperty("lvrt_switch"                    ) && oldParameters.hasOwnProperty("lvrt_switch"                    ) && newParameters["lvrt_switch"                    ] != oldParameters["lvrt_switch"                    ]) showSettingParametersError("Problem when setting lvrt_switch"                    );
-                    else if(newParameters.hasOwnProperty("lvrt_enter_voltage"             ) && oldParameters.hasOwnProperty("lvrt_enter_voltage"             ) && newParameters["lvrt_enter_voltage"             ] != oldParameters["lvrt_enter_voltage"             ]) showSettingParametersError("Problem when setting lvrt_enter_voltage"             );
-                    else if(newParameters.hasOwnProperty("lvrt_exit_voltage"              ) && oldParameters.hasOwnProperty("lvrt_exit_voltage"              ) && newParameters["lvrt_exit_voltage"              ] != oldParameters["lvrt_exit_voltage"              ]) showSettingParametersError("Problem when setting lvrt_exit_voltage"              );
-                    else if(newParameters.hasOwnProperty("lvrt_point_5_voltage"           ) && oldParameters.hasOwnProperty("lvrt_point_5_voltage"           ) && newParameters["lvrt_point_5_voltage"           ] != oldParameters["lvrt_point_5_voltage"           ]) showSettingParametersError("Problem when setting lvrt_point_5_voltage"           );
-                    else if(newParameters.hasOwnProperty("lvrt_point_1_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_1_duration"          ) && newParameters["lvrt_point_1_duration"          ] != oldParameters["lvrt_point_1_duration"          ]) showSettingParametersError("Problem when setting lvrt_point_1_duration"          );
-                    else if(newParameters.hasOwnProperty("lvrt_point_2_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_2_duration"          ) && newParameters["lvrt_point_2_duration"          ] != oldParameters["lvrt_point_2_duration"          ]) showSettingParametersError("Problem when setting lvrt_point_2_duration"          );
-                    else if(newParameters.hasOwnProperty("lvrt_point_3_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_3_duration"          ) && newParameters["lvrt_point_3_duration"          ] != oldParameters["lvrt_point_3_duration"          ]) showSettingParametersError("Problem when setting lvrt_point_3_duration"          );
-                    else if(newParameters.hasOwnProperty("lvrt_point_4_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_4_duration"          ) && newParameters["lvrt_point_4_duration"          ] != oldParameters["lvrt_point_4_duration"          ]) showSettingParametersError("Problem when setting lvrt_point_4_duration"          );
-                    else if(newParameters.hasOwnProperty("lvrt_point_5_duration"          ) && oldParameters.hasOwnProperty("lvrt_point_5_duration"          ) && newParameters["lvrt_point_5_duration"          ] != oldParameters["lvrt_point_5_duration"          ]) showSettingParametersError("Problem when setting lvrt_point_5_duration"          );
-                    else if(newParameters.hasOwnProperty("hvrt_switch"                    ) && oldParameters.hasOwnProperty("hvrt_switch"                    ) && newParameters["hvrt_switch"                    ] != oldParameters["hvrt_switch"                    ]) showSettingParametersError("Problem when setting hvrt_switch"                    );
-                    else if(newParameters.hasOwnProperty("hvrt_enter_voltage"             ) && oldParameters.hasOwnProperty("hvrt_enter_voltage"             ) && newParameters["hvrt_enter_voltage"             ] != oldParameters["hvrt_enter_voltage"             ]) showSettingParametersError("Problem when setting hvrt_enter_voltage"             );
-                    else if(newParameters.hasOwnProperty("hvrt_exit_voltage"              ) && oldParameters.hasOwnProperty("hvrt_exit_voltage"              ) && newParameters["hvrt_exit_voltage"              ] != oldParameters["hvrt_exit_voltage"              ]) showSettingParametersError("Problem when setting hvrt_exit_voltage"              );
-                    else if(newParameters.hasOwnProperty("hvrt_point_1_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_1_voltage"           ) && newParameters["hvrt_point_1_voltage"           ] != oldParameters["hvrt_point_1_voltage"           ]) showSettingParametersError("Problem when setting hvrt_point_1_voltage"           );
-                    else if(newParameters.hasOwnProperty("hvrt_point_2_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_2_voltage"           ) && newParameters["hvrt_point_2_voltage"           ] != oldParameters["hvrt_point_2_voltage"           ]) showSettingParametersError("Problem when setting hvrt_point_2_voltage"           );
-                    else if(newParameters.hasOwnProperty("hvrt_point_3_voltage"           ) && oldParameters.hasOwnProperty("hvrt_point_3_voltage"           ) && newParameters["hvrt_point_3_voltage"           ] != oldParameters["hvrt_point_3_voltage"           ]) showSettingParametersError("Problem when setting hvrt_point_3_voltage"           );
-                    else if(newParameters.hasOwnProperty("hvrt_point_3_duration"          ) && oldParameters.hasOwnProperty("hvrt_point_3_duration"          ) && newParameters["hvrt_point_3_duration"          ] != oldParameters["hvrt_point_3_duration"          ]) showSettingParametersError("Problem when setting hvrt_point_3_duration"          );
-                    else if(newParameters.hasOwnProperty("pu_time_constant"               ) && oldParameters.hasOwnProperty("pu_time_constant"               ) && newParameters["pu_time_constant"               ] != oldParameters["pu_time_constant"               ]) showSettingParametersError("Problem when setting pu_time_constant"               );
-                    else if(newParameters.hasOwnProperty("lfsmo_threshold"                ) && oldParameters.hasOwnProperty("lfsmo_threshold"                ) && newParameters["lfsmo_threshold"                ] != oldParameters["lfsmo_threshold"                ]) showSettingParametersError("Problem when setting lfsmo_threshold"                );
-                    else if(newParameters.hasOwnProperty("lfsmo_end_point_frequency"      ) && oldParameters.hasOwnProperty("lfsmo_end_point_frequency"      ) && newParameters["lfsmo_end_point_frequency"      ] != oldParameters["lfsmo_end_point_frequency"      ]) showSettingParametersError("Problem when setting lfsmo_end_point_frequency"      );
-                    else if(newParameters.hasOwnProperty("lfsmo_power_recovery_rate"      ) && oldParameters.hasOwnProperty("lfsmo_power_recovery_rate"      ) && newParameters["lfsmo_power_recovery_rate"      ] != oldParameters["lfsmo_power_recovery_rate"      ]) showSettingParametersError("Problem when setting lfsmo_power_recovery_rate"      );
-                    else if(newParameters.hasOwnProperty("lfsmo_droop"                    ) && oldParameters.hasOwnProperty("lfsmo_droop"                    ) && newParameters["lfsmo_droop"                    ] != oldParameters["lfsmo_droop"                    ]) showSettingParametersError("Problem when setting lfsmo_droop"                    );
-                    else if(newParameters.hasOwnProperty("battery_type"                   ) && oldParameters.hasOwnProperty("battery_type"                   ) && newParameters["battery_type"                   ] != oldParameters["battery_type"                   ]) showSettingParametersError("Problem when setting battery_type"                   );
+                    else if(newParameters.hasOwnProperty("reactive_mode"                       ) && oldParameters.hasOwnProperty("reactive_mode"                       ) && newParameters["reactive_mode"                       ] != oldParameters["reactive_mode"                       ]) showSettingParametersError("Problem when setting reactive_mode"                       );
+                    else if(newParameters.hasOwnProperty("pf_mode_power_factor"                ) && oldParameters.hasOwnProperty("pf_mode_power_factor"                ) && newParameters["pf_mode_power_factor"                ] != oldParameters["pf_mode_power_factor"                ]) showSettingParametersError("Problem when setting pf_mode_power_factor"                );
+                    else if(newParameters.hasOwnProperty("qt_mode_reactive_power"              ) && oldParameters.hasOwnProperty("qt_mode_reactive_power"              ) && newParameters["qt_mode_reactive_power"              ] != oldParameters["qt_mode_reactive_power"              ]) showSettingParametersError("Problem when setting qt_mode_reactive_power"              );
+                    else if(newParameters.hasOwnProperty("overvoltage_10min_threshold"         ) && oldParameters.hasOwnProperty("overvoltage_10min_threshold"         ) && newParameters["overvoltage_10min_threshold"         ] != oldParameters["overvoltage_10min_threshold"         ]) showSettingParametersError("Problem when setting overvoltage_10min_threshold"         );
+                    else if(newParameters.hasOwnProperty("grid_connect_lower_voltage"          ) && oldParameters.hasOwnProperty("grid_connect_lower_voltage"          ) && newParameters["grid_connect_lower_voltage"          ] != oldParameters["grid_connect_lower_voltage"          ]) showSettingParametersError("Problem when setting grid_connect_lower_voltage"          );
+                    else if(newParameters.hasOwnProperty("grid_connect_upper_voltage"          ) && oldParameters.hasOwnProperty("grid_connect_upper_voltage"          ) && newParameters["grid_connect_upper_voltage"          ] != oldParameters["grid_connect_upper_voltage"          ]) showSettingParametersError("Problem when setting grid_connect_upper_voltage"          );
+                    else if(newParameters.hasOwnProperty("grid_connect_lower_frequency"        ) && oldParameters.hasOwnProperty("grid_connect_lower_frequency"        ) && newParameters["grid_connect_lower_frequency"        ] != oldParameters["grid_connect_lower_frequency"        ]) showSettingParametersError("Problem when setting grid_connect_lower_frequency"        );
+                    else if(newParameters.hasOwnProperty("grid_connect_upper_frequency"        ) && oldParameters.hasOwnProperty("grid_connect_upper_frequency"        ) && newParameters["grid_connect_upper_frequency"        ] != oldParameters["grid_connect_upper_frequency"        ]) showSettingParametersError("Problem when setting grid_connect_upper_frequency"        );
+                    else if(newParameters.hasOwnProperty("wait_time_before_grid_connect"       ) && oldParameters.hasOwnProperty("wait_time_before_grid_connect"       ) && newParameters["wait_time_before_grid_connect"       ] != oldParameters["wait_time_before_grid_connect"       ]) showSettingParametersError("Problem when setting wait_time_before_grid_connect"       );
+                    else if(newParameters.hasOwnProperty("grid_reconnect_upper_voltage"        ) && oldParameters.hasOwnProperty("grid_reconnect_upper_voltage"        ) && newParameters["grid_reconnect_upper_voltage"        ] != oldParameters["grid_reconnect_upper_voltage"        ]) showSettingParametersError("Problem when setting grid_reconnect_upper_voltage"        );
+                    else if(newParameters.hasOwnProperty("wait_time_before_grid_reconnect"     ) && oldParameters.hasOwnProperty("wait_time_before_grid_reconnect"     ) && newParameters["wait_time_before_grid_reconnect"     ] != oldParameters["wait_time_before_grid_reconnect"     ]) showSettingParametersError("Problem when setting wait_time_before_grid_reconnect"     );
+                    else if(newParameters.hasOwnProperty("stage_1_uv_threshold"                ) && oldParameters.hasOwnProperty("stage_1_uv_threshold"                ) && newParameters["stage_1_uv_threshold"                ] != oldParameters["stage_1_uv_threshold"                ]) showSettingParametersError("Problem when setting stage_1_uv_threshold"                );
+                    else if(newParameters.hasOwnProperty("stage_1_ov_threshold"                ) && oldParameters.hasOwnProperty("stage_1_ov_threshold"                ) && newParameters["stage_1_ov_threshold"                ] != oldParameters["stage_1_ov_threshold"                ]) showSettingParametersError("Problem when setting stage_1_ov_threshold"                );
+                    else if(newParameters.hasOwnProperty("stage_1_uf_threshold"                ) && oldParameters.hasOwnProperty("stage_1_uf_threshold"                ) && newParameters["stage_1_uf_threshold"                ] != oldParameters["stage_1_uf_threshold"                ]) showSettingParametersError("Problem when setting stage_1_uf_threshold"                );
+                    else if(newParameters.hasOwnProperty("stage_1_of_threshold"                ) && oldParameters.hasOwnProperty("stage_1_of_threshold"                ) && newParameters["stage_1_of_threshold"                ] != oldParameters["stage_1_of_threshold"                ]) showSettingParametersError("Problem when setting stage_1_of_threshold"                );
+                    else if(newParameters.hasOwnProperty("stage_1_uv_duration"                 ) && oldParameters.hasOwnProperty("stage_1_uv_duration"                 ) && newParameters["stage_1_uv_duration"                 ] != oldParameters["stage_1_uv_duration"                 ]) showSettingParametersError("Problem when setting stage_1_uv_duration"                 );
+                    else if(newParameters.hasOwnProperty("stage_1_ov_duration"                 ) && oldParameters.hasOwnProperty("stage_1_ov_duration"                 ) && newParameters["stage_1_ov_duration"                 ] != oldParameters["stage_1_ov_duration"                 ]) showSettingParametersError("Problem when setting stage_1_ov_duration"                 );
+                    else if(newParameters.hasOwnProperty("stage_1_uf_duration"                 ) && oldParameters.hasOwnProperty("stage_1_uf_duration"                 ) && newParameters["stage_1_uf_duration"                 ] != oldParameters["stage_1_uf_duration"                 ]) showSettingParametersError("Problem when setting stage_1_uf_duration"                 );
+                    else if(newParameters.hasOwnProperty("stage_1_of_duration"                 ) && oldParameters.hasOwnProperty("stage_1_of_duration"                 ) && newParameters["stage_1_of_duration"                 ] != oldParameters["stage_1_of_duration"                 ]) showSettingParametersError("Problem when setting stage_1_of_duration"                 );
+                    else if(newParameters.hasOwnProperty("stage_2_uv_threshold"                ) && oldParameters.hasOwnProperty("stage_2_uv_threshold"                ) && newParameters["stage_2_uv_threshold"                ] != oldParameters["stage_2_uv_threshold"                ]) showSettingParametersError("Problem when setting stage_2_uv_threshold"                );
+                    else if(newParameters.hasOwnProperty("stage_2_ov_threshold"                ) && oldParameters.hasOwnProperty("stage_2_ov_threshold"                ) && newParameters["stage_2_ov_threshold"                ] != oldParameters["stage_2_ov_threshold"                ]) showSettingParametersError("Problem when setting stage_2_ov_threshold"                );
+                    else if(newParameters.hasOwnProperty("stage_2_uv_duration"                 ) && oldParameters.hasOwnProperty("stage_2_uv_duration"                 ) && newParameters["stage_2_uv_duration"                 ] != oldParameters["stage_2_uv_duration"                 ]) showSettingParametersError("Problem when setting stage_2_uv_duration"                 );
+                    else if(newParameters.hasOwnProperty("stage_2_ov_duration"                 ) && oldParameters.hasOwnProperty("stage_2_ov_duration"                 ) && newParameters["stage_2_ov_duration"                 ] != oldParameters["stage_2_ov_duration"                 ]) showSettingParametersError("Problem when setting stage_2_ov_duration"                 );
+                    else if(newParameters.hasOwnProperty("qu_point_1_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_1_voltage"                  ) && newParameters["qu_point_1_voltage"                  ] != oldParameters["qu_point_1_voltage"                  ]) showSettingParametersError("Problem when setting qu_point_1_voltage"                  );
+                    else if(newParameters.hasOwnProperty("qu_point_2_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_2_voltage"                  ) && newParameters["qu_point_2_voltage"                  ] != oldParameters["qu_point_2_voltage"                  ]) showSettingParametersError("Problem when setting qu_point_2_voltage"                  );
+                    else if(newParameters.hasOwnProperty("qu_point_3_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_3_voltage"                  ) && newParameters["qu_point_3_voltage"                  ] != oldParameters["qu_point_3_voltage"                  ]) showSettingParametersError("Problem when setting qu_point_3_voltage"                  );
+                    else if(newParameters.hasOwnProperty("qu_point_4_voltage"                  ) && oldParameters.hasOwnProperty("qu_point_4_voltage"                  ) && newParameters["qu_point_4_voltage"                  ] != oldParameters["qu_point_4_voltage"                  ]) showSettingParametersError("Problem when setting qu_point_4_voltage"                  );
+                    else if(newParameters.hasOwnProperty("qu_point_1_reactive_power"           ) && oldParameters.hasOwnProperty("qu_point_1_reactive_power"           ) && newParameters["qu_point_1_reactive_power"           ] != oldParameters["qu_point_1_reactive_power"           ]) showSettingParametersError("Problem when setting qu_point_1_reactive_power"           );
+                    else if(newParameters.hasOwnProperty("qu_point_4_reactive_power"           ) && oldParameters.hasOwnProperty("qu_point_4_reactive_power"           ) && newParameters["qu_point_4_reactive_power"           ] != oldParameters["qu_point_4_reactive_power"           ]) showSettingParametersError("Problem when setting qu_point_4_reactive_power"           );
+                    else if(newParameters.hasOwnProperty("qu_time_constant"                    ) && oldParameters.hasOwnProperty("qu_time_constant"                    ) && newParameters["qu_time_constant"                    ] != oldParameters["qu_time_constant"                    ]) showSettingParametersError("Problem when setting qu_time_constant"                    );
+                    else if(newParameters.hasOwnProperty("qu_enter_power"                      ) && oldParameters.hasOwnProperty("qu_enter_power"                      ) && newParameters["qu_enter_power"                      ] != oldParameters["qu_enter_power"                      ]) showSettingParametersError("Problem when setting qu_enter_power"                      );
+                    else if(newParameters.hasOwnProperty("qu_exit_power"                       ) && oldParameters.hasOwnProperty("qu_exit_power"                       ) && newParameters["qu_exit_power"                       ] != oldParameters["qu_exit_power"                       ]) showSettingParametersError("Problem when setting qu_exit_power"                       );
+                    else if(newParameters.hasOwnProperty("cosfp_point_b_power"                 ) && oldParameters.hasOwnProperty("cosfp_point_b_power"                 ) && newParameters["cosfp_point_b_power"                 ] != oldParameters["cosfp_point_b_power"                 ]) showSettingParametersError("Problem when setting cosfp_point_b_power"                 );
+                    else if(newParameters.hasOwnProperty("cosfp_enter_voltage"                 ) && oldParameters.hasOwnProperty("cosfp_enter_voltage"                 ) && newParameters["cosfp_enter_voltage"                 ] != oldParameters["cosfp_enter_voltage"                 ]) showSettingParametersError("Problem when setting cosfp_enter_voltage"                 );
+                    else if(newParameters.hasOwnProperty("cosfp_exit_voltage"                  ) && oldParameters.hasOwnProperty("cosfp_exit_voltage"                  ) && newParameters["cosfp_exit_voltage"                  ] != oldParameters["cosfp_exit_voltage"                  ]) showSettingParametersError("Problem when setting cosfp_exit_voltage"                  );
+                    else if(newParameters.hasOwnProperty("lvrt_switch"                         ) && oldParameters.hasOwnProperty("lvrt_switch"                         ) && newParameters["lvrt_switch"                         ] != oldParameters["lvrt_switch"                         ]) showSettingParametersError("Problem when setting lvrt_switch"                         );
+                    else if(newParameters.hasOwnProperty("lvrt_enter_voltage"                  ) && oldParameters.hasOwnProperty("lvrt_enter_voltage"                  ) && newParameters["lvrt_enter_voltage"                  ] != oldParameters["lvrt_enter_voltage"                  ]) showSettingParametersError("Problem when setting lvrt_enter_voltage"                  );
+                    else if(newParameters.hasOwnProperty("lvrt_exit_voltage"                   ) && oldParameters.hasOwnProperty("lvrt_exit_voltage"                   ) && newParameters["lvrt_exit_voltage"                   ] != oldParameters["lvrt_exit_voltage"                   ]) showSettingParametersError("Problem when setting lvrt_exit_voltage"                   );
+                    else if(newParameters.hasOwnProperty("lvrt_point_5_voltage"                ) && oldParameters.hasOwnProperty("lvrt_point_5_voltage"                ) && newParameters["lvrt_point_5_voltage"                ] != oldParameters["lvrt_point_5_voltage"                ]) showSettingParametersError("Problem when setting lvrt_point_5_voltage"                );
+                    else if(newParameters.hasOwnProperty("lvrt_point_1_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_1_duration"               ) && newParameters["lvrt_point_1_duration"               ] != oldParameters["lvrt_point_1_duration"               ]) showSettingParametersError("Problem when setting lvrt_point_1_duration"               );
+                    else if(newParameters.hasOwnProperty("lvrt_point_2_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_2_duration"               ) && newParameters["lvrt_point_2_duration"               ] != oldParameters["lvrt_point_2_duration"               ]) showSettingParametersError("Problem when setting lvrt_point_2_duration"               );
+                    else if(newParameters.hasOwnProperty("lvrt_point_3_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_3_duration"               ) && newParameters["lvrt_point_3_duration"               ] != oldParameters["lvrt_point_3_duration"               ]) showSettingParametersError("Problem when setting lvrt_point_3_duration"               );
+                    else if(newParameters.hasOwnProperty("lvrt_point_4_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_4_duration"               ) && newParameters["lvrt_point_4_duration"               ] != oldParameters["lvrt_point_4_duration"               ]) showSettingParametersError("Problem when setting lvrt_point_4_duration"               );
+                    else if(newParameters.hasOwnProperty("lvrt_point_5_duration"               ) && oldParameters.hasOwnProperty("lvrt_point_5_duration"               ) && newParameters["lvrt_point_5_duration"               ] != oldParameters["lvrt_point_5_duration"               ]) showSettingParametersError("Problem when setting lvrt_point_5_duration"               );
+                    else if(newParameters.hasOwnProperty("hvrt_switch"                         ) && oldParameters.hasOwnProperty("hvrt_switch"                         ) && newParameters["hvrt_switch"                         ] != oldParameters["hvrt_switch"                         ]) showSettingParametersError("Problem when setting hvrt_switch"                         );
+                    else if(newParameters.hasOwnProperty("hvrt_enter_voltage"                  ) && oldParameters.hasOwnProperty("hvrt_enter_voltage"                  ) && newParameters["hvrt_enter_voltage"                  ] != oldParameters["hvrt_enter_voltage"                  ]) showSettingParametersError("Problem when setting hvrt_enter_voltage"                  );
+                    else if(newParameters.hasOwnProperty("hvrt_exit_voltage"                   ) && oldParameters.hasOwnProperty("hvrt_exit_voltage"                   ) && newParameters["hvrt_exit_voltage"                   ] != oldParameters["hvrt_exit_voltage"                   ]) showSettingParametersError("Problem when setting hvrt_exit_voltage"                   );
+                    else if(newParameters.hasOwnProperty("hvrt_point_1_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_1_voltage"                ) && newParameters["hvrt_point_1_voltage"                ] != oldParameters["hvrt_point_1_voltage"                ]) showSettingParametersError("Problem when setting hvrt_point_1_voltage"                );
+                    else if(newParameters.hasOwnProperty("hvrt_point_2_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_2_voltage"                ) && newParameters["hvrt_point_2_voltage"                ] != oldParameters["hvrt_point_2_voltage"                ]) showSettingParametersError("Problem when setting hvrt_point_2_voltage"                );
+                    else if(newParameters.hasOwnProperty("hvrt_point_3_voltage"                ) && oldParameters.hasOwnProperty("hvrt_point_3_voltage"                ) && newParameters["hvrt_point_3_voltage"                ] != oldParameters["hvrt_point_3_voltage"                ]) showSettingParametersError("Problem when setting hvrt_point_3_voltage"                );
+                    else if(newParameters.hasOwnProperty("hvrt_point_3_duration"               ) && oldParameters.hasOwnProperty("hvrt_point_3_duration"               ) && newParameters["hvrt_point_3_duration"               ] != oldParameters["hvrt_point_3_duration"               ]) showSettingParametersError("Problem when setting hvrt_point_3_duration"               );
+                    else if(newParameters.hasOwnProperty("pu_time_constant"                    ) && oldParameters.hasOwnProperty("pu_time_constant"                    ) && newParameters["pu_time_constant"                    ] != oldParameters["pu_time_constant"                    ]) showSettingParametersError("Problem when setting pu_time_constant"                    );
+                    else if(newParameters.hasOwnProperty("lfsmo_threshold"                     ) && oldParameters.hasOwnProperty("lfsmo_threshold"                     ) && newParameters["lfsmo_threshold"                     ] != oldParameters["lfsmo_threshold"                     ]) showSettingParametersError("Problem when setting lfsmo_threshold"                     );
+                    else if(newParameters.hasOwnProperty("lfsmo_end_point_frequency"           ) && oldParameters.hasOwnProperty("lfsmo_end_point_frequency"           ) && newParameters["lfsmo_end_point_frequency"           ] != oldParameters["lfsmo_end_point_frequency"           ]) showSettingParametersError("Problem when setting lfsmo_end_point_frequency"           );
+                    else if(newParameters.hasOwnProperty("lfsmo_power_recovery_rate"           ) && oldParameters.hasOwnProperty("lfsmo_power_recovery_rate"           ) && newParameters["lfsmo_power_recovery_rate"           ] != oldParameters["lfsmo_power_recovery_rate"           ]) showSettingParametersError("Problem when setting lfsmo_power_recovery_rate"           );
+                    else if(newParameters.hasOwnProperty("lfsmo_droop"                         ) && oldParameters.hasOwnProperty("lfsmo_droop"                         ) && newParameters["lfsmo_droop"                         ] != oldParameters["lfsmo_droop"                         ]) showSettingParametersError("Problem when setting lfsmo_droop"                         );
+                    else if(newParameters.hasOwnProperty("lfsmo_slope"                         ) && oldParameters.hasOwnProperty("lfsmo_slope"                         ) && newParameters["lfsmo_slope"                         ] != oldParameters["lfsmo_slope"                         ]) showSettingParametersError("Problem when setting lfsmo_slope"                         );
+                    else if(newParameters.hasOwnProperty("battery_type"                        ) && oldParameters.hasOwnProperty("battery_type"                        ) && newParameters["battery_type"                        ] != oldParameters["battery_type"                        ]) showSettingParametersError("Problem when setting battery_type"                        );
+                    else if(newParameters.hasOwnProperty("battery_cutoff_voltage_ongrid"       ) && oldParameters.hasOwnProperty("battery_cutoff_voltage_ongrid"       ) && newParameters["battery_cutoff_voltage_ongrid"       ] != oldParameters["battery_cutoff_voltage_ongrid"       ]) showSettingParametersError("Problem when setting battery_cutoff_voltage_ongrid"       );
+                    else if(newParameters.hasOwnProperty("battery_cutoff_voltage_offgrid"      ) && oldParameters.hasOwnProperty("battery_cutoff_voltage_offgrid"      ) && newParameters["battery_cutoff_voltage_offgrid"      ] != oldParameters["battery_cutoff_voltage_offgrid"      ]) showSettingParametersError("Problem when setting battery_cutoff_voltage_offgrid"      );
+                    else if(newParameters.hasOwnProperty("battery_recovery_voltage_ongrid"     ) && oldParameters.hasOwnProperty("battery_recovery_voltage_ongrid"     ) && newParameters["battery_recovery_voltage_ongrid"     ] != oldParameters["battery_recovery_voltage_ongrid"     ]) showSettingParametersError("Problem when setting battery_recovery_voltage_ongrid"     );
+                    else if(newParameters.hasOwnProperty("battery_recovery_voltage_offgrid"    ) && oldParameters.hasOwnProperty("battery_recovery_voltage_offgrid"    ) && newParameters["battery_recovery_voltage_offgrid"    ] != oldParameters["battery_recovery_voltage_offgrid"    ]) showSettingParametersError("Problem when setting battery_recovery_voltage_offgrid"    );
+                    else if(newParameters.hasOwnProperty("battery_bulk_charge_voltage"         ) && oldParameters.hasOwnProperty("battery_bulk_charge_voltage"         ) && newParameters["battery_bulk_charge_voltage"         ] != oldParameters["battery_bulk_charge_voltage"         ]) showSettingParametersError("Problem when setting battery_bulk_charge_voltage"         );
+                    else if(newParameters.hasOwnProperty("battery_float_charge_voltage"        ) && oldParameters.hasOwnProperty("battery_float_charge_voltage"        ) && newParameters["battery_float_charge_voltage"        ] != oldParameters["battery_float_charge_voltage"        ]) showSettingParametersError("Problem when setting battery_float_charge_voltage"        );
+                    else if(newParameters.hasOwnProperty("battery_max_charge_current"          ) && oldParameters.hasOwnProperty("battery_max_charge_current"          ) && newParameters["battery_max_charge_current"          ] != oldParameters["battery_max_charge_current"          ]) showSettingParametersError("Problem when setting battery_max_charge_current"          );
+                    else if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) showSettingParametersError("Problem when setting battery_max_discharge_current_ongrid");
 
                 }
             }

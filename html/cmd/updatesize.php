@@ -1,8 +1,11 @@
 <?php
 
-session_start();
+// Include Base
+include_once "../common/base.php";
 
-$output = trim(shell_exec("du -s -B1 /home/pi/emx"));
+$cmd = $boxType == "livex" ? "du -s -B1 /home/pi/livesmart-home" : "du -s -B1 /home/pi/emx";
+
+$output = trim(shell_exec($cmd));
 
 if($output) {
     $output = explode("\t", $output);

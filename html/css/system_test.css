@@ -5,7 +5,7 @@
 
 
 h1 {
-	padding: 1rem 1.25rem 1.5rem 1.25rem !important;
+    padding: 1rem 1.25rem 1.5rem 1.25rem !important;
 }
 
 
@@ -13,22 +13,22 @@ h1 {
 
 
 .notif {
-	display: inline-block;
-	width: 2.5rem;
-	height: 2.5rem;
-	min-width: 2.5rem;
-	min-height: 2.5rem;
-	margin-right: 1.25rem;
+    display: inline-block;
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    margin-right: 1.25rem;
 }
 
 .status span {
-	font-size: 1.5rem;
+    font-size: 1.5rem;
 }
 
 .status span span {
-	font-size: 1rem;
-	display: block;
-	color: red;
+    font-size: 1rem;
+    display: block;
+    color: red;
 }
 
 
@@ -36,22 +36,22 @@ h1 {
 
 
 #log {
-	height: 50vh;
-	max-height: 50vh;
-	overflow: auto;
-	background-color: var(--color-body);
-	box-shadow: inset 0 0rem 0.25rem rgba(0, 0, 0, 0.4) !important;
+    height: 50vh;
+    max-height: 50vh;
+    overflow: auto;
+    background-color: var(--color-body);
+    box-shadow: inset 0 0rem 0.25rem rgba(0, 0, 0, 0.4) !important;
 }
 
 #log p {
-	margin-bottom: 0.5rem !important;
-	padding-left: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    padding-left: 1rem !important;
 }
 #log p:last-child {
-	margin-bottom: 1rem !important;
+    margin-bottom: 1rem !important;
 }
 
 #log p.head {
-	padding-left: 0 !important;
-	padding-top: 1rem !important;
+    padding-left: 0 !important;
+    padding-top: 1rem !important;
 }
