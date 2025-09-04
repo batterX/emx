@@ -75,4 +75,4 @@ $versionHash = time();
 
 $boxType = "emx";
 
-$softwareVersion = "v25.8.1";
+$softwareVersion = "v25.9.1";
