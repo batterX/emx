@@ -2378,7 +2378,7 @@ async function setup1() {
             await sleep(10000);
             // Set battery voltage
             const response3 = await $.get({
-                url: "api.php?set=command&type=24064&entity=416&text2=5300" // battery voltage
+                url: "api.php?set=command&type=24064&entity=416&text2=5260" // battery voltage
             });
             if(response3 != "1") return alert("E021. Please refresh the page! (Bad response while writing command to local database)");
             
@@ -2539,8 +2539,8 @@ async function setup2() {
         newParameters["grid_connect_upper_frequency"] = inverterModel >= "11000" ? "5200" : "5150";
         newParameters["stage_1_uv_threshold"        ] = "19550";
         newParameters["stage_1_ov_threshold"        ] = inverterModel >= "11000" ? "25530" : "26500";
-        newParameters["stage_1_uf_threshold"        ] = "4740";
-        newParameters["stage_1_of_threshold"        ] = "5160";
+        newParameters["stage_1_uf_threshold"        ] = inverterModel >= "11000" ? "4740" : "4750"; // 4740 out-of-range for h-Series
+        newParameters["stage_1_of_threshold"        ] = inverterModel >= "11000" ? "5160" : "5150"; // 5160 out-of-range for h-Series
         newParameters["stage_1_uv_duration"         ] = "1200";
         newParameters["stage_1_ov_duration"         ] = "3000";
         newParameters["stage_1_uf_duration"         ] = "360";
@@ -3073,8 +3073,8 @@ async function setup_checkParameters() {
         if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) { retry = true; setup_sendCommand(24064, 418, "", newParameters["battery_max_discharge_current_ongrid"]); }
 
         if(!retry) {
-            // Restore initial BMS battery connect value before moving to next step
-            if(initialBmsConnectValue !== null) {
+            // Restore initial BMS battery connect value before moving to next step (only for already registered devices)
+            if(initialBmsConnectValue !== null && isAlreadyRegistered) {
                 try {
                     const restoreResponse = await $.get({
                         url: `api.php?set=command&type=24064&entity=10003&text2=${initialBmsConnectValue}`

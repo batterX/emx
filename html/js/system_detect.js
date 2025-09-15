@@ -258,14 +258,14 @@ function step4(json) {
 // MachineModel Select
 
 $("#germanyMachineModelSelect").on("input change", function() {
-    if($(this).val() == gridStandard || isGridLoss)
+    if($(this).val() == gridStandard) //if($(this).val() == gridStandard || isGridLoss) NEW
         $("#germanyMachineModelBtn").prop("disabled", true);
     else
         $("#germanyMachineModelBtn").prop("disabled", false);
 });
 
 $("#machineModelSelect").on("input change", function() {
-    if($(this).val() == gridStandard || isGridLoss)
+    if($(this).val() == gridStandard) //if($(this).val() == gridStandard || isGridLoss) NEW
         $("#machineModelBtn").prop("disabled", true);
     else
         $("#machineModelBtn").prop("disabled", false);
