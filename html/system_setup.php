@@ -690,7 +690,7 @@ MPPT 2
                                         </div>
                                         <div class="mt-3 d-flex justify-content-between align-items-center">
                                             <span class="d-inline-block pr-2 flex-grow-1"><small><?php echo $lang["system_setup"]["batteries_other_max_charging_current"] ?></small></span>
-                                            <input id="other_battery_maxChargingCurrent" type="number" step="1" class="form-control form-control-outline p-1" style="width:25%;max-width:25%;height:calc(1.5em + 0.25rem + 2px);font-size:0.8rem">
+                                            <input id="other_battery_maxChargingCurrent" type="number" step="0.1" class="form-control form-control-outline p-1" style="width:25%;max-width:25%;height:calc(1.5em + 0.25rem + 2px);font-size:0.8rem">
                                             <span class="d-inline-block pl-2" style="width:10%;min-width:10%"><small>A</small></span>
                                         </div>
                                         <div class="mt-2 d-flex justify-content-between align-items-center">
