@@ -3073,15 +3073,22 @@ async function setup_checkParameters() {
         if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) { retry = true; setup_sendCommand(24064, 418, "", newParameters["battery_max_discharge_current_ongrid"]); }
 
         if(!retry) {
-            // Restore initial BMS battery connect value before moving to next step (only for already registered devices)
-            if(initialBmsConnectValue !== null && isAlreadyRegistered) {
+            // Restore initial BMS battery connect value before moving to next step (for all h-Series systems)
+            if(initialBmsConnectValue !== null) {
                 try {
+                    let finalBmsValue = initialBmsConnectValue;
+                    // If initial value was not "0", set to "2" for all h-Series systems
+                    // (Value "1" is only used during communication checking)
+                    if(initialBmsConnectValue !== "0") {
+                        finalBmsValue = "2";
+                    }
+                    // Otherwise, restore to "0" if it was "0"
                     const restoreResponse = await $.get({
-                        url: `api.php?set=command&type=24064&entity=10003&text2=${initialBmsConnectValue}`
+                        url: `api.php?set=command&type=24064&entity=10003&text2=${finalBmsValue}`
                     });
                     if(restoreResponse === "1") {
                         // Wait for BMS parameter to be restored in settings
-                        await waitForSettingsParameter("Inverter", "10003", "s1", initialBmsConnectValue);
+                        await waitForSettingsParameter("Inverter", "10003", "s1", finalBmsValue);
                     }
                 } catch (error) {
                     console.log("Warning: Could not restore initial BMS battery connect value:", error);
