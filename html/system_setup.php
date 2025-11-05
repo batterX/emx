@@ -230,8 +230,8 @@ $hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firm
 
                             <h6 class="pb-2 mt-2 mb-2" style="font-size:0.875rem"><b><?php echo $lang["system_setup"]["extended_grid_connection_conditions"] ?></b></h6>
 
-                            <?php echo template_add_extended_parameter("extended_maxGridVoltage", $lang["system_setup"]["extended_maxgridvoltage"], "257.6", "V", "212", 0.01, "0.1", "230.0", "264.5"); ?>
-                            <?php echo template_add_extended_parameter("extended_minGridVoltage", $lang["system_setup"]["extended_mingridvoltage"], "195.0", "V", "211", 0.01, "0.1", "184.0", "230.0"); ?>
+                            <?php echo template_add_extended_parameter("extended_maxGridVoltage", $lang["system_setup"]["extended_maxgridvoltage"], ($inverterModel >= "11000" ? "257.6" : "255.3"), "V", "212", 0.01, "0.1", "230.0", "264.5"); ?>
+                            <?php echo template_add_extended_parameter("extended_minGridVoltage", $lang["system_setup"]["extended_mingridvoltage"], ($inverterModel >= "11000" ? "195.0" : "184.0"), "V", "211", 0.01, "0.1", "184.0", "230.0"); ?>
                             <?php echo template_add_extended_parameter("extended_maxGridFrequency", $lang["system_setup"]["extended_maxgridfrequency"], "51.5", "Hz", "214", 0.01, "0.01", "50.00", "51.50"); ?>
                             <?php echo template_add_extended_parameter("extended_minGridFrequency", $lang["system_setup"]["extended_mingridfrequency"], "47.5", "Hz", "213", 0.01, "0.01", "47.50", "50.00"); ?>
 
@@ -239,7 +239,7 @@ $hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firm
 
                             <h6 class="pb-2 mt-2 mb-2" style="font-size:0.875rem"><b><?php echo $lang["system_setup"]["extended_grid_decoupling_protection"] ?></b></h6>
 
-                            <?php echo template_add_extended_parameter("extended_UeffOver1", "Ueff >", "255.4", "V", "232", 0.01, "0.1", "230.0", "299.0"); ?>
+                            <?php echo template_add_extended_parameter("extended_UeffOver1", "Ueff >", ($inverterModel >= "11000" ? "255.4" : "255.3"), "V", "232", 0.01, "0.1", "230.0", "299.0"); ?>
                             <?php echo template_add_extended_parameter("extended_UeffUnder1", "Ueff <", "184.0", "V", "231", 0.01, "0.1", "23.0", "230.0"); ?>
                             <?php echo template_add_extended_parameter("extended_UeffOver2", "Ueff >>", "264.5", "V", "240", 0.01, "0.1", "230.0", "299.0"); ?>
                             <?php echo template_add_extended_parameter("extended_UeffUnder2", "Ueff <<", "57.5", "V", "239", 0.01, "0.1", "23.0", "230.0"); ?>
@@ -252,8 +252,14 @@ $hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firm
                             <?php echo template_add_extended_parameter("extended_fOver1Time", "f >", "0.1", "sec", "238", 0.001, "0.02", "0", "1000.000"); ?>
                             <?php echo template_add_extended_parameter("extended_fUnder1Time", "f <", "0.1", "sec", "237", 0.001, "0.02", "0", "1000.000"); ?>
                             <?php echo template_add_extended_parameter("extended_Ueff", $lang["system_setup"]["extended_ueff"], "255.3", "V", "205", 0.01, "0.1", "230.0", "299.0"); ?>
-                            <?php echo template_add_extended_parameter("extended_gridConnectDelay", $lang["system_setup"]["extended_gridconnectdelay"], "60", "sec", "215", 1, "1", "1", "300"); ?>
-                            <?php echo $hasGridReconnectDelay ? template_add_extended_parameter("extended_gridReconnectDelay", $lang["system_setup"]["extended_gridreconnectdelay"], "300", "sec", "225", 1, "1", "1", "300") : ""; ?>
+                            <?php
+                                if($hasGridReconnectDelay) {
+                                    echo template_add_extended_parameter("extended_gridConnectDelay", $lang["system_setup"]["extended_gridconnectdelay"], "60", "sec", "215", 1, "1", "1", "300");
+                                    echo template_add_extended_parameter("extended_gridReconnectDelay", $lang["system_setup"]["extended_gridreconnectdelay"], "300", "sec", "225", 1, "1", "1", "300");
+                                } else {
+                                    echo template_add_extended_parameter("extended_gridConnectDelay", $lang["system_setup"]["extended_gridconnectdelay"], "300", "sec", "215", 1, "1", "1", "300");
+                                }
+                            ?>
 
                             <hr>
 

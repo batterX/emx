@@ -2494,65 +2494,134 @@ async function setup2() {
     newParameters["battery_type" ] = inverterModel >= "11000" ? "2" : (isLiFePO() ? "1" : "0"); // 2=lifepo i-Series, for h5 or h10 should be 0=carbon 1=lifepo
     newParameters["reactive_mode"] = "0"; // Reactive mode off
 
+    if(elementExists("#extended_lfsmoThreshold")) newParameters["lfsmo_threshold"] = Math.round($("#extended_lfsmoThreshold").val());
+    if(elementExists("#extended_lfsmoDroop"    )) newParameters["lfsmo_droop"    ] = Math.round($("#extended_lfsmoDroop").val());
+    if(elementExists("#extended_lfsmoSlope"    )) newParameters["lfsmo_slope"    ] = Math.round(parseFloat($("#extended_lfsmoSlope").val()) * 100);
+
+    // VDE4105
     if(isVde4105) {
-        newParameters["stage_1_ov_threshold"        ] = "26450";
-        newParameters["qu_time_constant"            ] = inverterModel >= "11000" ? "10000" : "5000";
-        newParameters["qu_enter_power"              ] = "0";
-        newParameters["qu_exit_power"               ] = "0";
-        newParameters["cosfp_enter_voltage"         ] = "23200";
-        newParameters["cosfp_exit_voltage"          ] = "20700";
-        newParameters["lvrt_enter_voltage"          ] = "19500";
-        newParameters["lvrt_exit_voltage"           ] = "19600";
-        newParameters["lvrt_point_5_voltage"        ] = "19500";
-        newParameters["lvrt_point_1_duration"       ] = "150";
-        newParameters["lvrt_point_2_duration"       ] = "750";
-        newParameters["lvrt_point_3_duration"       ] = "1600";
-        newParameters["lvrt_point_4_duration"       ] = "2700";
-        newParameters["lvrt_point_5_duration"       ] = "3000";
-        newParameters["hvrt_enter_voltage"          ] = "26400";
-        newParameters["hvrt_exit_voltage"           ] = "28750";
-        newParameters["hvrt_point_1_voltage"        ] = "26450";
-        newParameters["hvrt_point_2_voltage"        ] = "27600";
-        newParameters["hvrt_point_3_voltage"        ] = "28750";
-        newParameters["hvrt_point_3_duration"       ] = "100";
-        newParameters["lfsmo_power_recovery_rate"   ] = "1000";
-    } else if(isTor) {
-        newParameters["grid_connect_upper_voltage"  ] = "25760";
-        newParameters["grid_connect_upper_frequency"] = "5150";
-        newParameters["grid_reconnect_upper_voltage"] = "25070";
-        newParameters["stage_1_ov_threshold"        ] = "25540";
-        newParameters["qu_time_constant"            ] = inverterModel >= "11000" ? "10000" : "5000";
-        newParameters["cosfp_enter_voltage"         ] = "25070";
-        newParameters["cosfp_exit_voltage"          ] = "20700";
-        newParameters["lvrt_enter_voltage"          ] = "18400";
-        newParameters["lvrt_exit_voltage"           ] = "18500";
-        newParameters["lvrt_point_5_voltage"        ] = "19500";
-        newParameters["lvrt_point_1_duration"       ] = "150";
-        newParameters["lvrt_point_2_duration"       ] = "400";
-        newParameters["lvrt_point_3_duration"       ] = "800";
-        newParameters["lvrt_point_4_duration"       ] = "1250";
-        newParameters["lfsmo_end_point_frequency"   ] = "5120";
-    } else if(isEstonia) {
-        newParameters["grid_connect_lower_voltage"  ] = "19550";
-        newParameters["grid_connect_upper_voltage"  ] = "26450";
-        newParameters["grid_connect_lower_frequency"] = inverterModel >= "11000" ? "4700" : "4750";
-        newParameters["grid_connect_upper_frequency"] = inverterModel >= "11000" ? "5200" : "5150";
-        newParameters["stage_1_uv_threshold"        ] = "19550";
-        newParameters["stage_1_ov_threshold"        ] = inverterModel >= "11000" ? "25530" : "26500";
-        newParameters["stage_1_uf_threshold"        ] = inverterModel >= "11000" ? "4740" : "4750"; // 4740 out-of-range for h-Series
-        newParameters["stage_1_of_threshold"        ] = inverterModel >= "11000" ? "5160" : "5150"; // 5160 out-of-range for h-Series
-        newParameters["stage_1_uv_duration"         ] = "1200";
-        newParameters["stage_1_ov_duration"         ] = "3000";
-        newParameters["stage_1_uf_duration"         ] = "360";
-        newParameters["stage_1_of_duration"         ] = "160";
-        newParameters["stage_2_uv_threshold"        ] = "4600";
-        newParameters["stage_2_ov_threshold"        ] = inverterModel >= "11000" ? "26450" : "28500";
-        newParameters["stage_2_uv_duration"         ] = "360";
-        newParameters["stage_2_ov_duration"         ] = "100";
-        newParameters["lvrt_switch"                 ] = "1";
-        newParameters["hvrt_switch"                 ] = "1";
+        // i-Series Only
+        if(inverterModel >= "11000") {
+            newParameters["stage_1_ov_threshold"     ] = "26450";
+            newParameters["qu_enter_power"           ] = "0";
+            newParameters["qu_exit_power"            ] = "0";
+            newParameters["cosfp_enter_voltage"      ] = "23200";
+            newParameters["cosfp_exit_voltage"       ] = "20700";
+            newParameters["lvrt_enter_voltage"       ] = "19500";
+            newParameters["lvrt_exit_voltage"        ] = "19600";
+            newParameters["lvrt_point_5_voltage"     ] = "19500";
+            newParameters["lvrt_point_1_duration"    ] = "150";
+            newParameters["lvrt_point_2_duration"    ] = "750";
+            newParameters["lvrt_point_3_duration"    ] = "1600";
+            newParameters["lvrt_point_4_duration"    ] = "2700";
+            newParameters["lvrt_point_5_duration"    ] = "3000";
+            newParameters["hvrt_enter_voltage"       ] = "26400";
+            newParameters["hvrt_exit_voltage"        ] = "28750";
+            newParameters["hvrt_point_1_voltage"     ] = "26450";
+            newParameters["hvrt_point_2_voltage"     ] = "27600";
+            newParameters["hvrt_point_3_voltage"     ] = "28750";
+            newParameters["hvrt_point_3_duration"    ] = "100";
+            newParameters["lfsmo_power_recovery_rate"] = "1000";
+            newParameters["qu_time_constant"         ] = "10000";
+        }
+        // h-Series Only
+        else {
+            newParameters["qu_time_constant"  ] = "5000";
+            newParameters["lvrt_switch"       ] = "0";
+            newParameters["hvrt_switch"       ] = "0";
+            newParameters["lfsmo_curve_switch"] = "1";
+        }
+    }
+    // TOR
+    else if(isTor) {
+        // All Series
+        if(elementExists("#extended_maxGridVoltage"    )) newParameters["grid_connect_upper_voltage"     ] = Math.round(parseFloat($("#extended_maxGridVoltage").val()) * 100);
+        if(elementExists("#extended_minGridVoltage"    )) newParameters["grid_connect_lower_voltage"     ] = Math.round(parseFloat($("#extended_minGridVoltage").val()) * 100);
+        if(elementExists("#extended_maxGridFrequency"  )) newParameters["grid_connect_upper_frequency"   ] = Math.round(parseFloat($("#extended_maxGridFrequency").val()) * 100);
+        if(elementExists("#extended_minGridFrequency"  )) newParameters["grid_connect_lower_frequency"   ] = Math.round(parseFloat($("#extended_minGridFrequency").val()) * 100);
+        if(elementExists("#extended_UeffOver1"         )) newParameters["stage_1_ov_threshold"           ] = Math.round(parseFloat($("#extended_UeffOver1").val()) * 100);
+        if(elementExists("#extended_UeffUnder1"        )) newParameters["stage_1_uv_threshold"           ] = Math.round(parseFloat($("#extended_UeffUnder1").val()) * 100);
+        if(elementExists("#extended_UeffOver2"         )) newParameters["stage_2_ov_threshold"           ] = Math.round(parseFloat($("#extended_UeffOver2").val()) * 100);
+        if(elementExists("#extended_UeffUnder2"        )) newParameters["stage_2_uv_threshold"           ] = Math.round(parseFloat($("#extended_UeffUnder2").val()) * 100);
+        if(elementExists("#extended_fOver1"            )) newParameters["stage_1_of_threshold"           ] = Math.round(parseFloat($("#extended_fOver1").val()) * 100);
+        if(elementExists("#extended_fUnder1"           )) newParameters["stage_1_uf_threshold"           ] = Math.round(parseFloat($("#extended_fUnder1").val()) * 100);
+        if(elementExists("#extended_UeffOver1Time"     )) newParameters["stage_1_ov_duration"            ] = Math.round(parseFloat($("#extended_UeffOver1Time").val()) * 1000);
+        if(elementExists("#extended_UeffUnder1Time"    )) newParameters["stage_1_uv_duration"            ] = Math.round(parseFloat($("#extended_UeffUnder1Time").val()) * 1000);
+        if(elementExists("#extended_UeffOver2Time"     )) newParameters["stage_2_ov_duration"            ] = Math.round(parseFloat($("#extended_UeffOver2Time").val()) * 1000);
+        if(elementExists("#extended_UeffUnder2Time"    )) newParameters["stage_2_uv_duration"            ] = Math.round(parseFloat($("#extended_UeffUnder2Time").val()) * 1000);
+        if(elementExists("#extended_fOver1Time"        )) newParameters["stage_1_of_duration"            ] = Math.round(parseFloat($("#extended_fOver1Time").val()) * 1000);
+        if(elementExists("#extended_fUnder1Time"       )) newParameters["stage_1_uf_duration"            ] = Math.round(parseFloat($("#extended_fUnder1Time").val()) * 1000);
+        if(elementExists("#extended_Ueff"              )) newParameters["overvoltage_10min_threshold"    ] = Math.round(parseFloat($("#extended_Ueff").val()) * 100);
+        if(elementExists("#extended_gridConnectDelay"  )) newParameters["wait_time_before_grid_connect"  ] = Math.round($("#extended_gridConnectDelay").val());
+        if(elementExists("#extended_puTime"            )) newParameters["pu_time_constant"               ] = Math.round(parseFloat($("#extended_puTime").val()) * 1000);
+        if(elementExists("#extended_gridReconnectDelay")) newParameters["wait_time_before_grid_reconnect"] = Math.round($("#extended_gridReconnectDelay").val());
+        newParameters["pu_curve_switch"   ] = "1";
+        newParameters["lfsmu_curve_switch"] = "1";
+        // i-Series Only
+        if(inverterModel >= "11000") {
+            newParameters["grid_reconnect_upper_voltage"] = "25070";
+            newParameters["cosfp_enter_voltage"         ] = "25070";
+            newParameters["cosfp_exit_voltage"          ] = "20700";
+            newParameters["lvrt_enter_voltage"          ] = "18400";
+            newParameters["lvrt_exit_voltage"           ] = "18500";
+            newParameters["lvrt_point_5_voltage"        ] = "19500";
+            newParameters["lvrt_point_1_duration"       ] = "150";
+            newParameters["lvrt_point_2_duration"       ] = "400";
+            newParameters["lvrt_point_3_duration"       ] = "800";
+            newParameters["lvrt_point_4_duration"       ] = "1250";
+            newParameters["lfsmo_end_point_frequency"   ] = "5120";
+            newParameters["qu_time_constant"            ] = "10000";
+        }
+        // h-Series Only
+        else {
+            newParameters["qu_time_constant"  ] = "5000";
+            newParameters["lfsmo_curve_switch"] = "1";
+            newParameters["lvrt_switch"       ] = isBackup() ? "1" : "0";
+            newParameters["hvrt_switch"       ] = isBackup() ? "1" : "0";
+        }
+    }
+    // Estonia
+    else if(isEstonia) {
+        // All Series
+        newParameters["grid_connect_lower_voltage"] = "19550";
+        newParameters["grid_connect_upper_voltage"] = "26450";
+        newParameters["stage_1_uv_threshold"      ] = "19550";
+        newParameters["stage_1_uv_duration"       ] = "1200";
+        newParameters["stage_1_ov_duration"       ] = "3000";
+        newParameters["stage_1_uf_duration"       ] = "360";
+        newParameters["stage_1_of_duration"       ] = "160";
+        newParameters["stage_2_uv_threshold"      ] = "4600";
+        newParameters["stage_2_uv_duration"       ] = "360";
+        newParameters["stage_2_ov_duration"       ] = "100";
+        newParameters["lfsmu_curve_switch"        ] = "1";
+        // i-Series Only
+        if(inverterModel >= "11000") {
+            newParameters["grid_connect_lower_frequency"] = "4700";
+            newParameters["grid_connect_upper_frequency"] = "5200";
+            newParameters["stage_1_ov_threshold"        ] = "25530";
+            newParameters["stage_1_uf_threshold"        ] = "4740";
+            newParameters["stage_1_of_threshold"        ] = "5160";
+            newParameters["stage_2_ov_threshold"        ] = "26450";
+            newParameters["lvrt_switch"                 ] = "1";
+            newParameters["hvrt_switch"                 ] = "1";
+        }
+        // h-Series Only
+        else {
+            newParameters["grid_connect_lower_frequency"] = "4750";
+            newParameters["grid_connect_upper_frequency"] = "5150";
+            newParameters["stage_1_ov_threshold"        ] = "26500";
+            newParameters["stage_1_uf_threshold"        ] = "4750"; // 4740 out-of-range for h-Series
+            newParameters["stage_1_of_threshold"        ] = "5150"; // 5160 out-of-range for h-Series
+            newParameters["stage_2_ov_threshold"        ] = "28500";
+            newParameters["stage_2_uf_duration"         ] = "100";
+            newParameters["stage_2_of_duration"         ] = "100";
+            newParameters["lfsmo_curve_switch"          ] = "1";
+            newParameters["lvrt_switch"                 ] = isBackup() ? "1" : "0";
+            newParameters["hvrt_switch"                 ] = isBackup() ? "1" : "0";
+        }
     }
 
+    // Reactive Mode
     if(reactive_mode == 1) {
         // cosφ(P) Curve
         newParameters["reactive_mode"            ] = "3";
@@ -2575,33 +2644,6 @@ async function setup2() {
         // Fixed Q
         newParameters["reactive_mode"            ] = "2";
         newParameters["qt_mode_reactive_power"   ] = reactive_qfix / devicePower * 100 * 100;
-    }
-
-    newParameters["lfsmo_threshold"] = Math.round($("#extended_lfsmoThreshold").val());
-    if(elementExists("#extended_lfsmoDroop")) newParameters["lfsmo_droop"] = Math.round($("#extended_lfsmoDroop").val());
-    if(elementExists("#extended_lfsmoSlope")) newParameters["lfsmo_slope"] = Math.round(parseFloat($("#extended_lfsmoSlope").val()) * 100);
-
-    if(isTor) {
-        newParameters["grid_connect_upper_voltage"     ] = Math.round(parseFloat($("#extended_maxGridVoltage").val()) * 100);
-        newParameters["grid_connect_lower_voltage"     ] = Math.round(parseFloat($("#extended_minGridVoltage").val()) * 100);
-        newParameters["grid_connect_upper_frequency"   ] = Math.round(parseFloat($("#extended_maxGridFrequency").val()) * 100);
-        newParameters["grid_connect_lower_frequency"   ] = Math.round(parseFloat($("#extended_minGridFrequency").val()) * 100);
-        newParameters["stage_1_ov_threshold"           ] = Math.round(parseFloat($("#extended_UeffOver1").val()) * 100);
-        newParameters["stage_1_uv_threshold"           ] = Math.round(parseFloat($("#extended_UeffUnder1").val()) * 100);
-        newParameters["stage_2_ov_threshold"           ] = Math.round(parseFloat($("#extended_UeffOver2").val()) * 100);
-        newParameters["stage_2_uv_threshold"           ] = Math.round(parseFloat($("#extended_UeffUnder2").val()) * 100);
-        newParameters["stage_1_of_threshold"           ] = Math.round(parseFloat($("#extended_fOver1").val()) * 100);
-        newParameters["stage_1_uf_threshold"           ] = Math.round(parseFloat($("#extended_fUnder1").val()) * 100);
-        newParameters["stage_1_ov_duration"            ] = Math.round(parseFloat($("#extended_UeffOver1Time").val()) * 1000);
-        newParameters["stage_1_uv_duration"            ] = Math.round(parseFloat($("#extended_UeffUnder1Time").val()) * 1000);
-        newParameters["stage_2_ov_duration"            ] = Math.round(parseFloat($("#extended_UeffOver2Time").val()) * 1000);
-        newParameters["stage_2_uv_duration"            ] = Math.round(parseFloat($("#extended_UeffUnder2Time").val()) * 1000);
-        newParameters["stage_1_of_duration"            ] = Math.round(parseFloat($("#extended_fOver1Time").val()) * 1000);
-        newParameters["stage_1_uf_duration"            ] = Math.round(parseFloat($("#extended_fUnder1Time").val()) * 1000);
-        newParameters["overvoltage_10min_threshold"    ] = Math.round(parseFloat($("#extended_Ueff").val()) * 100);
-        newParameters["wait_time_before_grid_connect"  ] = Math.round($("#extended_gridConnectDelay").val());
-        newParameters["wait_time_before_grid_reconnect"] = Math.round($("#extended_gridReconnectDelay").val());
-        newParameters["pu_time_constant"               ] = Math.round(parseFloat($("#extended_puTime").val()) * 1000);
     }
 
 
