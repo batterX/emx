@@ -252,6 +252,7 @@
         "msg_solar_size_very_low"                                  : "La puissance du système photovoltaïque semble être très faible.",
         "msg_solar_size_very_low_confirm"                          : "Veuillez confirmer que la puissance n'est que de 100 Wp ou modifier la puissance à la valeur correcte.",
         "msg_lifepo_communication_problem"                         : "Problème de communication entre l'onduleur et les modules de batterie",
+        "msg_lifepo_recognition_problem"                           : "Seulement X modules de batterie détectés",
         "msg_emx_not_registered"                                   : "Votre EMX n'est pas enregistré dans notre base de données. Veuillez contacter votre partenaire batterX pour régler ce problème.",
         "msg_livex_not_registered"                                 : "Votre liveX n'est pas enregistré dans notre base de données. Veuillez contacter votre partenaire batterX pour régler ce problème.",
         "msg_system_serial_not_correct"                            : "Le numéro de série du système n'est pas valable",

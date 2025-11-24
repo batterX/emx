@@ -252,6 +252,7 @@
         "msg_solar_size_very_low"                                  : "The size of the PV-System seems very low.",
         "msg_solar_size_very_low_confirm"                          : "Please confirm that the size is only 100 Wp, or cancel and change it to the correct value.",
         "msg_lifepo_communication_problem"                         : "Communication Problem between Inverter and Battery Modules",
+        "msg_lifepo_recognition_problem"                           : "Only X battery modules detected",
         "msg_emx_not_registered"                                   : "Your EMX is not registered in our database. Please contact your batterX Partner to resolve this.",
         "msg_livex_not_registered"                                 : "Your liveX is not registered in our database. Please contact your batterX Partner to resolve this.",
         "msg_system_serial_not_correct"                            : "System S/N not correct",

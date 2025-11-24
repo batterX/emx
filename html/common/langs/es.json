@@ -252,6 +252,7 @@
         "msg_solar_size_very_low"                                  : "El tamaño del sistema PV parece demasiado bajo.",
         "msg_solar_size_very_low_confirm"                          : "Por favor confirme que el tamaño es solo 100 Wp, o cancele y cámbielo",
         "msg_lifepo_communication_problem"                         : "Problema de comunicación con baterias LiFePO",
+        "msg_lifepo_recognition_problem"                           : "Solo modulos de X battery detectados",
         "msg_emx_not_registered"                                   : "Su EMX no está registrado en nuestra base de datos. Por favor contacte su proveedor de batterX para resolverlo.",
         "msg_livex_not_registered"                                 : "Su liveX no está registrado en nuestra base de datos. Por favor contacte su proveedor de batterX para resolverlo.",
         "msg_system_serial_not_correct"                            : "Sistema S/N no correcto",

@@ -432,10 +432,16 @@ async function verifyModulesCommunication() {
         }
         
         dataCurrentState = JSON.parse(JSON.stringify(currentStateResponse));
+
         var batteryLevel = 0;
         if(dataCurrentState.hasOwnProperty("3122"))
             if(dataCurrentState["3122"].hasOwnProperty(1))
                 batteryLevel = parseInt(dataCurrentState["3122"]["1"]);
+
+        var bmsCapacity = 0;
+        if(dataCurrentState.hasOwnProperty("3317"))
+            if(dataCurrentState["3317"].hasOwnProperty(1))
+                bmsCapacity = parseInt(dataCurrentState["3317"]["1"]);
         
         // Verify Battery Level
         if(batteryLevel == 0) {
@@ -444,6 +450,27 @@ async function verifyModulesCommunication() {
             $("#btn_next").unbind().removeAttr("form").removeAttr("type").on("click", () => { setup1(); });
             isSettingParameters = false;
             return false;
+        }
+
+        // Verify Number of Modules
+        var moduleWh = inverterModel >= "11000" ? 2550 : 3500;
+        var recognizedModules = Math.round(parseInt(bmsCapacity) / moduleWh);
+        var countModules = 0;
+        if(isLiFePO()) {
+            $("#lifepo_serialnumbers").val().trim().split("\n").forEach(sn => {
+                if(sn.trim() != "") countModules += 1;
+            });
+            if(recognizedModules != countModules) {
+                $("#notif").removeClass("loading error success").addClass("error");
+                $("#message").html(lang.system_setup.msg_lifepo_recognition_problem.split("X").join(recognizedModules)).css("color", "red");
+                $("#btn_next").unbind().removeAttr("form").removeAttr("type").on("click", () => { setup1(); });
+                isSettingParameters = false;
+                // Enable Battery Fields
+                $(` #lifepo_bms,
+                    #lifepo_serialnumbers
+                `).attr("disabled", false);
+                return false;
+            }
         }
         
         // If not h10 inverter, we're done
