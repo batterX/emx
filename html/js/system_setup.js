@@ -463,7 +463,7 @@ async function verifyModulesCommunication() {
             if(recognizedModules != countModules) {
                 $("#notif").removeClass("loading error success").addClass("error");
                 $("#message").html(lang.system_setup.msg_lifepo_recognition_problem.split("X").join(recognizedModules)).css("color", "red");
-                $("#btn_next").unbind().removeAttr("form").removeAttr("type").on("click", () => { setup1(); });
+                $("#btn_next").attr("disabled", false).unbind().on("click", () => { mainFormSubmit(); });
                 isSettingParameters = false;
                 // Enable Battery Fields
                 $(` #lifepo_bms,
