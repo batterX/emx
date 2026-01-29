@@ -44,6 +44,135 @@ function sleep(ms) {
 }
 
 
+/**
+ * Sets DynamicTariff mode with retry logic
+ * Retries every 60 seconds if the mode is not applied within 5-second checks
+ *
+ * @param {string} targetMode - The mode to set (e.g., "0" or "1")
+ * @returns {Promise<void>}
+ */
+async function setDynamicTariffMode(targetMode) {
+    while (true) {
+        try {
+            // Set the mode
+            const setResponse = await $.get({
+                url: `api.php?set=command&type=11&entity=11&text1=0 DynamicTariff&text2=${targetMode}`
+            });
+
+            if (setResponse != "1") {
+                alert("Error setting DynamicTariff mode. Please refresh the page!");
+                return;
+            }
+
+            // Wait 2 seconds, then reload settings
+            await sleep(2000);
+
+            const reloadResponse = await $.get({
+                url: "api.php?set=command&type=12&entity=0&text2=1"
+            });
+
+            if (reloadResponse != "1") {
+                alert("Error reloading settings. Please refresh the page!");
+                return;
+            }
+
+            // Wait for mode to be applied (check every 5 seconds, timeout after 60 seconds)
+            const startTime = Date.now();
+            const timeout = 60000; // 60 seconds
+
+            while (true) {
+                await sleep(5000);
+
+                // Check if mode is applied
+                const settings = await $.get({url: "api.php?get=settings"});
+
+                if (settings &&
+                    settings.hasOwnProperty("DynamicTariff") &&
+                    settings["DynamicTariff"].hasOwnProperty("0") &&
+                    settings["DynamicTariff"]["0"].hasOwnProperty("mode") &&
+                    settings["DynamicTariff"]["0"]["mode"] == targetMode) {
+                    // Mode successfully applied!
+                    return;
+                }
+
+                // Check if we've exceeded the 60-second timeout
+                if (Date.now() - startTime >= timeout) {
+                    // Timeout reached, retry the entire process
+                    break;
+                }
+            }
+
+            // If we get here, the 60-second timeout was reached, so loop continues and retries
+
+        } catch (error) {
+            alert("Error while setting DynamicTariff mode. Please refresh the page!");
+            return;
+        }
+    }
+}
+
+
+/**
+ * Disables DynamicTariff (sets mode to 0) before battery test
+ * Stores original value in sessionStorage if it was enabled
+ *
+ * @returns {Promise<void>}
+ */
+async function disableDynamicTariffForBatteryTest() {
+    try {
+        // Get current settings
+        const settings = await $.get({url: "api.php?get=settings"});
+
+        if (!settings ||
+            !settings.hasOwnProperty("DynamicTariff") ||
+            !settings["DynamicTariff"].hasOwnProperty("0") ||
+            !settings["DynamicTariff"]["0"].hasOwnProperty("mode")) {
+            // DynamicTariff not found in settings, skip
+            return;
+        }
+
+        const currentMode = settings["DynamicTariff"]["0"]["mode"];
+
+        // If mode is not 0, store it and set to 0
+        if (currentMode != "0") {
+            // Store original mode in sessionStorage
+            sessionStorage.setItem('dynamicTariffOriginalMode', currentMode);
+
+            // Set mode to 0
+            await setDynamicTariffMode("0");
+        }
+
+    } catch (error) {
+        alert("Error checking DynamicTariff status. Please refresh the page!");
+    }
+}
+
+
+/**
+ * Restores DynamicTariff mode after battery test
+ * Only restores if a value was stored in sessionStorage
+ *
+ * @returns {Promise<void>}
+ */
+async function restoreDynamicTariffAfterBatteryTest() {
+    try {
+        // Check if we have a stored mode
+        const originalMode = sessionStorage.getItem('dynamicTariffOriginalMode');
+
+        if (originalMode !== null) {
+            // Restore the original mode
+            await setDynamicTariffMode(originalMode);
+
+            // Clear the stored value
+            sessionStorage.removeItem('dynamicTariffOriginalMode');
+        }
+
+    } catch (error) {
+        console.log("Warning: Could not restore DynamicTariff mode:", error);
+        // Don't alert here, just log - we don't want to block the flow
+    }
+}
+
 
 
 
@@ -171,7 +300,7 @@ async function testEnergyMeter() {
     try {
         const response = await $.get({url: "api.php?get=currentstate"});
         if(!response || typeof response != "object") return alert("E004. Please refresh the page! (Bad response from local currentstate table)");
-        if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+        if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
         
         energyMeter_firstRun = false;
         await sleep(2500);
@@ -240,6 +369,10 @@ async function testBatteryCharging() {
     if(noBattery) return finishStep();
 
     showLoading_batteryCharging();
+
+    // Disable DynamicTariff before battery test (stores original value in sessionStorage)
+    await disableDynamicTariffForBatteryTest();
+
     batteryCharging_firstRun = false;
 
     try {
@@ -252,7 +385,7 @@ async function testBatteryCharging() {
         if(!response.hasOwnProperty("1074") || !response["1074"].hasOwnProperty("1"))
             return alert("E007. Please refresh the page! (Missing value 1074,1 from local currentstate table)");
 
-        if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+        if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
         var batteryLevel = parseInt(response["1074"]["1"]);
         var batteryVoltage = parseInt(response["1042"]["1"]) / 100;
@@ -336,7 +469,7 @@ async function testBatteryCharging_waitUntilCharged() {
                 if(!response.hasOwnProperty("2465") || !response["2465"].hasOwnProperty("3")) return alert("E020. Please refresh the page! (Missing value 2465,3 from local currentstate table)");
                 if(response["2465"]["3"] != 11) return alert("E021. Please refresh the page! (BatteryChargingAC could not be set to forced-on)");
 
-                if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+                if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
                 if(isLiFePO()) {
                     if(batteryWaitCounter < 1 && response["1074"]["1"] >= batteryMinLevel) {
@@ -414,7 +547,7 @@ async function testBatteryCharging_waitUntilDischarged() {
                 if(!response.hasOwnProperty("1634") || !response["1634"].hasOwnProperty("0")) return alert("E027. Please refresh the page! (Missing value 1634,0 from local currentstate table)");
                 if(response["2465"]["5"] != 11) return alert("E028. Please refresh the page! (BatteryDischargingAC could not be set to forced-on)");
 
-                if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+                if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
                 if(isLiFePO()) {
                     if(batteryWaitCounter < 1 && response["1074"]["1"] <= batteryMaxLevel) {
@@ -493,7 +626,7 @@ async function testBatteryCharging_test() {
             if(!response || typeof response != "object" || !response.hasOwnProperty("1121") || !response["1121"].hasOwnProperty("1"))
                 return alert("E033. Please refresh the page! (Bad response or missing value 1121,1 from local currentstate table)");
 
-            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
             var batteryPower = parseInt(response["1121"]["1"]);
             batteryCharging_count += 1;
@@ -564,7 +697,10 @@ async function testBatteryCharging_waitUntilReset() {
             
             $("#testBatteryCharging .notif").removeClass("loading error success").addClass("success");
             $("#log p:last-child").html(`<b class="mr-1">✓</b> ${lang.system_test.disable_ac_charging}`);
-            
+
+            // Restore DynamicTariff mode after battery test (if it was previously enabled)
+            await restoreDynamicTariffAfterBatteryTest();
+
             await sleep(2500);
             testUpsMode();
         } catch (error) {
@@ -608,7 +744,7 @@ async function testUpsMode() {
         if(!response || typeof response != "object" || !response.hasOwnProperty("1297") || !response["1297"].hasOwnProperty("1"))
             return alert("E047. Please refresh the page! (Bad response or missing value 1297,1 from local currentstate table)");
 
-        if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+        if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
         var voltage1 = undefined;
         var voltage2 = undefined;
@@ -659,7 +795,7 @@ async function testUpsMode_waitingForInput() {
             if(!response || typeof response != "object" || !response.hasOwnProperty("273") || !response["273"].hasOwnProperty("1") || !response.hasOwnProperty("1634") || !response["1634"].hasOwnProperty("0"))
                 return alert("E050. Please refresh the page! (Bad response or missing value 273,1 from local currentstate table)");
 
-            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
             var voltage1 = undefined;
             var voltage2 = undefined;
@@ -712,7 +848,7 @@ async function testUpsMode_test() {
             if(!response || typeof response != "object" || !response.hasOwnProperty("1297") || !response["1297"].hasOwnProperty("1"))
                 return alert("E053. Please refresh the page! (Bad response or missing value 1297,1 from local currentstate table)");
 
-            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
             upsMode_count += 1;
             $("#log p:last-child").html(`${lang.system_test.performing_test} (${upsMode_count} / 5)`);
@@ -767,7 +903,7 @@ async function testUpsMode_finish() {
             if(!response || typeof response != "object" || !response.hasOwnProperty("273") || !response["273"].hasOwnProperty("1"))
                 return alert("E056. Please refresh the page! (Bad response from local currentstate table)");
             
-            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.utc().subtract(1, "minute").format("YYYY-MM-DD hh:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
+            if(!response.hasOwnProperty("logtime") || !moment(response["logtime"]).isAfter(moment(moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss")))) return alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
             var voltage1 = undefined;
             var voltage2 = undefined;

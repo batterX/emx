@@ -69,7 +69,8 @@ $_SESSION["box_apikey"] = $apikey;
                 <h1><?php echo $lang["installer_login"]["installer_login"]; ?></h1>
                 <form id="loginForm">
                     <div class="mb-4"><input id="email"    class="form-control form-control-outline rounded-pill" type="email"    placeholder="<?php echo $lang["common"]["email"   ]; ?>" required></div>
-                    <div class="mb-2"><input id="password" class="form-control form-control-outline rounded-pill" type="password" placeholder="<?php echo $lang["common"]["password"]; ?>" required></div>
+                    <div class="mb-3"><input id="password" class="form-control form-control-outline rounded-pill" type="password" placeholder="<?php echo $lang["common"]["password"]; ?>" required></div>
+                    <div class="mb-2 text-center"><a href="https://batterx.app/forgotpassword.php" target="_blank" class="text-success" style="font-size:14px">Forgot password?</a></div>
                     <span id="errorMsg"   class="d-none mt-4"><?php echo $lang["installer_login"]["wrong_email_or_password"]; ?></span>
                     <span id="warningMsg" class="d-none mt-4"><?php echo $lang["installer_login"]["wrong_system_installer" ]; ?></span>
                 </form>

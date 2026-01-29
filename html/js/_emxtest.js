@@ -416,13 +416,40 @@ function gpio_test_4() {
                 if(json[2321][4] != 0) { alert("Input 4 is ON, should be OFF\nPlease verify the GPIO connectors"); gpio_test_4(); return; }
                 $("#gpio_test .in4").addClass("green");
                 $.get({ url: "api.php?set=command&type=20737&text1=4&text2=0", success: (response) => { console.log(response); } });
-                // Test Completed
-                logMsg("gpio_test", "mt-4 green text-center", "<b>CONTINUE NEXT STEP</b>");
-                finishStep("gpio_test");
-                generate_report();
+                gpio_test_disconnect();
             });
         }
     });
+}
+
+function gpio_test_disconnect() {
+    $("#gpio_test .step-content").addClass("d-none");
+    $("#gpio_test .step-info-2, #gpio_test .step-start-2").removeClass("d-none");
+    $("#gpio_test .step-start-2").on("click", () => {
+        $("#gpio_test .step-info-2, #gpio_test .step-start-2").addClass("d-none");
+        gpio_test_disconnect_verify();
+    });
+}
+
+function gpio_test_disconnect_verify() {
+    removeLastMsg("gpio_test");
+    logMsg("gpio_test", "", "Verifying. Please wait...");
+    // Turn-On Output 3
+	$.get({ url: "api.php?set=command&type=20737&text1=3&text2=1", success: (response) => { console.log(response); } });
+    // Check if Output 3 is On
+	getCurrentStateUpdate((json) => {
+		if(json == null) { gpio_test_disconnect_verify(); return; }
+		// Check Output 3 (Must be forced-on)
+		if(json[2337][3] != 11) { gpio_test_disconnect_verify(); return; }
+		// Check Input 3 (Must be On)
+		if(json[2321][3] != 0) { alert("The GPIO connectors are still connected\nPlease disconnect all GPIO connectors"); gpio_test_disconnect_verify(); return; }
+		// Turn-Off Output 3
+		$.get({ url: "api.php?set=command&type=20737&text1=3&text2=0", success: (response) => { console.log(response); } });
+		// Test Completed
+        logMsg("gpio_test", "mt-4 green text-center", "<b>CONTINUE NEXT STEP</b>");
+        finishStep("gpio_test");
+        generate_report();
+	});
 }
 
 

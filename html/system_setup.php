@@ -156,6 +156,44 @@ $hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firm
             </div>
         </div>
 
+        <div class="modal fade" id="errorBatteriesWithOtherSystem" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-body text-center">
+                        <span style="color: red"><b><?php echo $lang["system_setup"]["msg_batteries_registered_with_other_system"] ?></b></span>
+                        <div class="mt-3">
+                            <span class="d-block"><b><?php echo $lang["system_setup"]["serialnumbers"] ?></b></span>
+                            <div id="errorBatteriesWithOtherSystemList" class="text-center mt-2 px-2" style="font-size:95%; white-space:pre-line;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="errorBatteriesNotExist" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-body text-center">
+                        <div class="text-center" style="color: red"><b><?php echo $lang["system_setup"]["msg_batteries_not_exist"] ?></b></div>
+                        <div class="mt-3">
+                            <span class="d-block"><b><?php echo $lang["system_setup"]["serialnumbers"] ?></b></span>
+                            <div id="errorBatteriesNotExistList" class="text-center mt-2 px-2" style="font-size:95%; white-space:pre-line;"></div>
+                        </div>
+                        <hr>
+                        <div class="text-center mt-3"><b><?php echo $lang["system_setup"]["msg_click_to_register_batteries"] ?></b></div>
+                        <div class="row mt-3">
+                            <div class="col-6 pr-2">
+                                <button type="button" class="btn btn-sm px-4 py-2 btn-secondary ripple w-100" data-dismiss="modal"><b><?php echo $lang["system_setup"]["close"] ?></b></button>
+                            </div>
+                            <div class="col-6 pl-2">
+                                <button id="errorBatteriesNotExistBtnRegister" type="button" class="btn btn-sm px-4 py-2 btn-success ripple w-100" data-dismiss="modal"><b><?php echo $lang["system_setup"]["register"] ?></b></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="errorBmsNotExistOrWithOtherSystem" tabindex="-1" role="dialog">
             <div class="modal-dialog modal-dialog-centered modal-sm">
                 <div class="modal-content">
@@ -495,12 +533,12 @@ $hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firm
                                 <div id="system_type" class="card-body border-bottom">
                                     <label for="bx_system"><?php echo $lang["system_setup"]["system_serialnumber_system"]; ?></label>
                                     <input id="bx_system" class="form-control form-control-outline" type="text" placeholder="<?php echo $lang["common"]["serialnumber"]; ?>">
-                                    <div class="custom-control custom-radio mt-3">
-                                        <input type="radio" id="bx_system_type_r" name="bx_system_type" class="custom-control-input" checked>
+                                    <div class="custom-control custom-radio mt-3 d-none">
+                                        <input type="radio" id="bx_system_type_r" name="bx_system_type" class="custom-control-input" disabled>
                                         <label class="custom-control-label" for="bx_system_type_r"><?php echo $lang["system_setup"]["system_type_r"]; ?></label>
                                     </div>
-                                    <div class="custom-control custom-radio mt-1">
-                                        <input type="radio" id="bx_system_type_w" name="bx_system_type" class="custom-control-input">
+                                    <div class="custom-control custom-radio mt-1 d-none">
+                                        <input type="radio" id="bx_system_type_w" name="bx_system_type" class="custom-control-input" disabled>
                                         <label class="custom-control-label" for="bx_system_type_w"><?php echo $lang["system_setup"]["system_type_w"]; ?></label>
                                     </div>
                                 </div>

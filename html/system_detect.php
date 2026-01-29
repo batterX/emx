@@ -66,7 +66,7 @@ $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["ins
                     <span class="message"><?php echo $lang["system_detect"]["please_connect_inverter"]; ?></span>
                 </div>
             </div>
-        
+
 
 
             <div id="inverterDetected" class="container d-none">
@@ -79,7 +79,38 @@ $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["ins
                     </div>
                 </div>
 
-                <div class="card elevate-1 mt-3 py-2">
+                <div id="firmwareUpdateSuccess" class="card elevate-1 mt-3 py-2 d-none">
+                    <div class="card-body d-flex justify-content-center align-items-center py-3">
+                        <div class="cert-status notif success d-block mr-3"></div>
+                        <div class="fw-update-title text-success"><?php echo $lang["system_detect"]["firmware_update"]; ?></div>
+                    </div>
+                </div>
+
+                <div id="firmwareUpdateContainer" class="card elevate-1 mt-3 py-2 d-none">
+                    <div class="card-body py-4">
+                        <div class="fw-update-title"><?php echo $lang["system_detect"]["firmware_update"]; ?></div>
+                        <div class="mt-4">
+                            <div class="small"><?php echo $lang["system_detect"]["installed_version"]; ?></div>
+                            <div id="installedVersion" class="text-monospace small mt-1" style="line-height: 1.25"></div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="small"><?php echo $lang["system_detect"]["latest_version"]; ?></div>
+                            <div id="latestVersion" class="text-monospace small mt-1" style="line-height: 1.25"></div>
+                        </div>
+                        <div id="estimatedDurationContainer" class="mt-4" style="font-size:0.9rem"><?php echo $lang["system_detect"]["estimated_duration"]; ?>: <b id="estimatedDuration"></b></div>
+                        <div class="px-2 mx-1 mt-2">
+                            <button id="firmwareUpdateStart" class="btn btn-sm px-4 py-2 btn-success ripple"><b><?php echo $lang["system_detect"]["start_firmware_update"]; ?></b></button>
+                            <div id="firmwareUpdateProgress" class="d-none mt-4 pt-2 px-4">
+                                <div class="progress">
+                                    <div id="firmwareUpdateProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"></div>
+                                </div>
+                                <div id="firmwareUpdateProgressText" class="text-center mt-2 small"><?php echo $lang["system_detect"]["updating_firmware"]; ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="machineModelContainer" class="card elevate-1 mt-3 py-2 d-none">
                     <div class="card-body py-4">
                         <div class="standard-cont">
                             <div class="cert-status notif loading"></div>
@@ -131,6 +162,39 @@ $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["ins
             </div>
         </div>
 
+        <div class="modal fade" id="modalConfirmNoBattery" data-backdrop="static" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <h5 class="modal-header mb-0"><?php echo $lang["system_detect"]["no_battery_detected"]; ?></h5>
+                    <div class="modal-body">
+                        <p><?php echo $lang["system_detect"]["no_battery_detected_refresh_info"]; ?></p>
+                        <div class="text-center">
+                            <button type="button" class="refresh btn btn-sm px-4 py-2 btn-success w-100 ripple"><b><?php echo $lang["system_detect"]["no_battery_detected_refresh_btn"]; ?></b></button>
+                        </div>
+                        <p class="mt-3"><?php echo $lang["system_detect"]["no_battery_detected_confirm_info"]; ?></p>
+                        <div class="text-center">
+                            <button type="button" class="confirm btn btn-sm px-4 py-2 btn-warning w-100 ripple"><b><?php echo $lang["system_detect"]["no_battery_detected_confirm_btn"]; ?></b></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalConfirmFirmwareUpdate" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <h5 class="modal-header mb-0"><?php echo $lang["system_detect"]["please_note"]; ?></h5>
+                    <div class="modal-body">
+                        <p><?php echo $lang["system_detect"]["please_note_info_1"]; ?></p>
+                        <p><?php echo $lang["system_detect"]["please_note_info_2"]; ?></p>
+                        <div class="text-center mt-3">
+                            <button type="button" class="confirm btn btn-sm px-4 py-2 btn-success w-100 ripple"><b><?php echo $lang["system_detect"]["start_firmware_update"]; ?></b></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
 
 
@@ -139,6 +203,16 @@ $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["ins
 
         <script>
             const installationCountry = <?php echo json_encode($installationCountry); ?>;
+            
+            const armLatestVersion = <?php echo json_encode($armLatestVersion); ?>;
+            const dspSmLatestVersion = <?php echo json_encode($dspSmLatestVersion); ?>;
+            const dspLgLatestVersion = <?php echo json_encode($dspLgLatestVersion); ?>;
+            const bmsLatestVersion = <?php echo json_encode($bmsLatestVersion); ?>;
+
+            const armEstimatedDuration = <?php echo json_encode($armEstimatedDuration); ?>;
+            const dspSmEstimatedDuration = <?php echo json_encode($dspSmEstimatedDuration); ?>;
+            const dspLgEstimatedDuration = <?php echo json_encode($dspLgEstimatedDuration); ?>;
+            const bmsEstimatedDuration = <?php echo json_encode($bmsEstimatedDuration); ?>;
         </script>
 
         <script src="js/dist/moment.js?v=<?php echo $versionHash; ?>"></script>

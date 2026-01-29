@@ -18,4 +18,15 @@
 
     const repositoryVersionLink = "<?php echo $boxType == "livex" ? "https://raw.githubusercontent.com/batterX/LiveSmart-Home/master/version.txt" : "https://raw.githubusercontent.com/batterX/emx/main/version.txt"; ?>";
     const repositorySizeLink = "<?php echo $boxType == "livex" ? "https://raw.githubusercontent.com/batterX/LiveSmart-Home/master/size.txt" : "https://raw.githubusercontent.com/batterX/emx/main/size.txt"; ?>";
+
+    // Server time synchronization (fixes offline detection when PC clock is incorrect)
+    const serverTime = <?php echo time(); ?>; // Server time in seconds (Unix timestamp) - static at page load
+
+    // Calculate offset between server time and local time (for dynamic updates)
+    const serverTimeOffset = <?php echo time(); ?> - Math.floor(Date.now() / 1000);
+
+    // Get current server time (dynamically calculated)
+    function getServerTime() {
+        return Math.floor(Date.now() / 1000) + serverTimeOffset;
+    }
 </script>

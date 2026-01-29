@@ -169,7 +169,23 @@
     "system_detect": {
         "inverter_unknown"                                         : "Wechselrichter Unbekannt",
         "please_connect_inverter"                                  : "Bitte verbinden Sie Ihren Wechselrichter mit dem LiveX/EMX.",
-        "inverter_not_registered"                                  : "Ihr Wechselrichter ist nicht in unserer Datenbank registriert."
+        "inverter_not_registered"                                  : "Ihr Wechselrichter ist nicht in unserer Datenbank registriert.",
+        "firmware_update"                                          : "Firmware Update",
+        "installed_version"                                        : "Installierte Version",
+        "latest_version"                                           : "Neueste Version",
+        "estimated_duration"                                       : "Geschätzte Dauer",
+        "start_firmware_update"                                    : "Firmware Update Starten",
+        "updating_firmware"                                        : "Firmware wird aktualisiert...",
+        "no_battery_detected"                                      : "Kein Batteriespeicher erkannt",
+        "no_battery_detected_refresh_info"                         : "Bitte prüfen Sie die Verbindung zwischen BMS und Wechselrichter.",
+        "no_battery_detected_refresh_btn"                          : "Verbindung erneut prüfen",
+        "no_battery_detected_confirm_info"                         : "Oder bestätigen Sie, dass bei dieser Installation kein Speicher vorhanden ist.",
+        "no_battery_detected_confirm_btn"                          : "Kein Speicher vorhanden",
+        "please_note"                                              : "Bitte beachten",
+        "please_note_info_1"                                       : "Während des Firmware-Updates können der Wechselrichter und der Speicher mehrfach neu starten. Dabei kann auch der geschützte Ausgang kurzzeitig abgeschaltet werden.",
+        "please_note_info_2"                                       : "Stellen Sie bitte sicher, dass während des Updates kein Netzausfall auftritt.",
+        "remaining"                                                : "verbleibend",
+        "please_wait"                                              : "Bitte warten..."
     },
     
     "system_setup": {
@@ -258,6 +274,9 @@
         "msg_system_serial_not_correct"                            : "Seriennummer des Systems nicht gültig",
         "msg_inverter_registered_with_other_system"                : "Der Wechselrichter ist mit einem anderen System registriert!",
         "msg_battery_not_exist_or_registered_with_other_system"    : "Das Batteriemodul existiert nicht oder ist bereits mit einem anderen System registriert.",
+        "msg_batteries_registered_with_other_system"               : "Die Batteriemodule sind bereits mit einem anderen System registriert!",
+        "msg_batteries_not_exist"                                  : "Die Batteriemodule existieren nicht!",
+        "msg_click_to_register_batteries"                          : "Bestätigen Sie, ob diese als Fremdmodule registriert werden sollen",
         "msg_system_with_sn_does_not_exist"                        : "System mit S/N 123 ist nicht vorhanden.",
         "msg_system_registered_with_other_user"                    : "Das System ist mit einem anderen Benutzer registriert!",
         "msg_bms_not_exist_or_registered_with_other_system"        : "Das BMS-Modul existiert nicht oder ist bereits mit einem anderen System registriert.",
@@ -277,7 +296,10 @@
         "extendedconfirm_title"                                    : "Bestätigung der erweiterten Parameter",
         "extendedconfirm_message"                                  : "Bitte bestätigen Sie, dass die erweiterten Parameter des Wechselrichters korrekt eingestellt sind.",
         "extendedconfirm_modify"                                   : "Bearbeiten",
-        "extendedconfirm_confirm"                                  : "Bestätigen"
+        "extendedconfirm_confirm"                                  : "Bestätigen",
+        "serialnumbers"                                            : "Seriennummern",
+        "close"                                                    : "Schließen",
+        "register"                                                 : "Registrieren"
     },
 
     "summary": {

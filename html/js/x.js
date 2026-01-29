@@ -39,9 +39,9 @@ function mainLoop() {
 
 
 
-            if(json.hasOwnProperty("logtime")) {
+            if(json.hasOwnProperty("logtime") && json.hasOwnProperty("servertime")) {
                 var logDate = new Date(json["logtime"].split(" ").join("T") + "Z");
-                var nowDate = new Date();
+                var nowDate = new Date(json["servertime"].split(" ").join("T") + "Z"); // Use server time instead of local PC time
                 var dif = (nowDate - logDate) / 1000;
                 console.log(logDate);
                 console.log(nowDate);

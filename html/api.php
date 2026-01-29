@@ -44,6 +44,7 @@ if(isset($_GET["get"]) && strtolower($_GET["get"]) == "currentstate") {
             $dbh->$type->$entity = intval($row["entityvalue"]);
             $dbh->logtime = (string) $row["logtime"];
         }
+        $dbh->servertime = gmdate("Y-m-d H:i:s"); // Add current server time in UTC format (for PC clock offset calculation)
         header("Content-Type: application/json");
         echo json_encode($dbh, JSON_FORCE_OBJECT);
     }

@@ -209,6 +209,9 @@ $apikey = sha1(strval($serial));
                     <div class="in4  col-3 text-center">Input 4</div>
                 </div>
 
+                <p class="step-info-2 d-none">Disconnect the GPIO connectors, then press <u>Continue</u> below.</p>
+                <button class="step-start-2 btn btn-sm btn-primary w-40 w-md-20 ripple d-none">Continue</button>
+
                 <div class="log"></div>
 
             </div>

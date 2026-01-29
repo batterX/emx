@@ -68,6 +68,24 @@ $lang = json_decode($lang, true);
 
 
 /*
+    Firmware Update Variables
+*/
+
+$armLatestVersion   = ["08", "06"]; // ["04", "18"];
+$dspSmLatestVersion = ["03", "21"]; // ["02", "36"];
+$dspLgLatestVersion = ["06", "10"]; // ["06", "10"];
+$bmsLatestVersion   = ["95", "51"]; // ["95", "47"];
+
+$armEstimatedDuration   = 5;
+$dspSmEstimatedDuration = 8;
+$dspLgEstimatedDuration = 8;
+$bmsEstimatedDuration   = 10;
+
+
+
+
+
+/*
     Set Constant Variables
 */
 
@@ -75,4 +93,4 @@ $versionHash = time();
 
 $boxType = "emx";
 
-$softwareVersion = "v25.11.2-1";
+$softwareVersion = "v26.1.1";

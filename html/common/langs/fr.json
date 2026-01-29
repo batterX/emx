@@ -169,7 +169,23 @@
     "system_detect": {
         "inverter_unknown"                                         : "Onduleur inconnu",
         "please_connect_inverter"                                  : "Veuillez connecter votre onduleur au LiveX/EMX",
-        "inverter_not_registered"                                  : "Votre onduleur n'est pas enregistré dans nos bases de données"
+        "inverter_not_registered"                                  : "Votre onduleur n'est pas enregistré dans nos bases de données",
+        "firmware_update"                                          : "Firmware Update",
+        "installed_version"                                        : "Installed Version",
+        "latest_version"                                           : "Latest Version",
+        "estimated_duration"                                       : "Estimated Duration",
+        "start_firmware_update"                                    : "Start Firmware Update",
+        "updating_firmware"                                        : "Updating firmware...",
+        "no_battery_detected"                                      : "No battery detected",
+        "no_battery_detected_refresh_info"                         : "Please check the connection between the BMS and the inverter.",
+        "no_battery_detected_refresh_btn"                          : "Check connection again",
+        "no_battery_detected_confirm_info"                         : "Or confirm that no storage system is installed for this installation.",
+        "no_battery_detected_confirm_btn"                          : "No battery installed",
+        "please_note"                                              : "Please note",
+        "please_note_info_1"                                       : "During the firmware update, the inverter and the battery may restart multiple times. The protected output may also be temporarily switched off.",
+        "please_note_info_2"                                       : "Please ensure that no power outage occurs during the update.",
+        "remaining"                                                : "remaining",
+        "please_wait"                                              : "Please wait..."
     },
     
     "system_setup": {
@@ -258,6 +274,9 @@
         "msg_system_serial_not_correct"                            : "Le numéro de série du système n'est pas valable",
         "msg_inverter_registered_with_other_system"                : "L'onduleur est déjà enregistré dans un autre système!",
         "msg_battery_not_exist_or_registered_with_other_system"    : "La batterie n'existe pas ou est déjà enregistrée dans un autre système!",
+        "msg_batteries_registered_with_other_system"               : "Batteries already registered with another system!",
+        "msg_batteries_not_exist"                                  : "Batteries not registered in our database!",
+        "msg_click_to_register_batteries"                          : "Confirm if you want to register them as external modules",
         "msg_system_with_sn_does_not_exist"                        : "System with S/N 123 does not exist",
         "msg_system_registered_with_other_user"                    : "System already registered with another user!",
         "msg_bms_not_exist_or_registered_with_other_system"        : "Le BMS n'existe pas ou est déjà enregistrée dans un autre système!",
@@ -277,7 +296,10 @@
         "extendedconfirm_title"                                    : "Confirm Extended Parameters",
         "extendedconfirm_message"                                  : "Please confirm that the extended inverter parameters are correctly set, or modify their values.",
         "extendedconfirm_modify"                                   : "Modify",
-        "extendedconfirm_confirm"                                  : "Confirm"
+        "extendedconfirm_confirm"                                  : "Confirm",
+        "serialnumbers"                                            : "Serial Numbers",
+        "close"                                                    : "Close",
+        "register"                                                 : "Register"
     },
 
     "summary": {
