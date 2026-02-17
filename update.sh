@@ -9,6 +9,10 @@ sudo rm /home/pi/MqttStream
 sudo cp /home/pi/emx/MqttStream /home/pi
 sudo chmod 777 /home/pi/MqttStream
 
+sudo rm /home/pi/ModbusTCP
+sudo cp /home/pi/emx/ModbusTCP /home/pi
+sudo chmod 777 /home/pi/ModbusTCP
+
 sudo rm /home/pi/FWUpdate
 sudo cp /home/pi/emx/FWUpdate /home/pi
 sudo chmod 777 /home/pi/FWUpdate
@@ -26,6 +30,7 @@ sudo chmod 777 /var/www -R
 
 sudo kill $(pgrep "BatterX")
 sudo kill $(pgrep "MqttStream")
+sudo kill $(pgrep "ModbusTCP")
 sudo kill $(pgrep "FWUpdate")
 
 

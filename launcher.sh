@@ -35,3 +35,11 @@ then
 	sudo ./MqttStream &
 	cd /
 fi
+
+if ! pgrep -x "ModbusTCP" > /dev/null
+then
+	cd /
+	cd home/pi
+	sudo ./ModbusTCP &
+	cd /
+fi

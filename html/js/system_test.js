@@ -174,6 +174,135 @@ async function restoreDynamicTariffAfterBatteryTest() {
 }
 
 
+/**
+ * Sets BatteryMinSoC to a specific value with retry logic
+ * Keeps trying until the value is actually applied in settings
+ *
+ * @param {number} targetValue - The MinSoC value to set (0-100)
+ * @returns {Promise<void>}
+ */
+async function setMinSoC(targetValue) {
+    while (true) {
+        try {
+            // Set the value
+            const setResponse = await $.get({
+                url: `api.php?set=command&type=11&entity=21&text1=0 BatteryMinSoC&text2=${targetValue}`
+            });
+
+            if (setResponse != "1") {
+                alert("Error setting BatteryMinSoC. Please refresh the page!");
+                return;
+            }
+
+            // Wait 2 seconds, then reload settings
+            await sleep(2000);
+
+            const reloadResponse = await $.get({
+                url: "api.php?set=command&type=12&entity=0&text2=1"
+            });
+
+            if (reloadResponse != "1") {
+                alert("Error reloading settings. Please refresh the page!");
+                return;
+            }
+
+            // Wait for value to be applied (check every 5 seconds, timeout after 60 seconds)
+            const startTime = Date.now();
+            const timeout = 60000; // 60 seconds
+
+            while (true) {
+                await sleep(5000);
+
+                // Check if value is applied
+                const settings = await $.get({url: "api.php?get=settings"});
+
+                if (settings &&
+                    settings.hasOwnProperty("BatteryMinSoC") &&
+                    settings["BatteryMinSoC"].hasOwnProperty("0") &&
+                    settings["BatteryMinSoC"]["0"].hasOwnProperty("v1") &&
+                    settings["BatteryMinSoC"]["0"]["v1"] == targetValue) {
+                    // Value successfully applied!
+                    return;
+                }
+
+                // Check if we've exceeded the 60-second timeout
+                if (Date.now() - startTime >= timeout) {
+                    // Timeout reached, retry the entire process
+                    break;
+                }
+            }
+
+            // If we get here, the 60-second timeout was reached, so loop continues and retries
+
+        } catch (error) {
+            alert("Error while setting BatteryMinSoC. Please refresh the page!");
+            return;
+        }
+    }
+}
+
+
+/**
+ * Reduces BatteryMinSoC to batteryMaxLevel before battery test if it's above that threshold
+ * This prevents discharge test from failing when SoC is above the max level
+ * Stores original value in sessionStorage if it was reduced
+ *
+ * @returns {Promise<void>}
+ */
+async function reduceMinSoCForBatteryTest() {
+    try {
+        // Get current settings
+        const settings = await $.get({url: "api.php?get=settings"});
+
+        if (!settings ||
+            !settings.hasOwnProperty("BatteryMinSoC") ||
+            !settings["BatteryMinSoC"].hasOwnProperty("0") ||
+            !settings["BatteryMinSoC"]["0"].hasOwnProperty("v1")) {
+            // BatteryMinSoC not found in settings, skip
+            return;
+        }
+
+        const currentMinSoC = parseInt(settings["BatteryMinSoC"]["0"]["v1"]);
+
+        // If MinSoC is above batteryMaxLevel, store it and reduce
+        if (currentMinSoC > batteryMaxLevel) {
+            // Store original value in sessionStorage
+            sessionStorage.setItem('batteryMinSoCOriginal', currentMinSoC);
+
+            // Set MinSoC to batteryMaxLevel
+            await setMinSoC(batteryMaxLevel);
+        }
+
+    } catch (error) {
+        alert("Error checking BatteryMinSoC status. Please refresh the page!");
+    }
+}
+
+
+/**
+ * Restores BatteryMinSoC after battery test
+ * Only restores if a value was stored in sessionStorage
+ *
+ * @returns {Promise<void>}
+ */
+async function restoreMinSoCAfterBatteryTest() {
+    try {
+        // Check if we have a stored value
+        const originalMinSoC = sessionStorage.getItem('batteryMinSoCOriginal');
+
+        if (originalMinSoC !== null) {
+            // Restore the original value
+            await setMinSoC(parseInt(originalMinSoC));
+
+            // Clear the stored value
+            sessionStorage.removeItem('batteryMinSoCOriginal');
+        }
+
+    } catch (error) {
+        console.log("Warning: Could not restore BatteryMinSoC:", error);
+        // Don't alert here, just log - we don't want to block the flow
+    }
+}
 
 
 //////////////////////////////////////////////////
@@ -372,6 +501,9 @@ async function testBatteryCharging() {
 
     // Disable DynamicTariff before battery test (stores original value in sessionStorage)
     await disableDynamicTariffForBatteryTest();
+
+    // Reduce MinSoC to batteryMaxLevel if above it (prevents discharge test from failing)
+    await reduceMinSoCForBatteryTest();
 
     batteryCharging_firstRun = false;
 
@@ -700,6 +832,9 @@ async function testBatteryCharging_waitUntilReset() {
 
             // Restore DynamicTariff mode after battery test (if it was previously enabled)
             await restoreDynamicTariffAfterBatteryTest();
+
+            // Restore MinSoC after battery test (if it was reduced)
+            await restoreMinSoCAfterBatteryTest();
 
             await sleep(2500);
             testUpsMode();

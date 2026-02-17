@@ -1531,7 +1531,7 @@ async function step3() {
 
         // Set Correct system_type r/w
         if(boxType == "livex") {
-            systemType = box_info.partnumber.startsWith("200415") || box_info.partnumber.startsWith("K800415") ? "w" : "r";
+            systemType = box_info.partnumber.startsWith("200415") || box_info.partnumber.startsWith("K800415") || box_info.partnumber.startsWith("K800417") ? "w" : "r";
             $(`#bx_system_type_${systemType}`).prop("checked", true).trigger("change");
         }
 
@@ -2647,6 +2647,7 @@ async function setup2() {
     newParameters["controlMaxChargingPowerACMode"] = $("#controlMaxChargingPowerAC_check").is(":checked") ? "1" : "0";
     newParameters["controlMaxInjectionPowerMode" ] = $("#controlMaxInjectionPower_check" ).is(":checked") ? "1" : "0";
 
+    newParameters["systemTimezone"         ] = systemTimezone;
     newParameters["prepareBatteryExtension"] = "0";
     newParameters["cloudSet"               ] = "1";
 
@@ -2838,6 +2839,7 @@ async function setup2() {
         oldParameters["controlMaxChargingPowerACMode"] = !response.hasOwnProperty("ControlMaxChargingPowerAC") ? "0" : response["ControlMaxChargingPowerAC"]["0"]["mode"];
         oldParameters["controlMaxInjectionPowerMode" ] = !response.hasOwnProperty("ControlMaxInjectionPower" ) ? "0" : response["ControlMaxInjectionPower" ]["0"]["mode"];
 
+        oldParameters["systemTimezone"         ] = !response.hasOwnProperty("SystemTimezone"         ) || !response["SystemTimezone"         ].hasOwnProperty("0") ? ""  : response["SystemTimezone"         ]["0"]["s1"  ];
         oldParameters["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
         oldParameters["cloudSet"               ] = !response.hasOwnProperty("CloudSet"               ) || !response["CloudSet"               ].hasOwnProperty("0") ? ""  : response["CloudSet"               ]["0"]["mode"];
 
@@ -2931,8 +2933,9 @@ async function setup2() {
     if(newParameters["controlMaxChargingPowerACMode"] != oldParameters["controlMaxChargingPowerACMode"]) { retry = true; setup_sendCommand(20769, 0, "", newParameters["controlMaxChargingPowerACMode"]); }
     if(newParameters["controlMaxInjectionPowerMode" ] != oldParameters["controlMaxInjectionPowerMode" ]) { retry = true; setup_sendCommand(20770, 0, "", newParameters["controlMaxInjectionPowerMode" ]); }
 
-    if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]) }
-    if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]) }
+    if(newParameters["systemTimezone"         ] != oldParameters["systemTimezone"         ]) { retry = true; setup_sendSetting("SystemTimezone"         , "0", "s1"  , newParameters["systemTimezone"         ]); }
+    if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]); }
+    if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]); }
 
     if(newParameters.hasOwnProperty("reactive_mode"                       ) && oldParameters.hasOwnProperty("reactive_mode"                       ) && newParameters["reactive_mode"                       ] != oldParameters["reactive_mode"                       ]) { retry = true; setup_sendCommand(24064, 202, "", newParameters["reactive_mode"                       ]); }
     if(newParameters.hasOwnProperty("pf_mode_power_factor"                ) && oldParameters.hasOwnProperty("pf_mode_power_factor"                ) && newParameters["pf_mode_power_factor"                ] != oldParameters["pf_mode_power_factor"                ]) { retry = true; setup_sendCommand(24064, 203, "", newParameters["pf_mode_power_factor"                ]); }
@@ -3137,6 +3140,7 @@ async function setup_checkParameters() {
         oldParameters["controlMaxChargingPowerACMode"] = !response.hasOwnProperty("ControlMaxChargingPowerAC") ? "0" : response["ControlMaxChargingPowerAC"]["0"]["mode"];
         oldParameters["controlMaxInjectionPowerMode" ] = !response.hasOwnProperty("ControlMaxInjectionPower" ) ? "0" : response["ControlMaxInjectionPower" ]["0"]["mode"];
 
+        oldParameters["systemTimezone"         ] = !response.hasOwnProperty("SystemTimezone"         ) || !response["SystemTimezone"         ].hasOwnProperty("0") ? ""  : response["SystemTimezone"         ]["0"]["s1"  ];
         oldParameters["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
         oldParameters["cloudSet"               ] = !response.hasOwnProperty("CloudSet"               ) || !response["CloudSet"               ].hasOwnProperty("0") ? ""  : response["CloudSet"               ]["0"]["mode"];
 
@@ -3226,8 +3230,9 @@ async function setup_checkParameters() {
         if(newParameters["controlMaxChargingPowerACMode"] != oldParameters["controlMaxChargingPowerACMode"]) { retry = true; setup_sendCommand(20769, 0, "", newParameters["controlMaxChargingPowerACMode"]); }
         if(newParameters["controlMaxInjectionPowerMode" ] != oldParameters["controlMaxInjectionPowerMode" ]) { retry = true; setup_sendCommand(20770, 0, "", newParameters["controlMaxInjectionPowerMode" ]); }
 
-        if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]) }
-        if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]) }
+        if(newParameters["systemTimezone"         ] != oldParameters["systemTimezone"         ]) { retry = true; setup_sendSetting("SystemTimezone"         , "0", "s1"  , newParameters["systemTimezone"         ]); }
+        if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) { retry = true; setup_sendSetting("PrepareBatteryExtension", "0", "mode", newParameters["prepareBatteryExtension"]); }
+        if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) { retry = true; setup_sendSetting("CloudSet"               , "0", "mode", newParameters["cloudSet"               ]); }
 
         if(newParameters.hasOwnProperty("reactive_mode"                       ) && oldParameters.hasOwnProperty("reactive_mode"                       ) && newParameters["reactive_mode"                       ] != oldParameters["reactive_mode"                       ]) { retry = true; setup_sendCommand(24064, 202, "", newParameters["reactive_mode"                       ]); }
         if(newParameters.hasOwnProperty("pf_mode_power_factor"                ) && oldParameters.hasOwnProperty("pf_mode_power_factor"                ) && newParameters["pf_mode_power_factor"                ] != oldParameters["pf_mode_power_factor"                ]) { retry = true; setup_sendCommand(24064, 203, "", newParameters["pf_mode_power_factor"                ]); }
@@ -3348,6 +3353,7 @@ async function setup_checkParameters() {
                 else if(newParameters["controlMaxChargingPowerACMode"] != oldParameters["controlMaxChargingPowerACMode"]) showSettingParametersError("Problem when setting controlMaxChargingPowerACMode");
                 else if(newParameters["controlMaxInjectionPowerMode" ] != oldParameters["controlMaxInjectionPowerMode" ]) showSettingParametersError("Problem when setting controlMaxInjectionPowerMode" );
 
+                else if(newParameters["systemTimezone"         ] != oldParameters["systemTimezone"         ]) showSettingParametersError("Problem when setting systemTimezone"         );
                 else if(newParameters["prepareBatteryExtension"] != oldParameters["prepareBatteryExtension"]) showSettingParametersError("Problem when setting prepareBatteryExtension");
                 else if(newParameters["cloudSet"               ] != oldParameters["cloudSet"               ]) showSettingParametersError("Problem when setting cloudSet"               );
 

@@ -52,6 +52,65 @@ $hasLfsmoDroop = isset($dataSettings["Inverter"]["349"]);
 $isSinglePhase = $inverterModel == "10001";
 $hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firmwareVersion)[0], 4) > "23-11-15";
 
+// Get System Timezone (based on country)
+$installationCountry = $_SESSION["installation_country"] ? $_SESSION["installation_country"] : "de";
+function getTimezoneByCountry($timezone) {
+    switch($timezone) {
+        case 'at': return 'Europe/Vienna'; break;
+        case 'by': return 'Europe/Minsk'; break;
+        case 'be': return 'Europe/Brussels'; break;
+        case 'hr': return 'Europe/Zagreb'; break;
+        case 'cy': return 'Asia/Nicosia'; break;
+        case 'cz': return 'Europe/Prague'; break;
+        case 'dk': return 'Europe/Copenhagen'; break;
+        case 'ee': return 'Europe/Tallinn'; break;
+        case 'fi': return 'Europe/Helsinki'; break;
+        case 'fr': return 'Europe/Paris'; break;
+        case 'ge': return 'Asia/Tbilisi'; break;
+        case 'de': return 'Europe/Berlin'; break;
+        case 'gr': return 'Europe/Athens'; break;
+        case 'hu': return 'Europe/Budapest'; break;
+        case 'is': return 'Atlantic/Reykjavik'; break;
+        case 'ie': return 'Europe/Dublin'; break;
+        case 'it': return 'Europe/Rome'; break;
+        case 'lv': return 'Europe/Riga'; break;
+        case 'lt': return 'Europe/Vilnius'; break;
+        case 'lu': return 'Europe/Luxembourg'; break;
+        case 'mt': return 'Europe/Malta'; break;
+        case 'md': return 'Europe/Chisinau'; break;
+        case 'nl': return 'Europe/Amsterdam'; break;
+        case 'no': return 'Europe/Oslo'; break;
+        case 'pl': return 'Europe/Warsaw'; break;
+        case 'pt': return 'Europe/Lisbon'; break;
+        case 'ro': return 'Europe/Bucharest'; break;
+        case 'ru': return 'Europe/Moscow'; break;
+        case 'sk': return 'Europe/Bratislava'; break;
+        case 'si': return 'Europe/Ljubljana'; break;
+        case 'es': return 'Europe/Madrid'; break;
+        case 'se': return 'Europe/Stockholm'; break;
+        case 'ch': return 'Europe/Zurich'; break;
+        case 'tr': return 'Europe/Istanbul'; break;
+        case 'ua': return 'Europe/Kiev'; break;
+        case 'gb': return 'Europe/London'; break;
+        case 'cd': return 'Africa/Kinshasa'; break;
+        case 'gh': return 'Africa/Accra'; break;
+        case 'ci': return 'Africa/Abidjan'; break;
+        case 'ke': return 'Africa/Nairobi'; break;
+        case 'ng': return 'Africa/Lagos'; break;
+        case 're': return 'Indian/Reunion'; break;
+        case 'sn': return 'Africa/Dakar'; break;
+        case 'za': return 'Africa/Johannesburg'; break;
+        case 'tg': return 'Africa/Lome'; break;
+        case 'tn': return 'Africa/Tunis'; break;
+        case 'ug': return 'Africa/Kampala'; break;
+        default: return "Europe/Berlin"; break;
+    }
+}
+$systemTimezone = getTimezoneByCountry($installationCountry);
+if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"]["0"]["mode"] == 1 && $dataSettings["SystemTimezone"]["0"]["s1"] != "") {
+    $systemTimezone = $dataSettings["SystemTimezone"]["0"]["s1"]; // Manual Overwrite
+}
+
 ?>
 
 
@@ -968,6 +1027,7 @@ MPPT 2
             const isEstonia = <?php echo $isEstonia ? "true" : "false"; ?>;
             const customerEmail = <?php echo json_encode($customerEmail); ?>;
             const inverterModel = <?php echo json_encode($inverterModel); ?>;
+            const systemTimezone = <?php echo json_encode($systemTimezone); ?>;
         </script>
 
         <script src="js/system_setup.js?v=<?php echo $versionHash; ?>"></script>
