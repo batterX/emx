@@ -140,22 +140,22 @@ function finishInstallation() {
             if(dataObj.hasOwnProperty("battery_serialnumbers") && dataObj["battery_serialnumbers"] != "") data.append("battery_serialnumbers", dataObj["battery_serialnumbers"]);
             if(dataObj.hasOwnProperty("battery_bms"          ) && dataObj["battery_bms"          ] != "") data.append("battery_bms"          , dataObj["battery_bms"          ]);
         } else if(dataObj["battery_type"] == "carbon") {
-			data.append("has_battery"    , "1"     );
-			data.append("battery_type"   , "carbon");
-			data.append("battery_voltage", "48"    );
-			if(dataObj.hasOwnProperty("battery_model"   ) && dataObj["battery_model"   ] != "") data.append("battery_model"   , dataObj["battery_model"   ]);
-			if(dataObj.hasOwnProperty("battery_strings" ) && dataObj["battery_strings" ] != "") data.append("battery_strings" , dataObj["battery_strings" ]);
-			if(dataObj.hasOwnProperty("battery_capacity") && dataObj["battery_capacity"] != "") data.append("battery_capacity", dataObj["battery_capacity"]);
-		} else if(dataObj["battery_type"] == "other") {
-			if(dataObj.hasOwnProperty("battery_capacity") && dataObj["battery_capacity"] != "" && dataObj["battery_capacity"] != "0") {
-				data.append("has_battery"     , "1"    );
-				data.append("battery_type"    , "other");
-				data.append("battery_voltage" , "48"   );
-				data.append("battery_capacity", dataObj["battery_capacity"]);
-			} else {
-				data.append("has_battery", "0");
-			}
-		} else {
+            data.append("has_battery"    , "1"     );
+            data.append("battery_type"   , "carbon");
+            data.append("battery_voltage", "48"    );
+            if(dataObj.hasOwnProperty("battery_model"   ) && dataObj["battery_model"   ] != "") data.append("battery_model"   , dataObj["battery_model"   ]);
+            if(dataObj.hasOwnProperty("battery_strings" ) && dataObj["battery_strings" ] != "") data.append("battery_strings" , dataObj["battery_strings" ]);
+            if(dataObj.hasOwnProperty("battery_capacity") && dataObj["battery_capacity"] != "") data.append("battery_capacity", dataObj["battery_capacity"]);
+        } else if(dataObj["battery_type"] == "other") {
+            if(dataObj.hasOwnProperty("battery_capacity") && dataObj["battery_capacity"] != "" && dataObj["battery_capacity"] != "0") {
+                data.append("has_battery"     , "1"    );
+                data.append("battery_type"    , "other");
+                data.append("battery_voltage" , "48"   );
+                data.append("battery_capacity", dataObj["battery_capacity"]);
+            } else {
+                data.append("has_battery", "0");
+            }
+        } else {
             data.append("has_battery", "0");
         }
     } else {

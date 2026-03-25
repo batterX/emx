@@ -19,7 +19,7 @@ $progress.trigger("step", 6);
 */
 
 var energyMeter_firstRun = true;
-var skipEnergyMeteryTest = false;
+var skipEnergyMeterTest = false;
 
 var batteryCharging_firstRun = true;
 var batteryCharging_count = 0; // run 5 times (5sec delay), then finish
@@ -454,12 +454,12 @@ async function testEnergyMeter() {
         } else {
             $("#testEnergyMeter .notif").addClass("error");
             $("#log p:last-child").html(`<b class="mr-1">✗</b> ${lang.system_test.performing_test} (Modbus ID <b style="color:red">${currentErrorId}</b>)`);
-            if(skipEnergyMeteryTest) {
+            if(skipEnergyMeterTest) {
                 if(confirm("Continue without Energy Meter?")) {
                     await sleep(2500);
                     testBatteryCharging();
                 } else {
-                    skipEnergyMeteryTest = false;
+                    skipEnergyMeterTest = false;
                     await sleep(5000);
                     testEnergyMeter();
                 }

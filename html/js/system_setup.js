@@ -64,7 +64,6 @@ var dataSettings = {};
 var importedData = {};
 
 var previousSettings = null; // Store the previous response, to compare and know when something has changed
-var initialBmsConnectValue = null; // Store the initial BMS battery connect value to restore at the end
 
 var canShowImportCloudData = true;
 
@@ -2516,12 +2515,7 @@ async function setup1() {
                 return;
             }
             
-            // Store initial BMS battery connect value to restore at the end
-            if(initialBmsConnectValue === null && dataSettings.hasOwnProperty("Inverter") && dataSettings["Inverter"].hasOwnProperty("10003")) {
-                initialBmsConnectValue = dataSettings["Inverter"]["10003"]["s1"];
-            }
-            
-            // Set bms battery connect
+            // Set bms battery connect to "1" for communication test
             const response2 = await $.get({
                 url: "api.php?set=command&type=24064&entity=10003&text2=1" // bms battery connect
             });
@@ -3005,28 +2999,16 @@ async function setup2() {
     if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) { retry = true; setup_sendCommand(24064, 418, "", newParameters["battery_max_discharge_current_ongrid"]); }
 
     if(!retry) {
-        // Restore initial BMS battery connect value before moving to next step (for all h-Series systems)
-        if(initialBmsConnectValue !== null) {
-            try {
-                let finalBmsValue = initialBmsConnectValue;
-                // If initial value was not "0", set to "2" for all h-Series systems
-                // (Value "1" is only used during communication checking)
-                if(initialBmsConnectValue !== "0") {
-                    finalBmsValue = "2";
-                }
-                // Otherwise, restore to "0" if it was "0"
-                const restoreResponse = await $.get({
-                    url: `api.php?set=command&type=24064&entity=10003&text2=${finalBmsValue}`
-                });
-                if(restoreResponse === "1") {
-                    // Wait for BMS parameter to be restored in settings
-                    await waitForSettingsParameter("Inverter", "10003", "s1", finalBmsValue);
-                }
-            } catch (error) {
-                console.log("Warning: Could not restore initial BMS battery connect value:", error);
+        // Set BMS battery connect to "2" for normal operation
+        try {
+            const restoreResponse = await $.get({
+                url: "api.php?set=command&type=24064&entity=10003&text2=2"
+            });
+            if(restoreResponse === "1") {
+                await waitForSettingsParameter("Inverter", "10003", "s1", "2");
             }
-            // Reset the stored value
-            initialBmsConnectValue = null;
+        } catch (error) {
+            console.log("Warning: Could not set BMS battery connect to 2:", error);
         }
         $(".setting-progress span").html(lang.system_setup.msg_setting_success).css("color", "#28a745");
         $("#notif").removeClass("loading error success").addClass("success");
@@ -3302,28 +3284,16 @@ async function setup_checkParameters() {
         if(newParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && oldParameters.hasOwnProperty("battery_max_discharge_current_ongrid") && newParameters["battery_max_discharge_current_ongrid"] != oldParameters["battery_max_discharge_current_ongrid"]) { retry = true; setup_sendCommand(24064, 418, "", newParameters["battery_max_discharge_current_ongrid"]); }
 
         if(!retry) {
-            // Restore initial BMS battery connect value before moving to next step (for all h-Series systems)
-            if(initialBmsConnectValue !== null) {
-                try {
-                    let finalBmsValue = initialBmsConnectValue;
-                    // If initial value was not "0", set to "2" for all h-Series systems
-                    // (Value "1" is only used during communication checking)
-                    if(initialBmsConnectValue !== "0") {
-                        finalBmsValue = "2";
-                    }
-                    // Otherwise, restore to "0" if it was "0"
-                    const restoreResponse = await $.get({
-                        url: `api.php?set=command&type=24064&entity=10003&text2=${finalBmsValue}`
-                    });
-                    if(restoreResponse === "1") {
-                        // Wait for BMS parameter to be restored in settings
-                        await waitForSettingsParameter("Inverter", "10003", "s1", finalBmsValue);
-                    }
-                } catch (error) {
-                    console.log("Warning: Could not restore initial BMS battery connect value:", error);
+            // Set BMS battery connect to "2" for normal operation
+            try {
+                const restoreResponse = await $.get({
+                    url: "api.php?set=command&type=24064&entity=10003&text2=2"
+                });
+                if(restoreResponse === "1") {
+                    await waitForSettingsParameter("Inverter", "10003", "s1", "2");
                 }
-                // Reset the stored value
-                initialBmsConnectValue = null;
+            } catch (error) {
+                console.log("Warning: Could not set BMS battery connect to 2:", error);
             }
             // Show Success
             $(".setting-progress span").html(lang.system_setup.msg_setting_success).css("color", "#28a745");
