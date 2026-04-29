@@ -230,6 +230,7 @@
         "user_meter"                                               : "Compteur de consommation",
         "connected"                                                : "Connecté",
         "label"                                                    : "Désignation",
+        "external_load"                                            : "Charge Externe",
         "batteries"                                                : "Batteries",
         "batteries_none"                                           : "Aucune batterie",
         "batteries_lifepo"                                         : "LiFePO",

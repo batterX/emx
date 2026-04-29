@@ -902,13 +902,13 @@ async function testUpsMode() {
             $("#log p:last-child").html(`<b class="mr-1">✓</b> ${lang.system_test.check_output_active}`);
             $("#log").append(`<p>${lang.system_test.turn_input_off}</p>`);
             scrollToBottom();
-            $("#testUpsMode span span").html(lang.system_test.turn_input_off);
+            $("#testUpsMode span span").css("color", "red").html(lang.system_test.turn_input_off);
             await sleep(5000);
             testUpsMode_waitingForInput();
         } else if(outputIsActive != undefined) {
             // Show Error
             $("#log p:last-child").html(`<b class="mr-1">✗</b> ${lang.system_test.check_output_active}`);
-            $("#testUpsMode span span").html(lang.system_test.turn_output_on);
+            $("#testUpsMode span span").css("color", "red").html(lang.system_test.turn_output_on);
             await sleep(5000);
             testUpsMode();
         }
@@ -1064,7 +1064,7 @@ async function testUpsMode_finish() {
                 return;
             } else if(inputIsActive != undefined) {
                 // Retry
-                $("#testUpsMode span span").html(lang.system_test.turn_input_on);
+                $("#testUpsMode span span").css("color", "green").html(lang.system_test.turn_input_on);
                 await sleep(5000);
             }
         } catch (error) {

@@ -230,6 +230,7 @@
         "user_meter"                                               : "Contador del usuario",
         "connected"                                                : "Conectado",
         "label"                                                    : "Etiqueta",
+        "external_load"                                            : "Carga Externa",
         "batteries"                                                : "Baterías",
         "batteries_none"                                           : "Sin batería",
         "batteries_lifepo"                                         : "LiFePO",

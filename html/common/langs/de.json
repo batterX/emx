@@ -230,6 +230,7 @@
         "user_meter"                                               : "Verbrauchszähler",
         "connected"                                                : "Angeschlossen",
         "label"                                                    : "Bezeichnung",
+        "external_load"                                            : "Externe Last",
         "batteries"                                                : "Batterien",
         "batteries_none"                                           : "Keine Batterie",
         "batteries_lifepo"                                         : "LiFePO",

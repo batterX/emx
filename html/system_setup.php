@@ -426,7 +426,13 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                         <h6 class="py-2 mb-2" style="font-size:0.875rem"><b><?php echo $lang["system_setup"]["user_meter"] ?> 1 (Modbus ID 101)</b></h6>
                         <div class="form-row mt-2">
                             <label for="meter1_mode" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["connected"] ?></label>
-                            <div class="col-6"><select id="meter1_mode" class="form-control form-control-outline form-control-sm"><option value="1"><?php echo $lang["common"]["yes"] ?></option><option value="0" selected=""><?php echo $lang["common"]["no"] ?></option></select></div>
+                            <div class="col-6">
+                                <select id="meter1_mode" class="form-control form-control-outline form-control-sm">
+                                    <option value="0" selected=""><?php echo $lang["common"]["no"] ?></option>
+                                    <option value="1"><?php echo $lang["common"]["yes"] ?></option>
+                                    <option value="2"><?php echo $lang["system_setup"]["external_load"] ?></option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-row mt-2">
                             <label for="meter1_label" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["label"] ?></label>
@@ -438,7 +444,13 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                         <h6 class="py-2 mb-2" style="font-size:0.875rem"><b><?php echo $lang["system_setup"]["user_meter"] ?> 2 (Modbus ID 102)</b></h6>
                         <div class="form-row mt-2">
                             <label for="meter2_mode" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["connected"] ?></label>
-                            <div class="col-6"><select id="meter2_mode" class="form-control form-control-outline form-control-sm"><option value="1"><?php echo $lang["common"]["yes"] ?></option><option value="0" selected=""><?php echo $lang["common"]["no"] ?></option></select></div>
+                            <div class="col-6">
+                                <select id="meter2_mode" class="form-control form-control-outline form-control-sm">
+                                    <option value="0" selected=""><?php echo $lang["common"]["no"] ?></option>
+                                    <option value="1"><?php echo $lang["common"]["yes"] ?></option>
+                                    <option value="2"><?php echo $lang["system_setup"]["external_load"] ?></option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-row mt-2">
                             <label for="meter2_label" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["label"] ?></label>
@@ -450,7 +462,13 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                         <h6 class="py-2 mb-2" style="font-size:0.875rem"><b><?php echo $lang["system_setup"]["user_meter"] ?> 3 (Modbus ID 103)</b></h6>
                         <div class="form-row mt-2">
                             <label for="meter3_mode" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["connected"] ?></label>
-                            <div class="col-6"><select id="meter3_mode" class="form-control form-control-outline form-control-sm"><option value="1"><?php echo $lang["common"]["yes"] ?></option><option value="0" selected=""><?php echo $lang["common"]["no"] ?></option></select></div>
+                            <div class="col-6">
+                                <select id="meter3_mode" class="form-control form-control-outline form-control-sm">
+                                    <option value="0" selected=""><?php echo $lang["common"]["no"] ?></option>
+                                    <option value="1"><?php echo $lang["common"]["yes"] ?></option>
+                                    <option value="2"><?php echo $lang["system_setup"]["external_load"] ?></option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-row mt-2">
                             <label for="meter3_label" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["label"] ?></label>
@@ -462,7 +480,13 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                         <h6 class="py-2 mb-2" style="font-size:0.875rem"><b><?php echo $lang["system_setup"]["user_meter"] ?> 4 (Modbus ID 104)</b></h6>
                         <div class="form-row mt-2">
                             <label for="meter4_mode" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["connected"] ?></label>
-                            <div class="col-6"><select id="meter4_mode" class="form-control form-control-outline form-control-sm"><option value="1"><?php echo $lang["common"]["yes"] ?></option><option value="0" selected=""><?php echo $lang["common"]["no"] ?></option></select></div>
+                            <div class="col-6">
+                                <select id="meter4_mode" class="form-control form-control-outline form-control-sm">
+                                    <option value="0" selected=""><?php echo $lang["common"]["no"] ?></option>
+                                    <option value="1"><?php echo $lang["common"]["yes"] ?></option>
+                                    <option value="2"><?php echo $lang["system_setup"]["external_load"] ?></option>
+                                </select>
+                            </div>
                         </div>
                         <div class="form-row mt-2">
                             <label for="meter4_label" class="col-6 col-form-label col-form-label-sm"><?php echo $lang["system_setup"]["label"] ?></label>

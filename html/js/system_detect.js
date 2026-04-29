@@ -107,15 +107,19 @@ function step2() {
             }
             // Get Inverter Model
             $(".serialnumber b").html(inverterSerialNumber);
-            if(inverterModel == "10001") {
+            const inverterModelInt = parseInt(inverterModel, 10);
+            if(inverterModelInt == 10001) {
                 $("#inverterDetected h1 .model").html("h5");
                 $("#inverterDetected img").attr("src", "img/device_batterx_h5.png");
-            } else if(inverterModel == "10002") {
+            } else if(inverterModelInt == 10002) {
                 $("#inverterDetected h1 .model").html("h10");
                 $("#inverterDetected img").attr("src", "img/device_batterx_h10.png");
-            } else if(inverterModel >= "11000") {
+            } else if(inverterModelInt >= 11001 && inverterModelInt <= 11099) {
                 $("#inverterDetected h1 .model").html("i-Series");
                 $("#inverterDetected img").attr("src", "img/device_batterx_i.png");
+            } else if(inverterModelInt >= 11101 && inverterModelInt <= 11199) {
+                $("#inverterDetected h1 .model").html("c-Series");
+                $("#inverterDetected img").attr("src", "img/device_batterx_c.png");
             } else {
                 $("#inverterDetected h1 .model").html("");
                 $("#inverterDetected img").attr("src", "");
@@ -154,7 +158,7 @@ function step3(json) {
             // Show Working
             $("#inverterUnknown").addClass("d-none");
             $("#inverterDetected").removeClass("d-none");
-            // Check Battery Connection (i-Series only)
+            // Check Battery Connection (i/c-Series only)
             if(inverterModel >= "11000" && batterySoC == 0) {
                 // Check if user already confirmed no battery
                 if(sessionStorage.getItem('noBatteryInstalled') === 'true') {
@@ -334,8 +338,10 @@ function step4(json) {
 
 function step5(json) {
 
+    const inverterModelInt = parseInt(inverterModel, 10);
+
     // i-Series
-    if(inverterModel >= "11000") {
+    if(inverterModelInt >= 11001 && inverterModelInt <= 11099) {
         // Extract current version parts (Inverter)
         const invParts = inverterFirmware.split('-');
         const firstPart = invParts[0].split('.');
@@ -385,6 +391,14 @@ function step5(json) {
             // Show Firmware Update Card
             $("#firmwareUpdateContainer").removeClass("d-none");
         }
+    }
+    else if(inverterModelInt >= 11101 && inverterModelInt <= 11199) { // c-Series
+        // Disable Firmware Update Button
+        $("#firmwareUpdateStart").attr("disabled", true);
+        // Show Grid Standard Card
+        $("#machineModelContainer").removeClass("d-none");
+        // Allow Continue Button
+        $("#btn_next").attr("disabled", false);
     }
     // h-Series
     else {

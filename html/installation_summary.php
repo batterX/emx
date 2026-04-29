@@ -21,6 +21,7 @@ $_SESSION["last_step"] = $step;
 $arrayGender       = $lang["dict_gender"   ];
 $arrayCountry      = $lang["dict_countries"];
 $arrayNominalPower = [
+    "K800340"   => "50000", // batterX c50
     "K800301"   => "10000", // batterX i10
     "K800302"   => "15000", // batterX i15
     "K800303"   => "20000", // batterX i20

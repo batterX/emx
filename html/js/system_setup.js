@@ -67,6 +67,8 @@ var previousSettings = null; // Store the previous response, to compare and know
 
 var canShowImportCloudData = true;
 
+var rawInjectionPower = 0; // Computed in setup1(); re-used in setup2() to skip injection-ON when 0W
+
 
 
 
@@ -1594,25 +1596,8 @@ async function step4() {
 
         var device_serial_number = response["Inverter"]["2"]["s1"];
 
-        switch(response["Inverter"]["1"]["s1"]) {
-            case "10001": devicePower =  5000; break;
-            case "10002": devicePower = 10000; break;
-            case "11001": devicePower =  4000; break;
-            case "11002": devicePower =  5000; break;
-            case "11003": devicePower =  6000; break;
-            case "11004": devicePower =  8000; break;
-            case "11005": devicePower = 10000; break;
-            case "11006": devicePower = 12000; break;
-            case "11011": devicePower = 10000; break;
-            case "11012": devicePower = 12000; break;
-            case "11013": devicePower = 15000; break;
-            case "11014": devicePower = 20000; break;
-            case "11021": devicePower = 25000; break;
-            case "11022": devicePower = 30000; break;
-            case "11023": devicePower = 36000; break;
-            case "11024": devicePower = 40000; break;
-            case "11025": devicePower = 50000; break;
-            default: break;
+        if(response["Inverter"]["4"] && response["Inverter"]["4"]["s1"]) {
+            devicePower = parseInt(response["Inverter"]["4"]["s1"]);
         }
 
         try {
@@ -2262,6 +2247,12 @@ async function setValuesToSession() {
         if(deviceName != "") {
             tempData.system_model = `${deviceName} basic ${batteryCapacity}kWh`
         }
+    } else if(deviceModel == "batterx_c") {
+        tempData.system_model = "batterX";
+        var deviceName = PNS_DEVICE.hasOwnProperty(devicePartNumber) ? PNS_DEVICE[devicePartNumber].name : "";
+        if(deviceName != "") {
+            tempData.system_model = `${deviceName}`;
+        }
     }
 
 
@@ -2390,7 +2381,8 @@ async function setup1() {
 
     // Set Grid MaxInjectionPower
 
-    var maxGridFeedInPower = Math.round(Math.max(parseInt($("#solar_wattpeak").val()) * parseInt($("#solar_feedinlimitation").val()) / 100, 50)).toString();
+    rawInjectionPower = Math.round(parseInt($("#solar_wattpeak").val()) * parseInt($("#solar_feedinlimitation").val()) / 100);
+    var maxGridFeedInPower = Math.max(rawInjectionPower, 50).toString();
     try {
         const response = await $.get({
             url: "api.php?set=command&type=20736&entity=1&text2=" + maxGridFeedInPower
@@ -2406,6 +2398,17 @@ async function setup1() {
     } catch (error) {
         alert("E018. Please refresh the page! (Error while writing command to local database)");
         return;
+    }
+
+    // If feed-in limitation is 0%, additionally turn grid injection OFF
+    if(rawInjectionPower === 0) {
+        try {
+            const response = await $.get({ url: "api.php?set=command&type=20738&entity=0&text1=1&text2=0" });
+            if(response != "1") return alert("E019b. Please refresh the page! (Bad response while disabling grid injection)");
+        } catch (error) {
+            alert("E018b. Please refresh the page! (Error while disabling grid injection)");
+            return;
+        }
     }
 
     // Set System Mode
@@ -2571,7 +2574,7 @@ async function setup2() {
     
     
     // Set common inverter parameters (here are set to manually, should set to auto in system_test)
-    $.get({ url: "api.php?set=command&type=20738&entity=0&text1=1&text2=1" });
+    if(rawInjectionPower > 0) $.get({ url: "api.php?set=command&type=20738&entity=0&text1=1&text2=1" });
     $.get({ url: "api.php?set=command&type=20738&entity=0&text1=2&text2=1" });
     $.get({ url: "api.php?set=command&type=20738&entity=0&text1=3&text2=0" });
     $.get({ url: "api.php?set=command&type=20738&entity=0&text1=4&text2=1" });
@@ -2627,6 +2630,7 @@ async function setup2() {
         }
     }
 
+    newParameters["nominalSol"    ] = parseInt($("#solar_wattpeak").val());
     newParameters["regulationMode"] = $("#regulation_check").is(":checked") ? "1" : "0";
     newParameters["extsolMode"    ] = $("#extsol_check    ").is(":checked") ? "1" : "0";
     newParameters["meter1Mode"    ] = $("#meter1_mode     ").val();
@@ -2819,6 +2823,7 @@ async function setup2() {
         
         previousSettings = JSON.stringify(response);
 
+        oldParameters["nominalSol"    ] = !response.hasOwnProperty("NominalSol"          ) ?  0  : response["NominalSol"          ]["0"]["v1"  ];
         oldParameters["regulationMode"] = !response.hasOwnProperty("InjectionMode"       ) ? "0" : response["InjectionMode"       ]["0"]["v5"  ];
         oldParameters["extsolMode"    ] = !response.hasOwnProperty("ModbusExtSolarDevice") ? "0" : response["ModbusExtSolarDevice"]["0"]["mode"];
         oldParameters["meter1Mode"    ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("1") ? "0" : response["UserMeter"]["1"]["mode"];
@@ -2913,6 +2918,7 @@ async function setup2() {
 
     var retry = false;
 
+    if(newParameters["nominalSol"    ] != oldParameters["nominalSol"    ]) { retry = true; setup_sendSetting("NominalSol"           , "0", "v1"   , newParameters["nominalSol"    ]); }
     if(newParameters["regulationMode"] != oldParameters["regulationMode"]) { retry = true; setup_sendSetting("InjectionMode"        , "0", "v5"   , newParameters["regulationMode"]); }
     if(newParameters["extsolMode"    ] != oldParameters["extsolMode"    ]) { retry = true; setup_sendSetting("ModbusExtSolarDevice" , "0", "mode" , newParameters["extsolMode"    ]); }
     if(newParameters["meter1Mode"    ] != oldParameters["meter1Mode"    ]) { retry = true; setup_sendSetting("UserMeter"            , "1", "mode" , newParameters["meter1Mode"    ]); }
@@ -3108,6 +3114,7 @@ async function setup_checkParameters() {
         }
         previousSettings = JSON.stringify(response);
 
+        oldParameters["nominalSol"    ] = !response.hasOwnProperty("NominalSol"          ) ?  0  : response["NominalSol"          ]["0"]["v1"  ];
         oldParameters["regulationMode"] = !response.hasOwnProperty("InjectionMode"       ) ? "0" : response["InjectionMode"       ]["0"]["v5"  ];
         oldParameters["extsolMode"    ] = !response.hasOwnProperty("ModbusExtSolarDevice") ? "0" : response["ModbusExtSolarDevice"]["0"]["mode"];
         oldParameters["meter1Mode"    ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("1") ? "0" : response["UserMeter"]["1"]["mode"];
@@ -3197,7 +3204,8 @@ async function setup_checkParameters() {
         console.log("oldParameters"); console.log(oldParameters);
 
         var retry = false;
-            
+        
+        if(newParameters["nominalSol"    ] != oldParameters["nominalSol"    ]) { retry = true; setup_sendSetting("NominalSol"           , "0", "v1"   , newParameters["nominalSol"    ]); }
         if(newParameters["regulationMode"] != oldParameters["regulationMode"]) { retry = true; setup_sendSetting("InjectionMode"        , "0", "v5"   , newParameters["regulationMode"]); }
         if(newParameters["extsolMode"    ] != oldParameters["extsolMode"    ]) { retry = true; setup_sendSetting("ModbusExtSolarDevice" , "0", "mode" , newParameters["extsolMode"    ]); }
         if(newParameters["meter1Mode"    ] != oldParameters["meter1Mode"    ]) { retry = true; setup_sendSetting("UserMeter"            , "1", "mode" , newParameters["meter1Mode"    ]); }
@@ -3309,7 +3317,8 @@ async function setup_checkParameters() {
 
                 // Show Error - Parameter Not Accepted
 
-                     if(newParameters["regulationMode"] != oldParameters["regulationMode"]) showSettingParametersError("Problem when setting regulationMode");
+                     if(newParameters["nominalSol"    ] != oldParameters["nominalSol"    ]) showSettingParametersError("Problem when setting nominalSol"    );
+                else if(newParameters["regulationMode"] != oldParameters["regulationMode"]) showSettingParametersError("Problem when setting regulationMode");
                 else if(newParameters["extsolMode"    ] != oldParameters["extsolMode"    ]) showSettingParametersError("Problem when setting extsolMode"    );
                 else if(newParameters["meter1Mode"    ] != oldParameters["meter1Mode"    ]) showSettingParametersError("Problem when setting meter1Mode"    );
                 else if(newParameters["meter2Mode"    ] != oldParameters["meter2Mode"    ]) showSettingParametersError("Problem when setting meter2Mode"    );
