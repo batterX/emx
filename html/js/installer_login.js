@@ -1,127 +1,121 @@
-$progress.trigger("step", 2);
+let canContinue = false;
+let isLoggedIn  = false;
 
+function updateLoginButton() {
+    const email = $("#email").val().trim().toLowerCase();
+    const pass  = $("#password").val().trim();
+    $("#btn_login").prop("disabled", !email || !pass || !validateEmail(email) || !canContinue);
+}
 
-
-
-
-// Get Latest Version Number
-var canContinue = false;
-$.get({
-    url: repositoryVersionLink,
-    dataType: "text",
-    cache: false,
-    error: () => {
-        canContinue = true;
-        enableLogin();
-    },
-    success: (versionNum) => {
-        if(softwareVersion != versionNum) {
-            window.location.href = ".";
-        } else {
-            canContinue = true;
-            enableLogin();
+async function checkVersion() {
+    try {
+        const versionNum = await $.get({ url: repositoryVersionLink, dataType: "text", cache: false });
+        if(softwareVersion !== versionNum.trim()) {
+            window.location.href = "software_update.php";
+            return;
         }
+    } catch {
+        // Can't reach repo — allow login anyway
     }
-});
-
-
-
-
-
-var isLoggedIn = false;
-
-function validateEmail(email) {
-    var re = /\S+@\S+\.\S+/;
-    return re.test(email);
+    canContinue = true;
+    updateLoginButton();
 }
 
-function enableLogin() {
-    var e = $("#email   ").val().trim().toLowerCase();
-    var p = $("#password").val().trim();
-    $("#btn_next").attr("disabled", e == "" || p == "" || !validateEmail(e) || !canContinue);
-    isLoggedIn = false;
-}
-
-$(document).ready(() => { enableLogin(); });
-$("#email, #password").on("input change", enableLogin);
-
-
-
-
-
-$("#loginForm").on("submit", (e) => {
-
-    e.preventDefault();
-
+async function doLogin() {
     if(isLoggedIn) {
         window.location.href = "customer_info.php";
         return;
     }
 
-    // Verify Email + Password & Return Installer Information
+    const email = $("#email").val().trim().toLowerCase();
+    const pass  = $("#password").val();
 
-    var email = $("#email   ").val().trim().toLowerCase();
-    var pass  = $("#password").val();
+    if(!email || !pass || !validateEmail(email)) return;
 
-    if(email != "" && pass != "" && validateEmail(email)) {
-        $.post({
+    $("#btn_login").prop("disabled", true);
+    $("#errorMsg, #warningMsg").addClass("d-none");
+
+    try {
+        const response = await $.post({
             url: "https://api.batterx.app/v2/install.php",
             data: {
-                action   : "installer_login",
-                email    : email.trim().toLowerCase(),
-                password : pass,
-                apikey   : apikey
-            },
-            error: () => { alert("E001. Please refresh the page! (Error during cloud installer login process)"); },
-            success: (response) => {
-
-                console.log(response);
-
-                // Hide errorMsg & marningMsg
-                $("#errorMsg, #warningMsg").addClass("d-none");
-
-                // Show Error Message If Wront Email|Password
-                if(!response || typeof response !== "object") {
-                    $("#errorMsg").removeClass("d-none");
-                    return;
-                }
-
-                // Get Correct Installer Flag
-                var correct_installer = true;
-                if(response.hasOwnProperty("correct_installer") && response.correct_installer == false) correct_installer = false;
-
-                // Set to Session
-                $.post({
-                    url: "cmd/session.php",
-                    data: {
-                        installer_email:     $("#email").val().trim().toLowerCase(),
-                        installer_password:  $("#password").val(),
-                        installer_gender:    response.hasOwnProperty("gender"   ) ? response["gender"   ] : "0",
-                        installer_firstname: response.hasOwnProperty("firstname") ? response["firstname"] : "",
-                        installer_lastname:  response.hasOwnProperty("lastname" ) ? response["lastname" ] : "",
-                        installer_company:   response.hasOwnProperty("company"  ) ? response["company"  ] : "",
-                        installer_telephone: response.hasOwnProperty("telephone") ? response["telephone"] : "",
-                        installer_country:   response.hasOwnProperty("country"  ) ? response["country"  ] : ""
-                    },
-                    error: () => { alert("E002. Please refresh the page! (Error while saving data to session)"); },
-                    success: (response) => {
-                        console.log(response);
-                        if(response != "1") {
-                            alert("E003. Please refresh the page! (Bad response while saving data to session)");
-                            return;
-                        }
-                        // Show Warning Message If Wrong Installer
-                        if(correct_installer) {
-                            window.location.href = "customer_info.php";
-                        } else {
-                            $("#warningMsg").removeClass("d-none");
-                            isLoggedIn = true;
-                        }
-                    }
-                });
-
+                action:   "installer_login",
+                email:    email,
+                password: pass,
+                apikey:   apikey
             }
         });
-    }
 
+        if(!response || typeof response !== "object") {
+            $("#errorMsg").removeClass("d-none");
+            updateLoginButton();
+            return;
+        }
+
+        const correctInstaller = !response.hasOwnProperty("correct_installer") || response.correct_installer !== false;
+
+        let sessionResponse;
+        try {
+            sessionResponse = await $.post({
+                url: "cmd/session.php",
+                data: {
+                    installer_email:     email,
+                    installer_password:  pass,
+                    installer_gender:    response.gender     ?? "0",
+                    installer_firstname: response.firstname  ?? "",
+                    installer_lastname:  response.lastname   ?? "",
+                    installer_company:   response.company    ?? "",
+                    installer_telephone: response.telephone  ?? "",
+                    installer_country:   response.country    ?? ""
+                }
+            });
+        } catch {
+            alert("E002. Please refresh the page! (Error while saving data to session)");
+            updateLoginButton();
+            return;
+        }
+
+        if(sessionResponse !== "1") {
+            alert("E003. Please refresh the page! (Bad response while saving data to session)");
+            updateLoginButton();
+            return;
+        }
+
+        if(correctInstaller) {
+            window.location.href = "customer_info.php";
+        } else {
+            $("#warningMsg").removeClass("d-none");
+            isLoggedIn = true;
+            updateLoginButton();
+        }
+
+    } catch {
+        alert("E001. Please refresh the page! (Error during cloud installer login process)");
+        updateLoginButton();
+    }
+}
+
+$("#btn_toggle_password").on("click", () => {
+    const $input = $("#password");
+    const $icon  = $("#btn_toggle_password i");
+    if($input.attr("type") === "password") {
+        $input.attr("type", "text");
+        $icon.removeClass("bi-eye").addClass("bi-eye-slash");
+    } else {
+        $input.attr("type", "password");
+        $icon.removeClass("bi-eye-slash").addClass("bi-eye");
+    }
 });
+
+$("#email, #password").on("input change", () => {
+    isLoggedIn = false;
+    updateLoginButton();
+});
+
+$("#loginForm").on("submit", (e) => {
+    e.preventDefault();
+    doLogin();
+});
+
+checkVersion();
+updateLoginButton();

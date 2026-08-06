@@ -109,7 +109,7 @@ $apikey = sha1(strval($serial));
 
         <title>batterX Factory Test</title>
 
-        <link rel="stylesheet" href="css/dist/bundle.css?v=<?php echo $versionHash ?>">
+        <link rel="stylesheet" href="css/bundle.css?v=<?php echo $versionHash ?>">
         <link rel="stylesheet" href="css/common.css?v=<?php echo $versionHash ?>">
         <link rel="stylesheet" href="css/_clixtest.css?v=<?php echo $versionHash ?>">
 
@@ -139,6 +139,7 @@ $apikey = sha1(strval($serial));
                     </div>
                 </div>
             </div>
+
             <div class="modal fade" id="modal_ups_mode_test_connector" tabindex="-1" role="dialog">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
@@ -182,7 +183,7 @@ $apikey = sha1(strval($serial));
 
             <h1>LiveX Update</h1>
             
-            <div class="card p-4 elevate" id="livex_update">
+            <div class="card p-4" id="livex_update">
 
                 <div class="log"></div>
                 
@@ -199,10 +200,10 @@ $apikey = sha1(strval($serial));
 
             <h1>Emeter Test</h1>
             
-            <div class="card p-4 elevate" id="emeter_test">
+            <div class="card p-4" id="emeter_test">
 
                 <p class="step-info">Connect Energy Meter to the liveX, then press <u>Begin Test</u> below.</p>
-                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple">Begin Test</button>
+                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple">BEGIN TEST</button>
 
                 <div class="log"></div>
 
@@ -219,17 +220,17 @@ $apikey = sha1(strval($serial));
 
             <h1>UPS Mode Test</h1>
             
-            <div class="card p-4 elevate" id="ups_mode_test">
+            <div class="card p-4" id="ups_mode_test">
 
                 <p class="step-info mb-1">
                     Connect the UPS MODE connector to the back side of the cliX, then press <u>Begin Test</u> below.
-                    <span class="badge badge-info info-popup" data-toggle="modal" data-target="#modal_ups_mode_test_connector">INFO</span>
+                    <span class="badge text-bg-info info-popup" data-bs-toggle="modal" data-bs-target="#modal_ups_mode_test_connector">INFO</span>
                 </p>
                 <p class="step-info text-muted small">
                     Make sure there is 500~1000W load connected to the output of the cliX module.
-                    <span class="badge badge-info info-popup" data-toggle="modal" data-target="#modal_ups_mode_test_load">INFO</span>
+                    <span class="badge text-bg-info info-popup" data-bs-toggle="modal" data-bs-target="#modal_ups_mode_test_load">INFO</span>
                 </p>
-                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple">Begin Test</button>
+                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple">BEGIN TEST</button>
 
                 <div class="log"></div>
 
@@ -246,13 +247,13 @@ $apikey = sha1(strval($serial));
 
             <h1>GPIO Test</h1>
             
-            <div class="card p-4 elevate" id="gpio_test">
+            <div class="card p-4" id="gpio_test">
 
                 <p class="step-info">
                     Connect GPIO Outputs and Inputs together, then press <u>Begin Test</u> below.
-                    <span class="badge badge-info info-popup" data-toggle="modal" data-target="#modal_gpio_test">INFO</span>
+                    <span class="badge text-bg-info info-popup" data-bs-toggle="modal" data-bs-target="#modal_gpio_test">INFO</span>
                 </p>
-                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple">Begin Test</button>
+                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple">BEGIN TEST</button>
 
                 <div class="step-content row m-0 p-0 d-none text-muted">
                     <div class="out1 col-3 text-center pb-3">Output 1</div>
@@ -280,16 +281,16 @@ $apikey = sha1(strval($serial));
 
             <h1>Backup Mode Test</h1>
             
-            <div class="card p-4 elevate" id="backup_mode_test">
+            <div class="card p-4" id="backup_mode_test">
 
                 <p class="step-info-1">Disconnect the GPIO connectors, then press <u>Continue</u> below.</p>
-                <button class="step-start-1 btn btn-sm btn-primary w-40 w-md-20 ripple">Continue</button>
+                <button class="step-start-1 btn btn-sm btn-primary w-40 w-md-20 ripple">CONTINUE</button>
 
                 <p class="step-info-2 d-none">
                     Remove UPS MODE connector and connect BACKUP MODE connector, then press <u>Begin Test</u> below.
-                    <span class="badge badge-info info-popup" data-toggle="modal" data-target="#modal_backup_mode_test">INFO</span>
+                    <span class="badge text-bg-info info-popup" data-bs-toggle="modal" data-bs-target="#modal_backup_mode_test">INFO</span>
                 </p>
-                <button class="step-start-2 btn btn-sm btn-primary w-40 w-md-20 ripple d-none">Begin Test</button>
+                <button class="step-start-2 btn btn-sm btn-primary w-40 w-md-20 ripple d-none">BEGIN TEST</button>
 
                 <div class="log"></div>
                 
@@ -306,13 +307,13 @@ $apikey = sha1(strval($serial));
 
             <h1>Connect Default Mode</h1>
             
-            <div class="card p-4 elevate" id="connect_default_mode">
+            <div class="card p-4" id="connect_default_mode">
 
                 <p class="step-info d-none">
                     Remove BACKUP MODE connector and connect UPS MODE connector, then press <u>Continue</u> below.
-                    <span class="badge badge-info info-popup" data-toggle="modal" data-target="#modal_ups_mode_test_connector">INFO</span>
+                    <span class="badge text-bg-info info-popup" data-bs-toggle="modal" data-bs-target="#modal_ups_mode_test_connector">INFO</span>
                 </p>
-                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple d-none">Continue</button>
+                <button class="step-start btn btn-sm btn-primary w-40 w-md-20 ripple d-none">CONTINUE</button>
 
                 <div class="log"></div>
                 
@@ -329,7 +330,7 @@ $apikey = sha1(strval($serial));
 
             <h1>Generate Report</h1>
             
-            <div class="card p-4 elevate" id="generate_report" style="overflow-x:auto">
+            <div class="card p-4" id="generate_report" style="overflow-x:auto">
                 <div id="report" class="d-none">
 
                     <table class="table table-borderless mb-4">
@@ -374,8 +375,8 @@ $apikey = sha1(strval($serial));
                     </table>
 
                     <div>
-                        <button id="report_send" class="btn btn-success w-40 w-md-20 ripple">Send Report</button>
-                        <button id="report_download" class="btn btn-primary w-40 w-md-20 ripple" disabled>Download</button>
+                        <button id="report_send" class="btn btn-success w-40 w-md-20 ripple">SEND REPORT</button>
+                        <button id="report_download" class="btn btn-primary w-40 w-md-20 ripple" disabled>DOWNLOAD</button>
                     </div>
 
                 </div>
@@ -392,14 +393,14 @@ $apikey = sha1(strval($serial));
 
             <h1>Finish Test / Shutdown LiveX</h1>
             
-            <div class="card p-4 elevate" id="finish_test">
+            <div class="card p-4" id="finish_test">
 
                 <div class="row p-0 m-0">
-                    <div class="col-md-6 pl-4 pr-4">
-                        <button id="finish_cleardb" class="btn btn-lg btn-primary w-100 ripple">Clear Database</button>
+                    <div class="col-md-6 ps-4 pe-4">
+                        <button id="finish_cleardb" class="btn btn-lg btn-primary w-100 ripple">CLEAR DATABASE</button>
                     </div>
-                    <div class="col-md-6 pl-4 pr-4 pt-3 pt-md-0">
-                        <button id="finish_shutdown" class="btn btn-lg btn-danger w-100 ripple" disabled>Shutdown</button>
+                    <div class="col-md-6 ps-4 pe-4 pt-3 pt-md-0">
+                        <button id="finish_shutdown" class="btn btn-lg btn-danger w-100 ripple" disabled>SHUTDOWN</button>
                     </div>
                 </div>
 
@@ -416,7 +417,7 @@ $apikey = sha1(strval($serial));
 
         </main>
 
-        <script src="js/dist/bundle.js?v=<?php echo $versionHash ?>"></script>
+        <script src="js/bundle.js?v=<?php echo $versionHash ?>"></script>
         <script src="js/common.js?v=<?php echo $versionHash ?>"></script>
         <script>
             const softwareVersion = <?php echo json_encode($softwareVersion) ?>;

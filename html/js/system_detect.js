@@ -1,16 +1,4 @@
-$progress.trigger("step", 4);
-
-
-
-
-
-step1();
-
-
-
-
-
-var objGridStandards = {
+const objGridStandards = {
     "0": "Unknown",
     "1": "VDE0126",
     "2": "VDE4105",
@@ -21,904 +9,644 @@ var objGridStandards = {
     "7": "Belgium",
     "8": "Czech",
     "9": "Estonia"
+};
+
+let inverterSerialNumber    = "";
+let inverterModel           = "";
+let inverterFirmware        = "";
+let bmsFirmware             = "";
+let gridStandard            = "";
+let isVde4105               = false;
+let isVde0126               = false;
+let isTor                   = false;
+let isEstonia               = false;
+let isGridLoss              = true;
+let iArmUpdateNeeded        = "";
+let iDspUpdateNeeded        = "";
+let iBmsUpdateNeeded        = "";
+let cMergedUpdateNeeded     = "";
+let estimatedUpdateDuration = 0;
+let batterySoC              = 0;
+let batteryVoltage          = 0;
+
+function setLoadingConnecting() {
+    $("#loadingStatusIcon").html('<div class="spinner-border text-success"></div>');
+    $("#loadingText").text(t("sd_connecting"));
+    $("#loadingHint").addClass("d-none");
+    $("#loadingCountdown").addClass("d-none");
 }
 
-var inverterSerialNumber = "";
-var inverterModel = "";
-var inverterFirmware = "";
-var bmsFirmware = "";
-var gridStandard = "";
-var isVde4105 = "";
-var isVde0126 = "";
-var isTor     = "";
-var isEstonia = "";
-var isGridLoss = true;
+function setLoadingError(message) {
+    $("#loadingStatusIcon").html('<i class="bi bi-exclamation-circle-fill text-danger"></i>');
+    $("#loadingText").html(message);
+}
 
-var armUpdateNeeded = false;
-var dspUpdateNeeded = false;
-var bmsUpdateNeeded = false;
-var estimatedUpdateDuration = 0;
-var batterySoC = 0;
+function setGridStatus(type, text) {
+    const icons = {
+        success: "bi-check-circle-fill text-success",
+        warning: "bi-exclamation-circle-fill text-warning",
+        error:   "bi-x-circle-fill text-danger",
+    };
+    if (type === "neutral") {
+        $("#gridStatusIcon").addClass("d-none");
+    } else {
+        $("#gridStatusIcon").removeClass("d-none").attr("class", `bi fs-4 ${icons[type]}`);
+    }
+    $("#gridStatusText").text(text);
+}
 
 
 
 
+// MARK: Step 1 — Wait until inverter is online
 
-// Get CurrentState (Verify if inverter is working)
+async function step1() {
+    let previousLogtime = null;
 
-var previousLogtime = null;
+    async function showRetry() {
+        setLoadingError(t("sd_not_responding"));
+        $("#loadingHint").removeClass("d-none");
+        const delay = 5;
+        for (let i = delay; i >= 1; i--) {
+            $("#loadingCountdown").text(t("su_retrying_in", {seconds: i})).removeClass("d-none");
+            await sleep(1000);
+        }
+        setLoadingConnecting();
+        await sleep(1000);
+    }
 
-function step1() {
+    while (true) {
+        try {
+            const json = await $.get({ url: "api.php?get=currentstate" });
 
-    $.get({
-        url: "api.php?get=currentstate",
-        error: () => { setTimeout(step1, 5000); },
-        success: (json) => {
-            console.log(json);
-            if(!json || typeof json != "object" || !json.hasOwnProperty("logtime")) {
-                setTimeout(step1, 5000);
-                return;
+            if (!json || typeof json !== "object" || !json.hasOwnProperty("logtime")) {
+                await showRetry();
+                continue;
             }
-            var curtime   = moment.unix(getServerTime()).utc().subtract(1, "minute").format("YYYY-MM-DD HH:mm:ss");
-            var isWorking = moment(json["logtime"]).isAfter(moment(curtime));
-            if(!isWorking) {
-                if(previousLogtime == null) previousLogtime = json["logtime"];
-                else if(previousLogtime != json["logtime"]) alert("Error! PC or LiveX/EMX time/timezone not set correctly.");
-                setTimeout(step1, 5000);
-                return;
+
+            const isWorking = isLogtimeRecent(json["logtime"]);
+
+            if (!isWorking) {
+                if (previousLogtime === null) previousLogtime = json["logtime"];
+                else if (previousLogtime !== json["logtime"]) alert(t("sd_time_error"));
+                await showRetry();
+                continue;
             }
-            // Update Variables
+
+            // Check grid loss via phase voltages (< 184V = grid loss)
             isGridLoss = false;
-            if(json.hasOwnProperty("273") && json["273"].hasOwnProperty("1") && json["273"]["1"] < 18400) isGridLoss = true;
-            if(json.hasOwnProperty("274") && json["274"].hasOwnProperty("1") && json["274"]["1"] < 18400) isGridLoss = true;
-            if(json.hasOwnProperty("275") && json["275"].hasOwnProperty("1") && json["275"]["1"] < 18400) isGridLoss = true;
-            // Get Battery SoC
-            batterySoC = (json.hasOwnProperty("3122") && json["3122"].hasOwnProperty("1")) ? json["3122"]["1"] : 0;
-            // Continue Next Step
-            step2();
-        }
-    });
+            if (json["273"]?.["1"] < 18400) isGridLoss = true;
+            if (json["274"]?.["1"] < 18400) isGridLoss = true;
+            if (json["275"]?.["1"] < 18400) isGridLoss = true;
 
+            // Battery SoC
+            batterySoC     = json["3122"]?.["1"] ?? 0;
+            batteryVoltage = json["3090"]?.["1"] ?? 0;
+
+            break;
+        } catch {
+            await showRetry();
+        }
+    }
+
+    await step2();
 }
 
 
 
 
+// MARK: Step 2 — Read settings (serial number, model, firmware)
 
-// Get Inverter Serial-Number
+async function step2() {
+    try {
+        const json = await $.get({ url: "api.php?get=settings" });
 
-function step2() {
+        if (!json || typeof json !== "object" || !json["Inverter"]?.["1"] || !json["Inverter"]?.["2"])
+            return alert("E002. Please refresh the page! (Missing or malformed data in local settings table)");
 
-    $.get({
-        url: "api.php?get=settings",
-        error: () => { alert("E001. Please refresh the page! (Error while reading settings table from local database)"); },
-        success: (json) => {
-            console.log(json);
-            if(!json || typeof json != "object" || !json.hasOwnProperty("Inverter") || !json["Inverter"].hasOwnProperty("1") || !json["Inverter"].hasOwnProperty("2"))
-                return alert("E002. Please refresh the page! (Missing or malformed data in local settings table)");
-            // Get Needed Parameters
-            inverterSerialNumber = json["Inverter"]["2"]["s1"];
-            inverterModel = json["Inverter"]["1"]["s1"];
-            if(json["Inverter"].hasOwnProperty("3")) {
-                inverterFirmware = json["Inverter"]["3"]["s1"];
-            }
-            if(json["Inverter"].hasOwnProperty("1103")) {
-                bmsFirmware = json["Inverter"]["1103"]["s1"];
-            }
-            // Get Inverter Model
-            $(".serialnumber b").html(inverterSerialNumber);
-            const inverterModelInt = parseInt(inverterModel, 10);
-            if(inverterModelInt == 10001) {
-                $("#inverterDetected h1 .model").html("h5");
-                $("#inverterDetected img").attr("src", "img/device_batterx_h5.png");
-            } else if(inverterModelInt == 10002) {
-                $("#inverterDetected h1 .model").html("h10");
-                $("#inverterDetected img").attr("src", "img/device_batterx_h10.png");
-            } else if(inverterModelInt >= 11001 && inverterModelInt <= 11099) {
-                $("#inverterDetected h1 .model").html("i-Series");
-                $("#inverterDetected img").attr("src", "img/device_batterx_i.png");
-            } else if(inverterModelInt >= 11101 && inverterModelInt <= 11199) {
-                $("#inverterDetected h1 .model").html("c-Series");
-                $("#inverterDetected img").attr("src", "img/device_batterx_c.png");
-            } else {
-                $("#inverterDetected h1 .model").html("");
-                $("#inverterDetected img").attr("src", "");
-            }
-            // Continue Next Step
-            step3(json);
+        inverterSerialNumber = json["Inverter"]["2"]["s1"];
+        inverterModel        = json["Inverter"]["1"]["s1"];
+        inverterFirmware     = json["Inverter"]["3"]?.["s1"]    ?? "";
+        bmsFirmware          = json["Inverter"]["1103"]?.["s1"] ?? "";
+
+        // Update page title and device card UI
+        const modelInt = parseInt(inverterModel, 10);
+        let modelLabel = "";
+        if (modelInt === 10001) {
+            modelLabel = "h5";
+            $("#deviceImage").attr("src", "img/device_batterx_h5.png");
+        } else if (modelInt === 10002) {
+            modelLabel = "h10";
+            $("#deviceImage").attr("src", "img/device_batterx_h10.png");
+        } else if (modelInt >= 11001 && modelInt <= 11099) {
+            modelLabel = "i-Series";
+            $("#deviceImage").attr("src", "img/device_batterx_i.png");
+        } else if (modelInt >= 11101 && modelInt <= 11199) {
+            modelLabel = "c-Series";
+            $("#deviceImage").attr("src", "img/device_batterx_c.png");
         }
-    });
+        $("#pageTitle").text(modelLabel ? `batterX ${modelLabel}` : "batterX");
+        $("#serialNumber").text(inverterSerialNumber);
 
+        await step3(json);
+    } catch {
+        alert("E001. Please refresh the page! (Error while reading settings table from local database)");
+    }
 }
 
 
 
 
+// MARK: Step 3 — Verify device is registered in cloud, check battery
 
-// Check if Inverter registered in Cloud & Show Working Status
+async function step3(settings) {
+    try {
+        const response = await $.post({
+            url: "https://api.batterx.app/v2/install.php",
+            data: { action: "verify_device", serialnumber: inverterSerialNumber }
+        });
 
-function step3(json) {
+        if (response !== "1") {
+            setLoadingError(`<span class="text-danger">${t("sd_not_registered")}<br><b>(S/N: ${inverterSerialNumber})</b></span>`);
+            return;
+        }
 
-    var serial_number = json["Inverter"]["2"]["s1"];
+        // Show the detected section, hide loading
+        $("#inverterLoading").addClass("d-none");
+        $("#inverterDetected").removeClass("d-none");
 
-    $.post({
-        url: "https://api.batterx.app/v2/install.php",
-        data: {
-            action: "verify_device",
-            serialnumber: serial_number
-        },
-        error: () => { alert("E003. Please refresh the page! (Error while verifying device serialnumber in cloud)"); },
-        success: (response) => {
-            // Show Not Registered
-            if(response != "1") {
-                $(".notif").removeClass("loading error success").addClass("error");
-                $(".message").html(lang.system_detect.inverter_not_registered + "<br>" + "(S/N: " + serial_number + ")").css("color", "red");
+        // For i/c-Series: check battery SoC
+        if (parseInt(inverterModel, 10) >= 11000 && (batterySoC == 0 || batteryVoltage == 0)) {
+            if (sessionStorage.getItem("noBatteryInstalled") === "true") {
+                await step4(settings);
                 return;
             }
-            // Show Working
-            $("#inverterUnknown").addClass("d-none");
-            $("#inverterDetected").removeClass("d-none");
-            // Check Battery Connection (i/c-Series only)
-            if(inverterModel >= "11000" && batterySoC == 0) {
-                // Check if user already confirmed no battery
-                if(sessionStorage.getItem('noBatteryInstalled') === 'true') {
-                    // Skip modal, user already confirmed
-                    step4(json);
-                    return;
-                }
-                $("#modalConfirmNoBattery").modal("show");
-                return;
-            }
-            // Continue Next Step
-            step4(json);
+            $("#modalNoBattery").modal("show");
+            return;
         }
-    });
 
+        await step4(settings);
+    } catch {
+        alert("E003. Please refresh the page! (Error while verifying device in cloud)");
+    }
 }
 
 
 
 
+// MARK: No Battery Modal Buttons
 
-// Battery Connection Modal Buttons
-
-$("#modalConfirmNoBattery .refresh").on("click", () => {
-    const $btn = $("#modalConfirmNoBattery .refresh");
+$("#modalNoBattery .refresh").on("click", function() {
+    const $btn = $(this);
     $btn.prop("disabled", true);
-
-    let countdown = 0;
-    const maxCountdown = 15;
-
-    $btn.text(`${countdown} / ${maxCountdown}`);
-
-    const countdownInterval = setInterval(() => {
-        countdown++;
-        $btn.text(`${countdown} / ${maxCountdown}`);
-
-        if(countdown >= maxCountdown) {
-            clearInterval(countdownInterval);
-            location.reload();
-        }
+    $("#modalNoBattery .confirm").prop("disabled", true);
+    let count = 0;
+    const max = 15;
+    $btn.text(`${count} / ${max}`);
+    const interval = setInterval(() => {
+        count++;
+        $btn.text(`${count} / ${max}`);
+        if (count >= max) { clearInterval(interval); location.reload(); }
     }, 1000);
 });
 
-$("#modalConfirmNoBattery .confirm").on("click", () => {
-    // Store flag in sessionStorage to prevent modal from showing again
-    sessionStorage.setItem('noBatteryInstalled', 'true');
-
-    $("#modalConfirmNoBattery").modal("hide");
-    // Get the json data from step2 to continue to step4
-    $.get({
-        url: "api.php?get=settings",
-        error: () => { alert("E001. Please refresh the page! (Error while reading settings table from local database)"); },
-        success: (json) => {
-            if(!json || typeof json != "object" || !json.hasOwnProperty("Inverter"))
-                return alert("E002. Please refresh the page! (Missing or malformed data in local settings table)");
-            step4(json);
-        }
-    });
+$("#modalNoBattery .confirm").on("click", async () => {
+    sessionStorage.setItem("noBatteryInstalled", "true");
+    $("#modalNoBattery").modal("hide");
+    try {
+        const json = await $.get({ url: "api.php?get=settings" });
+        if (!json?.["Inverter"]) return alert("E002. Please refresh the page! (Missing or malformed data in local settings table)");
+        await step4(json);
+    } catch {
+        alert("E001. Please refresh the page! (Error while reading settings table from local database)");
+    }
 });
 
 
 
 
+// MARK: Step 4 — Grid standard card
 
-// Update Grid Standard Card
+async function step4(settings) {
+    if (!settings["Inverter"]?.["201"])
+        return alert(t("sd_grid_wait"));
 
-function step4(json) {
-
-    // Log Response
-    console.log(json);
-
-    // Check If MachineModel Exists
-    if(!json["Inverter"].hasOwnProperty("201"))
-        return alert("Please wait one minute, then refresh the page!");
-
-    // Populate machineModelSelect with available values
+    // Populate general selector with available standards
     try {
-        var availableGridStandards = json["Inverter"]["201"]["s2"];
-        if(availableGridStandards != "") {
-            var tempArr = JSON.parse(availableGridStandards);
-            var options = "";
-            tempArr.forEach(item => {
-                if(objGridStandards.hasOwnProperty(item.toString()))
-                    options += `<option value="${item}">${objGridStandards[item.toString()]}</option>`;
-                else
-                    options += `<option value="${item}">${item}</option>`
-            });
-            $("#machineModelSelect").html(options);
-        }
-    } catch(error) {
-        console.log("There are no grid standards available for setting up!");
+        const available = JSON.parse(settings["Inverter"]["201"]["s2"] || "[]");
+        const options = available.map(item =>
+            `<option value="${item}">${objGridStandards[item.toString()] ?? item}</option>`
+        ).join("");
+        $("#machineModelSelect").html(options);
+    } catch {}
+
+    gridStandard = settings["Inverter"]["201"]["s1"];
+    isVde4105 = gridStandard === "2";
+    isVde0126 = gridStandard === "1";
+    isTor     = gridStandard === "3";
+    isEstonia = gridStandard === "9";
+
+    // Set current value in selects
+    $("#germanyMachineModelSelect").val(gridStandard);
+    $("#machineModelSelect").val(gridStandard);
+
+    // Mark current option with a checkmark
+    $(`#machineModelSelect option[value="${gridStandard}"]`).text(
+        ($(`#machineModelSelect option[value="${gridStandard}"]`).text()) + " ✓"
+    );
+
+    // Update modal confirmation value and grid status text
+    const standardName = objGridStandards[gridStandard] ?? gridStandard;
+    $("#modalConfirmDeviceStandardBody").html(t("sd_confirm_body", {standard: `<b>${standardName}</b>`}));
+
+    if (installationCountry === "de") {
+        setGridStatus(isVde4105 ? "success" : "error", "VDE4105");
+        if (!isVde4105 && !isVde0126) $("#generalSelector").removeClass("d-none");
+        else                          $("#germanySelector").removeClass("d-none");
+    } else if (installationCountry === "at") {
+        setGridStatus(isTor ? "success" : "error", "TOR");
+        if (!isTor) $("#generalSelector").removeClass("d-none");
+    } else {
+        setGridStatus("neutral", standardName);
+        $("#generalSelector").removeClass("d-none");
     }
 
-    // Get Machine Model
-    gridStandard = json["Inverter"]["201"]["s1"];
-    isVde4105 = gridStandard == "2" ? "1" : "0";
-    isVde0126 = gridStandard == "1" ? "1" : "0";
-    isTor     = gridStandard == "3" ? "1" : "0";
-    isEstonia = gridStandard == "9" ? "1" : "0";
-
-    $("#germanyMachineModelSelect").val(gridStandard).trigger("change");
-    $("#machineModelSelect").val(gridStandard).trigger("change");
-    $("#modalConfirmDeviceStandardValue").text(objGridStandards[gridStandard]);
-
-    // Germany (2=VDE4105 | 1=VDE0126)
-    if(installationCountry == "de") {
-        $(".standard").text("VDE4105");
-        // Show Status
-        if(isVde4105 != "1" && isVde0126 != "1") {
-            $(".standard").css("color", "red");
-            $(".cert-status").removeClass("loading error success").addClass("error").css("display", "block");
-            $(`#machineModelSelect option[value="${gridStandard}"]`).append("*");
-            $("#machineModelBox").removeClass("d-none");
-        } else {
-            if(isVde4105 == "1") {
-                $(".standard").css("color", "#28a745");
-                $(".cert-status").removeClass("loading error success").addClass("success").css("display", "block");
-            } else {
-                $(".standard").css("color", "red");
-                $(".cert-status").removeClass("loading error success").addClass("error").css("display", "block");
-            }
-            $(`#germanyMachineModelSelect option[value="${gridStandard}"]`).append("*");
-            $("#germanyMachineModelBox").removeClass("d-none");
-        }
+    // Save flags to session, then continue
+    try {
+        const response = await $.post({
+            url: "cmd/session.php",
+            data: { grid_standard: gridStandard }
+        });
+        if (response !== "1")
+            return alert("E007. Please refresh the page! (Bad response while saving data to session)");
+        step5(settings);
+    } catch {
+        alert("E006. Please refresh the page! (Error while saving data to session)");
     }
-    // Austria (3=TOR)
-    else if(installationCountry == "at") {
-        $(".standard").text("TOR");
-        // Show Status
-        if(isTor != "1") {
-            $(".standard").css("color", "red");
-            $(".cert-status").removeClass("loading error success").addClass("error").css("display", "block");
-            $(`#machineModelSelect option[value="${gridStandard}"]`).append("*");
-            $("#machineModelBox").removeClass("d-none");
-        } else {
-            $(".standard").css("color", "#28a745");
-            $(".cert-status").removeClass("loading error success").addClass("success").css("display", "block");
-        }
-    }
-    // Other
-    else {
-        // Show Status
-        $(".standard").css("color", "black").html(`${objGridStandards.hasOwnProperty(gridStandard) ? objGridStandards[gridStandard] : '-'}`);
-        $(".cert-status").addClass("d-none");
-        $("#machineModelSelect").removeClass("border-danger").addClass("border-secondary");
-        $(`#machineModelSelect option[value="${gridStandard}"]`).append("*");
-        $("#machineModelBtn").removeClass("btn-danger").addClass("btn-secondary");
-        $("#machineModelBox").removeClass("d-none");
-    }
-
-    // Store Certificate Variable
-    $.post({
-        url: "cmd/session.php",
-        data: {
-            vde4105: isVde4105,
-            tor:     isTor,
-            estonia: isEstonia
-        },
-        error: () => { alert("E006. Please refresh the page! (Error while saving data to session)"); },
-        success: (response) => {
-            console.log(response);
-            if(response === "1") {
-                // Continue Next Step
-                step5(json);
-            }
-            else alert("E007. Please refresh the page! (Bad response while saving data to session)");
-        }
-    });
-
 }
 
 
 
 
+// MARK: Step 5 — Firmware version check
 
-// Update Firmware Version Card
+function step5(settings) {
+    const modelInt = parseInt(inverterModel, 10);
 
-function step5(json) {
+    if (modelInt >= 11001 && modelInt <= 11099) {
+        // i-Series: compare ARM, DSP, BMS firmware versions
+        const invParts      = inverterFirmware.split("-");
+        const firstPart     = invParts[0].split(".");
+        const secondPart    = invParts[1].split(".");
 
-    const inverterModelInt = parseInt(inverterModel, 10);
+        const currentArm    = [firstPart[0].substring(1), secondPart[0].substring(1)];
+        const currentDsp    = [firstPart[1], secondPart[1]];
+        const newArm        = [iArmLatestVersion[0], iArmLatestVersion[1]];
+        const newDsp        = inverterModel >= "11020" ? [iDspLgLatestVersion[0], iDspLgLatestVersion[1]] : [iDspSmLatestVersion[0], iDspSmLatestVersion[1]];
+        const durationArm   = iArmEstimatedDuration;
+        const durationDsp   = inverterModel >= "11020" ? iDspLgEstimatedDuration : iDspSmEstimatedDuration;
 
-    // i-Series
-    if(inverterModelInt >= 11001 && inverterModelInt <= 11099) {
-        // Extract current version parts (Inverter)
-        const invParts = inverterFirmware.split('-');
-        const firstPart = invParts[0].split('.');
-        const secondPart = invParts[1].split('.');
-        const currentArm = [firstPart[0].substring(1), secondPart[0].substring(1)]; // Remove 'V'
-        const currentDsp = [firstPart[1], secondPart[1]];
-        const newArm = [armLatestVersion[0], armLatestVersion[1]];
-        const newDsp =  inverterModel >= "11020" ? [dspLgLatestVersion[0], dspLgLatestVersion[1]] : [dspSmLatestVersion[0], dspSmLatestVersion[1]]; // i30 ? dspLg : dspSm
-        const durationArm = armEstimatedDuration;
-        const durationDsp = inverterModel >= "11020" ? dspLgEstimatedDuration : dspSmEstimatedDuration;
-        // Extract current version parts (BMS)
-        const currentBms = bmsFirmware ? bmsFirmware.split(".") : [];
-        const newBms = [bmsLatestVersion[0], bmsLatestVersion[1]];
-        const durationBms = bmsEstimatedDuration;
-        // Build new version using the other parts from current firmware
+        const currentBms    = bmsFirmware ? bmsFirmware.split(".") : [];
+        const newBms        = [iBmsLatestVersion[0], iBmsLatestVersion[1]];
+        const durationBms   = iBmsEstimatedDuration;
+
         const newVersionInv = `V${newArm[0]}.${newDsp[0]}.${firstPart[2]}.${firstPart[3]}-V${newArm[1]}.${newDsp[1]}.${secondPart[2]}.${secondPart[3]}`;
         const newVersionBms = `${newBms[0]}.${newBms[1]}`;
-        // Compare versions
-        const isArmUpToDate = currentArm[0] == newArm[0] && currentArm[1] == newArm[1];
-        const isDspUpToDate = currentDsp[0] == newDsp[0] && currentDsp[1] == newDsp[1];
-        const isBmsUpToDate = currentBms.length == 0 ? true : currentBms[0] == newBms[0] && currentBms[1] == newBms[1];
-        // Store which updates are needed
-        armUpdateNeeded = isArmUpToDate ? "" : `${newArm[0]}(${newArm[1]})`;
-        dspUpdateNeeded = isDspUpToDate ? "" : `${newDsp[0]}(${newDsp[1]})`;
-        bmsUpdateNeeded = isBmsUpToDate ? "" : `${newBms[0]}${newBms[1]}`;
+
+        const isArmUpToDate = currentArm[0] === newArm[0] && currentArm[1] === newArm[1];
+        const isDspUpToDate = currentDsp[0] === newDsp[0] && currentDsp[1] === newDsp[1];
+        const isBmsUpToDate = currentBms.length === 0 ? true : (currentBms[0] === newBms[0] && currentBms[1] === newBms[1]);
+
+        iArmUpdateNeeded = isArmUpToDate ? "" : `${newArm[0]}(${newArm[1]})`;
+        iDspUpdateNeeded = isDspUpToDate ? "" : `${newDsp[0]}(${newDsp[1]})`;
+        iBmsUpdateNeeded = isBmsUpToDate ? "" : `${newBms[0]}${newBms[1]}`;
         estimatedUpdateDuration = (isArmUpToDate ? 0 : durationArm) + (isDspUpToDate ? 0 : durationDsp) + (isBmsUpToDate ? 0 : durationBms);
-        // Show Firmware Update Card
-        if(currentBms.length == 0) {
-            $("#installedVersion").html(`<small><b>INVERTER</b></small><br><b>${inverterFirmware}</b>`);
-            $("#latestVersion").html(`<small><b>INVERTER</b></small><br><b>${newVersionInv}</b>`);
-        } else {
-            $("#installedVersion").html(`<small><b>INVERTER</b></small><br><b>${inverterFirmware}</b><br><small><b>BMS</b></small><br><b>${bmsFirmware}</b>`);
-            $("#latestVersion").html(`<small><b>INVERTER</b></small><br><b>${newVersionInv}</b><br><small><b>BMS</b></small><br><b>${newVersionBms}</b>`);
-        }
-        $("#estimatedDuration").html(`${estimatedUpdateDuration} min`);
-        // Show Grid Standard Card
-        if(isArmUpToDate && isDspUpToDate && isBmsUpToDate) {
-            // Show Firmware Update Success
-            $("#firmwareUpdateSuccess").removeClass("d-none");
-            // Disable Firmware Update Button
-            $("#firmwareUpdateStart").attr("disabled", true);
-            // Show Grid Standard Card
-            $("#machineModelContainer").removeClass("d-none");
-            // Allow Continue Button
-            $("#btn_next").attr("disabled", false);
-        } else {
-            // Show Firmware Update Card
-            $("#firmwareUpdateContainer").removeClass("d-none");
-        }
-    }
-    else if(inverterModelInt >= 11101 && inverterModelInt <= 11199) { // c-Series
-        // Disable Firmware Update Button
-        $("#firmwareUpdateStart").attr("disabled", true);
-        // Show Grid Standard Card
-        $("#machineModelContainer").removeClass("d-none");
-        // Allow Continue Button
-        $("#btn_next").attr("disabled", false);
-    }
-    // h-Series
-    else {
-        // Disable Firmware Update Button
-        $("#firmwareUpdateStart").attr("disabled", true);
-        // Show Grid Standard Card
-        $("#machineModelContainer").removeClass("d-none");
-        // Allow Continue Button
-        $("#btn_next").attr("disabled", false);
-    }
 
+        if (currentBms.length === 0) {
+            $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}`);
+            $("#latestVersion").html(`<small>INVERTER</small><br>${newVersionInv}`);
+        } else {
+            $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}<br><small>BMS</small><br>${bmsFirmware}`);
+            $("#latestVersion").html(`<small>INVERTER</small><br>${newVersionInv}<br><small>BMS</small><br>${newVersionBms}`);
+        }
+        $("#estimatedDuration").text(`${estimatedUpdateDuration} min`);
+
+        if (isArmUpToDate && isDspUpToDate && isBmsUpToDate) {
+            showReady(true);
+        } else {
+            $("#firmwareUpdate").removeClass("d-none");
+        }
+    } else if (modelInt >= 11101 && modelInt <= 11199) {
+        // c-Series: single merged firmware update
+        const invParts   = inverterFirmware.split("-");
+        const firstPart  = invParts[0].split(".");
+        const secondPart = invParts[1].split(".");
+
+        const aa = firstPart[0].substring(1);  // strip leading 'V'
+        const bb = secondPart[0].substring(1);
+        const cc = firstPart[1];
+        const dd = secondPart[1];
+
+        const isUpToDate = aa === cMergedLatestVersion[0] && bb === cMergedLatestVersion[1]
+                        && cc === cMergedLatestVersion[2] && dd === cMergedLatestVersion[3];
+
+        cMergedUpdateNeeded     = isUpToDate ? "" : `${cMergedLatestVersion[0]}${cMergedLatestVersion[1]}-${cMergedLatestVersion[2]}${cMergedLatestVersion[3]}`;
+        estimatedUpdateDuration = isUpToDate ? 0 : cMergedEstimatedDuration;
+
+        const newVersion = `V${cMergedLatestVersion[0]}.${cMergedLatestVersion[2]}.${firstPart[2]}.${firstPart[3]}-V${cMergedLatestVersion[1]}.${cMergedLatestVersion[3]}.${secondPart[2]}.${secondPart[3]}`;
+
+        $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}`);
+        $("#latestVersion").html(`<small>INVERTER</small><br>${newVersion}`);
+        $("#estimatedDuration").text(`${cMergedEstimatedDuration} min`);
+
+        if (isUpToDate) {
+            showReady(true);
+        } else {
+            $("#firmwareUpdate").removeClass("d-none");
+        }
+    } else {
+        // h-Series: no firmware update support
+        showReady(false);
+    }
+}
+
+function showReady(showFirmwareStatus) {
+    if (showFirmwareStatus) $("#firmwareUpToDate").removeClass("d-none");
+    $("#gridStandardCard").removeClass("d-none");
+    $("#btn_continue").removeClass("d-none").prop("disabled", false);
 }
 
 
 
 
+// MARK: Grid Standard Selects
 
-// MachineModel Select
-
-$("#germanyMachineModelSelect").on("input change", function() {
-    if($(this).val() == gridStandard) //if($(this).val() == gridStandard || isGridLoss) NEW
-        $("#germanyMachineModelBtn").prop("disabled", true);
-    else
-        $("#germanyMachineModelBtn").prop("disabled", false);
+$("#germanyMachineModelSelect").on("change", function() {
+    $("#germanyMachineModelBtn").prop("disabled", $(this).val() === gridStandard);
 });
 
-$("#machineModelSelect").on("input change", function() {
-    if($(this).val() == gridStandard) //if($(this).val() == gridStandard || isGridLoss) NEW
-        $("#machineModelBtn").prop("disabled", true);
-    else
-        $("#machineModelBtn").prop("disabled", false);
+$("#machineModelSelect").on("change", function() {
+    $("#machineModelBtn").prop("disabled", $(this).val() === gridStandard);
 });
 
-
-
-
-
-// Button MachineModel onClick
-
-$("#germanyMachineModelBtn").on("click", () => {
-    $("#machineModelSelect").val($("#germanyMachineModelSelect").val());
-    $("#machineModelBtn").trigger("click");
+$("#germanyMachineModelBtn").on("click", async () => {
+    await applyMachineModel($("#germanyMachineModelSelect").val());
 });
 
-$("#machineModelBtn").on("click", () => {
-    // Switch to Selected MachineModel
-    $.get({
-        url: "api.php?set=command&type=24064&entity=201&text2=" + $("#machineModelSelect").val(),
-        error: () => { alert("E008. Please refresh the page! (Error while writing command to local database)"); },
-        success: () => {
-            $("#germanyMachineModelBox").hide();
-            $("#machineModelBox").hide();
-            $("#btn_next").attr("disabled", true);
-            $(".cert-loading").css("display", "block");
-            checkParameters();
-        }
-    });
+$("#machineModelBtn").on("click", async () => {
+    await applyMachineModel($("#machineModelSelect").val());
 });
 
-var deviceDatetime = "";
-function checkParameters() {
-    $.get({
-        url: "api.php?get=settings",
-        error: () => { alert("E009. Please refresh the page! (Error while reading local settings table)"); },
-        success: (response) => {
-            console.log(response);
-            if(!response || typeof response != "object" || !response.hasOwnProperty("Inverter"))
+async function applyMachineModel(val) {
+    try {
+        await $.get({ url: `api.php?set=command&type=24064&entity=201&text2=${val}` });
+        $("#germanySelector, #generalSelector, #gridStatus").addClass("d-none");
+        $("#gridApplying").removeClass("d-none");
+        $("#btn_continue").prop("disabled", true);
+        await checkParameters();
+    } catch {
+        alert("E008. Please refresh the page! (Error while writing command to local database)");
+    }
+}
+
+async function checkParameters() {
+    let deviceDatetime = "";
+    while (true) {
+        try {
+            const response = await $.get({ url: "api.php?get=settings" });
+            if (!response?.["Inverter"])
                 return alert("E010. Please refresh the page! (Missing or malformed data in local settings table)");
-            response = response["Inverter"];
-            if(deviceDatetime == "") { deviceDatetime = response["10"]["s1"]; setTimeout(checkParameters, 5000); return; }
-            if(response["10"]["s1"] == deviceDatetime) { setTimeout(checkParameters, 5000); return; }
+            const inv = response["Inverter"];
+            if (deviceDatetime === "") {
+                deviceDatetime = inv["10"]["s1"];
+                await sleep(5000);
+                continue;
+            }
+            if (inv["10"]["s1"] === deviceDatetime) {
+                await sleep(5000);
+                continue;
+            }
             location.reload();
+            return;
+        } catch {
+            return alert("E009. Please refresh the page! (Error while reading local settings table)");
         }
-    });
+    }
 }
 
 
 
 
+// MARK: Continue Button
 
-// Button Next On-Click
+$("#btn_continue").on("click", () => {
+    const selectorVisible = !$("#germanySelector").hasClass("d-none") || !$("#generalSelector").hasClass("d-none");
+    const isHappyPath    = (installationCountry === "de" && isVde4105) || (installationCountry === "at" && isTor);
 
-$("#btn_next").on("click", () => {
-        
-    // Show Confirmation Modal IF Germany Without VDE4105
-    if(installationCountry == "de" && isVde4105 != "1") {
+    if (selectorVisible && !isHappyPath) {
         $("#modalConfirmDeviceStandard").modal("show");
-        $("#modalConfirmDeviceStandardBtn").unbind().on("click", () => {
-            setTimeout(() => { window.location.href = "system_setup.php"; }, 1000);
-            $("#modalConfirmDeviceStandard").modal("hide");
-        });
+    } else {
+        window.location.href = "system_setup.php";
     }
-    // Else Continue To Next Page
-    else {
-        setTimeout(() => { window.location.href = "system_setup.php"; }, 1000);
-    }
+});
 
+$("#modalConfirmDeviceStandardBtn").on("click", () => {
+    $("#modalConfirmDeviceStandard").modal("hide");
+    window.location.href = "system_setup.php";
 });
 
 
 
 
+// MARK: Firmware Update
 
-
-
-
-
-
-// Firmware Update
-
-// Prevent page leave during firmware update
 function preventPageLeave(event) {
     event.preventDefault();
-    event.returnValue = ''; // Required for Chrome
+    event.returnValue = "";
 }
 
-// Helper function for async delays
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Wait for battery voltage after program restart
-async function waitForBatteryVoltage() {
-    // Wait 10 seconds just to have some delay
-    await sleep(10000);
-
-    const maxWaitTime = 600000; // 10 minutes
-    const startTime = Date.now();
-
-    while(Date.now() - startTime < maxWaitTime) {
-        try {
-            const response = await $.get({
-                url: "api.php?get=currentstate"
-            });
-
-            // If logtime changed, program has restarted and is running
-            var batteryVoltage = (response.hasOwnProperty("3090") && response["3090"].hasOwnProperty("1")) ? response["3090"]["1"] : 0;
-            if(batteryVoltage > 100) {
-                return true;
-            }
-
-            await sleep(5000); // Wait 5 seconds before checking again
-        } catch (error) {
-            console.log("Error checking currentstate:", error);
-            await sleep(5000);
-        }
-    }
-
-    return false; // Timeout reached
-}
-
-// Wait for program to restart after firmware update
 async function waitForProgramRestart() {
-    // Wait 10 seconds for program to restart first
     await sleep(10000);
-
-    // Get initial logtime after the restart delay
     let initialLogtime = null;
     try {
-        const initialResponse = await $.get({
-            url: "api.php?get=currentstate"
-        });
-        initialLogtime = initialResponse?.logtime;
-    } catch (error) {
-        console.log("Error getting initial currentstate:", error);
-    }
+        const r = await $.get({ url: "api.php?get=currentstate" });
+        initialLogtime = r?.logtime ?? null;
+    } catch {}
 
-    const maxWaitTime = 300000; // 5 minutes
     const startTime = Date.now();
-
-    while(Date.now() - startTime < maxWaitTime) {
+    while (Date.now() - startTime < 300000) {
         try {
-            const response = await $.get({
-                url: "api.php?get=currentstate"
-            });
-
-            // If logtime changed, program has restarted and is running
-            if(response?.logtime && response.logtime !== initialLogtime) {
-                return true;
-            }
-
-            await sleep(5000); // Wait 5 seconds before checking again
-        } catch (error) {
-            console.log("Error checking currentstate:", error);
+            const r = await $.get({ url: "api.php?get=currentstate" });
+            if (r?.logtime && r.logtime !== initialLogtime) return true;
             await sleep(5000);
-        }
+        } catch { await sleep(5000); }
     }
-
-    return false; // Timeout reached
+    return false;
 }
 
-// Verify firmware version in settings table
+async function waitForBatteryVoltage() {
+    await sleep(10000);
+    const startTime = Date.now();
+    while (Date.now() - startTime < 600000) {
+        try {
+            const r = await $.get({ url: "api.php?get=currentstate" });
+            const voltage = r?.["3090"]?.["1"] ?? 0;
+            if (voltage > 100) return true;
+            await sleep(5000);
+        } catch { await sleep(5000); }
+    }
+    return false;
+}
+
 async function verifyFirmwareUpdate(expectedVersion, firmwareType) {
-    const maxWaitTime = (firmwareType == "bms" ? 7 : 2) * 60000; // 2 minutes for ARM/DSP, 7 minutes for BMS
+    const maxWait = (firmwareType === "bms" ? 7 : 2) * 60000;
     const startTime = Date.now();
-
-    while(Date.now() - startTime < maxWaitTime) {
+    while (Date.now() - startTime < maxWait) {
         try {
-            const response = await $.get({
-                url: "api.php?get=settings"
-            });
-            if(firmwareType == "arm" || firmwareType == "dsp") {
-                if(response && response["Inverter"] && response["Inverter"]["3"] && response["Inverter"]["3"]["s1"]) {
-                    const currentFirmware = response["Inverter"]["3"]["s1"];
-                    const invParts = currentFirmware.split('-');
-                    const firstPart = invParts[0].split('.');
-                    const secondPart = invParts[1].split('.');
-                    if(firmwareType === "arm") {
-                        const currentArm = [firstPart[0].substring(1), secondPart[0].substring(1)];
-                        const currentArmVersion = `${currentArm[0]}(${currentArm[1]})`;
-                        if(currentArmVersion === expectedVersion) {
-                            return true;
-                        }
-                    } else if(firmwareType === "dsp") {
-                        const currentDsp = [firstPart[1], secondPart[1]];
-                        const currentDspVersion = `${currentDsp[0]}(${currentDsp[1]})`;
-                        if(currentDspVersion === expectedVersion) {
-                            return true;
-                        }
+            const r = await $.get({ url: "api.php?get=settings" });
+            if (firmwareType === "arm" || firmwareType === "dsp") {
+                const fw = r?.["Inverter"]?.["3"]?.["s1"];
+                if (fw) {
+                    const parts = fw.split("-");
+                    const a = parts[0].split(".");
+                    const b = parts[1].split(".");
+                    if (firmwareType === "arm") {
+                        if (`${a[0].substring(1)}(${b[0].substring(1)})` === expectedVersion) return true;
+                    } else {
+                        if (`${a[1]}(${b[1]})` === expectedVersion) return true;
                     }
                 }
-            } else if(firmwareType == "bms") {
-                if(response && response["Inverter"] && response["Inverter"]["1103"] && response["Inverter"]["1103"]["s1"]) {
-                    const currentFirmware = response["Inverter"]["1103"]["s1"];
-                    const bmsParts = currentFirmware.split(".");
-                    const currentBmsVersion = `${bmsParts[0]}${bmsParts[1]}`;
-                    if(currentBmsVersion == expectedVersion) {
-                        return true;
-                    }
+            } else if (firmwareType === "bms") {
+                const fw = r?.["Inverter"]?.["1103"]?.["s1"];
+                if (fw) {
+                    const parts = fw.split(".");
+                    if (`${parts[0]}${parts[1]}` === expectedVersion) return true;
+                }
+            } else if (firmwareType === "c-merged") {
+                const fw = r?.["Inverter"]?.["3"]?.["s1"];
+                if (fw) {
+                    const parts = fw.split("-");
+                    const a = parts[0].split(".");
+                    const b = parts[1].split(".");
+                    const current = `${a[0].substring(1)}${b[0].substring(1)}-${a[1]}${b[1]}`;
+                    if (current === expectedVersion) return true;
                 }
             }
-            await sleep(5000); // Wait 5 seconds before checking again
-        } catch (error) {
-            console.log("Error checking firmware version:", error);
             await sleep(5000);
-        }
+        } catch { await sleep(5000); }
     }
-
-    return false; // Timeout reached
+    return false;
 }
 
-// Wait for firmware update to complete by monitoring status
 async function waitForFirmwareUpdateComplete() {
-    const maxWaitTime = 900000; // 10 minutes
     const startTime = Date.now();
-    let consecutiveCompleteCount = 0; // Count consecutive state=0 or "{}"
-    const requiredConsecutiveCount = 5; // Need 5 consecutive (25 seconds)
-
-    while(Date.now() - startTime < maxWaitTime) {
+    let consecutiveCount = 0;
+    while (Date.now() - startTime < 900000) {
         try {
-            const statusResponse = await $.post({
-                url: "cmd/fwupdate.php",
-                data: { action: "status" }
-            });
-
-            console.log("FWUpdate status:", statusResponse);
-
-            // Check if file is gone (device restarted, RAM cleared)
-            if(statusResponse === "{}") {
-                consecutiveCompleteCount++;
-                console.log(`File gone (RAM cleared), count: ${consecutiveCompleteCount}/${requiredConsecutiveCount}`);
-
-                if(consecutiveCompleteCount >= requiredConsecutiveCount) {
-                    return { success: true, message: "Update completed (device restarted, file cleared)" };
-                }
-            }
-            // Parse JSON response
-            else if(statusResponse && statusResponse !== "") {
-                const status = JSON.parse(statusResponse);
-
-                // state: 0=UpdateCompleteSuccess, 1=UpdateInProgress, 2=Error
-                if(status.state === 0) {
-                    consecutiveCompleteCount++;
-                    console.log(`Update complete state detected, count: ${consecutiveCompleteCount}/${requiredConsecutiveCount}`);
-
-                    if(consecutiveCompleteCount >= requiredConsecutiveCount) {
-                        return { success: true, message: status.message };
-                    }
-                } else if(status.state === 2) {
-                    // Error state - return immediately
-                    return { success: false, message: status.message };
+            const status = await $.post({ url: "cmd/fwupdate.php", data: { action: "status" } });
+            if (status === "{}") {
+                if (++consecutiveCount >= 5) return { success: true };
+            } else if (status && status !== "") {
+                const parsed = JSON.parse(status);
+                if (parsed.state === 0) {
+                    if (++consecutiveCount >= 5) return { success: true, message: parsed.message };
+                } else if (parsed.state === 2) {
+                    return { success: false, message: parsed.message };
                 } else {
-                    // state === 1 (in progress), reset counter
-                    consecutiveCompleteCount = 0;
+                    consecutiveCount = 0;
                 }
             } else {
-                // Empty response, reset counter
-                consecutiveCompleteCount = 0;
+                consecutiveCount = 0;
             }
-
-            await sleep(5000); // Wait 5 seconds before checking again
-        } catch (error) {
-            console.log("Error checking FWUpdate status:", error);
-            consecutiveCompleteCount = 0; // Reset counter on error
             await sleep(5000);
-        }
+        } catch { consecutiveCount = 0; await sleep(5000); }
     }
-
-    return { success: false, message: "Timeout: Update did not complete within 15 minutes" };
+    return { success: false, message: "Timeout: firmware update did not complete" };
 }
 
-// Main firmware update orchestration
 async function performFirmwareUpdates() {
     try {
-        // ARM Update
-        if(armUpdateNeeded && armUpdateNeeded !== "") {
-            console.log("Starting ARM firmware update to version:", armUpdateNeeded);
-
-            // Start ARM update
-            const startResponse = await $.post({
-                url: "cmd/fwupdate.php",
-                data: {
-                    action: "start",
-                    type: "arm",
-                    version: armUpdateNeeded
-                }
-            });
-
-            if(startResponse !== "1") {
-                throw new Error("Failed to start ARM firmware update");
-            }
-
-            console.log("ARM update started, waiting for completion...");
-
-            // Wait for update to complete (or device to restart and file to disappear)
-            const updateResult = await waitForFirmwareUpdateComplete();
-            console.log("ARM update process finished:", updateResult.message);
-
-            console.log("Waiting for program restart...");
-
-            // Wait for program to restart
-            const restartSuccess = await waitForProgramRestart();
-
-            if(!restartSuccess) {
-                throw new Error("Program did not restart after ARM update");
-            }
-
-            console.log("Program restarted, verifying ARM firmware version...");
-
-            // Verify ARM firmware was updated
-            const verifySuccess = await verifyFirmwareUpdate(armUpdateNeeded, "arm");
-
-            if(!verifySuccess) {
-                throw new Error("ARM firmware verification failed");
-            }
-
-            console.log("ARM firmware update verified successfully");
+        if (iArmUpdateNeeded) {
+            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: "i-arm", version: iArmUpdateNeeded } });
+            if (r !== "1") throw new Error("Failed to start ARM firmware update");
+            await waitForFirmwareUpdateComplete();
+            if (!await waitForProgramRestart()) throw new Error("Program did not restart after ARM update");
+            if (!await verifyFirmwareUpdate(iArmUpdateNeeded, "arm")) throw new Error("ARM firmware verification failed");
         }
 
-        // DSP Update
-        if(dspUpdateNeeded && dspUpdateNeeded !== "") {
-            console.log("Starting DSP firmware update to version:", dspUpdateNeeded);
-
-            // Determine DSP type based on inverter model
-            const dspType = inverterModel >= "11020" ? "dsp-lg" : "dsp-sm";
-
-            // Start DSP update
-            const startResponse = await $.post({
-                url: "cmd/fwupdate.php",
-                data: {
-                    action: "start",
-                    type: dspType,
-                    version: dspUpdateNeeded
-                }
-            });
-
-            if(startResponse !== "1") {
-                throw new Error("Failed to start DSP firmware update");
-            }
-
-            console.log("DSP update started, waiting for completion...");
-
-            // Wait for update to complete (or device to restart and file to disappear)
-            const updateResult = await waitForFirmwareUpdateComplete();
-            console.log("DSP update process finished:", updateResult.message);
-
-            console.log("Waiting for program restart...");
-
-            // Wait for program to restart
-            const restartSuccess = await waitForProgramRestart();
-
-            if(!restartSuccess) {
-                throw new Error("Program did not restart after DSP update");
-            }
-
-            console.log("Program restarted, verifying DSP firmware version...");
-
-            // Verify DSP firmware was updated
-            const verifySuccess = await verifyFirmwareUpdate(dspUpdateNeeded, "dsp");
-
-            if(!verifySuccess) {
-                throw new Error("DSP firmware verification failed");
-            }
-
-            console.log("DSP firmware update verified successfully");
+        if (iDspUpdateNeeded) {
+            const dspType = inverterModel >= "11020" ? "i-dsp-lg" : "i-dsp-sm";
+            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: dspType, version: iDspUpdateNeeded } });
+            if (r !== "1") throw new Error("Failed to start DSP firmware update");
+            await waitForFirmwareUpdateComplete();
+            if (!await waitForProgramRestart()) throw new Error("Program did not restart after DSP update");
+            if (!await verifyFirmwareUpdate(iDspUpdateNeeded, "dsp")) throw new Error("DSP firmware verification failed");
         }
 
-        // BMS Update
-        if(bmsUpdateNeeded && bmsUpdateNeeded !== "") {
-            console.log("Starting BMS firmware update to version:", bmsUpdateNeeded);
-
-            // Start BMS update
-            const startResponse = await $.post({
-                url: "cmd/fwupdate.php",
-                data: {
-                    action: "start",
-                    type: "bms",
-                    version: bmsUpdateNeeded
-                }
-            });
-
-            if(startResponse !== "1") {
-                throw new Error("Failed to start BMS firmware update");
-            }
-
-            console.log("BMS update started, waiting for completion...");
-
-            // Wait for update to complete (or device to restart and file to disappear)
-            const updateResult = await waitForFirmwareUpdateComplete();
-            console.log("BMS update process finished:", updateResult.message);
-
-            console.log("Waiting for program restart...");
-
-            // Wait for program to restart
-            const restartSuccess = await waitForProgramRestart();
-
-            if(!restartSuccess) {
-                throw new Error("Program did not restart after BMS update");
-            }
-
-            console.log("Program restarted, waiting for battery to reconnect...");
-
-            // Wait for program to restart
-            const reconnectSuccess = await waitForBatteryVoltage();
-
-            if(!reconnectSuccess) {
-                throw new Error("Battery did not reconnect after BMS update");
-            }
-
-            console.log("Battery reconnected, verifying BMS firmware version...");
-
-            // Verify BMS firmware was updated
-            const verifySuccess = await verifyFirmwareUpdate(bmsUpdateNeeded, "bms");
-
-            if(!verifySuccess) {
-                throw new Error("BMS firmware verification failed");
-            }
-
-            console.log("BMS firmware update verified successfully");
+        if (iBmsUpdateNeeded) {
+            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: "i-bms", version: iBmsUpdateNeeded } });
+            if (r !== "1") throw new Error("Failed to start BMS firmware update");
+            await waitForFirmwareUpdateComplete();
+            if (!await waitForProgramRestart()) throw new Error("Program did not restart after BMS update");
+            if (!await waitForBatteryVoltage()) throw new Error("Battery did not reconnect after BMS update");
+            if (!await verifyFirmwareUpdate(iBmsUpdateNeeded, "bms")) throw new Error("BMS firmware verification failed");
         }
 
-        // Both updates complete - remove page leave warning and reload page
-        window.removeEventListener('beforeunload', preventPageLeave);
+        if (cMergedUpdateNeeded) {
+            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: "c-merged", version: cMergedUpdateNeeded } });
+            if (r !== "1") throw new Error("Failed to start c-Series firmware update");
+            await waitForFirmwareUpdateComplete();
+            if (!await waitForProgramRestart()) throw new Error("Program did not restart after c-Series firmware update");
+            if (!await verifyFirmwareUpdate(cMergedUpdateNeeded, "c-merged")) throw new Error("c-Series firmware verification failed");
+        }
+
+        window.removeEventListener("beforeunload", preventPageLeave);
         location.reload();
-
     } catch (error) {
-        console.error("Firmware update error:", error);
-        window.removeEventListener('beforeunload', preventPageLeave);
-        $("#firmwareUpdateStart").prop("disabled", false);
-        $("#firmwareUpdateStart").removeClass("d-none");
-        $("#estimatedDurationContainer").removeClass("d-none");
-        $("#firmwareUpdateProgress").addClass("d-none");
+        window.removeEventListener("beforeunload", preventPageLeave);
         alert("Firmware update error: " + error.message);
+        location.reload();
     }
 }
 
-// Progress bar countdown
 function startProgressCountdown() {
-    const totalMinutes = estimatedUpdateDuration;
-    const totalSeconds = totalMinutes * 60;
-    let elapsedSeconds = 0;
-    const updateInterval = 1000; // Update every 1 second
-
-    // Initialize progress bar to 0%
+    const totalSeconds = estimatedUpdateDuration * 60;
+    let elapsed = 0;
     $("#firmwareUpdateProgressBar").css("width", "0%");
-
-    const progressInterval = setInterval(() => {
-        elapsedSeconds++;
-
-        if(elapsedSeconds <= totalSeconds) {
-            // Calculate progress percentage (counting up from 0% to 100%)
-            const percentageElapsed = (elapsedSeconds / totalSeconds) * 100;
-            $("#firmwareUpdateProgressBar").css("width", percentageElapsed + "%");
-
-            // Calculate time remaining
-            const remainingSeconds = totalSeconds - elapsedSeconds;
-            const minutesLeft = Math.floor(remainingSeconds / 60);
-            const secondsLeft = remainingSeconds % 60;
-            $("#firmwareUpdateProgressText").text(`${lang.system_detect.updating_firmware} ${minutesLeft}:${secondsLeft.toString().padStart(2, '0')} ${lang.system_detect.remaining}`);
+    const interval = setInterval(() => {
+        elapsed++;
+        if (elapsed <= totalSeconds) {
+            const pct = (elapsed / totalSeconds) * 100;
+            const remaining = totalSeconds - elapsed;
+            const m = Math.floor(remaining / 60);
+            const s = (remaining % 60).toString().padStart(2, "0");
+            $("#firmwareUpdateProgressBar").css("width", pct + "%");
+            $("#firmwareUpdateProgressText").text(t("sd_updating_fw", {time: `${m}:${s}`}));
         } else {
-            // Countdown finished, show "Please wait..."
-            clearInterval(progressInterval);
+            clearInterval(interval);
             $("#firmwareUpdateProgressBar").css("width", "100%");
-            $("#firmwareUpdateProgressText").text(`${lang.system_detect.updating_firmware} ${lang.system_detect.please_wait}`);
+            $("#firmwareUpdateProgressText").text(t("sd_updating_fw_wait"));
         }
-    }, updateInterval);
-
-    return progressInterval;
+    }, 1000);
 }
 
 $("#firmwareUpdateStart").on("click", () => {
-    // Show confirmation modal
     $("#modalConfirmFirmwareUpdate").modal("show");
 });
 
 $("#modalConfirmFirmwareUpdate .confirm").on("click", () => {
-    // Hide confirmation modal
     $("#modalConfirmFirmwareUpdate").modal("hide");
-
-    // Prevent page leave during firmware update
-    window.addEventListener('beforeunload', preventPageLeave);
-
-    // Hide button and show progress bar
+    window.addEventListener("beforeunload", preventPageLeave);
     $("#firmwareUpdateStart").addClass("d-none");
     $("#estimatedDurationContainer").addClass("d-none");
     $("#firmwareUpdateProgress").removeClass("d-none");
-
-    // Start progress countdown
     startProgressCountdown();
-
-    // Start the firmware update process
     performFirmwareUpdates();
 });
+
+
+
+
+// MARK: Init
+
+(async () => { await step1(); })();

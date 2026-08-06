@@ -229,6 +229,44 @@ else if(isset($_GET["set"]) && strtolower($_GET["set"]) == "command") {
 
 
 
+// SET Setting (browser-only, session-gated)
+
+else if(isset($_POST["set"]) && strtolower($_POST["set"]) == "setting") {
+
+    // Security: require an active installer session -- prevents access from Python scripts / external tools
+    session_start();
+    if(empty($_SESSION["installer_email"])) { http_response_code(403); echo "0"; exit; }
+
+    $varname = isset($_POST["varname"]) ? trim($_POST["varname"]) : "";
+    $entity  = isset($_POST["entity" ]) ? intval($_POST["entity" ]) : 0;
+    $v1      = isset($_POST["v1"     ]) ? intval($_POST["v1"     ]) : 0;
+    $v2      = isset($_POST["v2"     ]) ? intval($_POST["v2"     ]) : 0;
+
+    // Whitelist -- only explicitly allowed settings may be written
+    $allowed = ["SystemLocation"];
+    if(!in_array($varname, $allowed, true)) { echo "0"; exit; }
+
+    try {
+        $db = new PDO("sqlite:/srv/bx/usv.db3");
+
+        // Update existing row first; insert with defaults if none exists
+        $stmt = $db->prepare("UPDATE Settings SET V1=:v1, V2=:v2, UpDateTime=datetime('now') WHERE VarName=:vn AND entity=:en");
+        $stmt->execute([":v1" => $v1, ":v2" => $v2, ":vn" => $varname, ":en" => $entity]);
+
+        if($stmt->rowCount() === 0) {
+            $stmt = $db->prepare("INSERT INTO Settings (VarName, entity, Name, InUse, Mode, V1, V2, V3, V4, V5, V6, S1, S2, UpDateTime) VALUES (:vn, :en, '', 1, 0, :v1, :v2, 0, 0, 0, 0, '', '', datetime('now'))");
+            $stmt->execute([":vn" => $varname, ":en" => $entity, ":v1" => $v1, ":v2" => $v2]);
+        }
+
+        echo $stmt->rowCount() >= 1 ? "1" : "0";
+    } catch(PDOException $e) { echo "0"; }
+
+}
+
+
+
+
+
 // POST CurrentState
 
 else if(isset($_GET["post"]) && strtolower($_GET["post"]) == "currentstate") {

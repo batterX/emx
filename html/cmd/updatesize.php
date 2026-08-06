@@ -1,6 +1,5 @@
 <?php
 
-// Include Base
 include_once "../common/base.php";
 
 $cmd = $boxType == "livex" ? "du -s -B1 /home/pi/livesmart-home" : "du -s -B1 /home/pi/emx";

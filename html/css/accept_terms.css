@@ -1,37 +1,19 @@
-body {
-    background-color: var(--color-main);
+#warrantyContent h1 { font-size: 1.2rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+#warrantyContent h1:first-child { margin-top: 0; }
+#warrantyContent h2 { font-size: 1.05rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+#warrantyContent p  { font-size: 0.9rem; margin-bottom: 0.4rem; }
+#warrantyContent ol,
+#warrantyContent ul { font-size: 0.9rem; padding-left: 1.5rem; margin-bottom: 0.4rem; }
+#warrantyContent table { font-size: 0.85rem; }
+
+#checkboxAccept:not(:checked) {
+    border-color: gray;
 }
 
-@media (min-width:1200px) { .container { max-width: 1000px; } }
-
-h1 {
-    font-size: 1rem;
-    margin-top: 3rem;
-    margin-bottom: 0;
-    font-weight: bold;
-    font-style: italic;
-}
-
-h2 {
-    font-size: 1rem;
-    margin-bottom: 3rem;
-    font-weight: bold;
-}
-
-#btnFinish {
-    visibility: hidden;
-}
-
-ol[type="1"] > li {
-    font-size: 1rem;
-    font-weight: bold;
-    margin-bottom: 3rem;
-}
-ol[type="a"] > li {
-    font-size: 1rem;
-    font-weight: normal;
-}
-ol[type="i"] > li {
-    font-size: 1rem;
-    font-weight: normal;
+@media print {
+    body { background: white !important; }
+    body * { display: none !important; }
+    .page-container, .card, .card-body, #warrantyContent, #warrantyContent * { display: revert !important; }
+    .card { border: none !important; }
+    #acceptSection { display: none !important; }
 }

@@ -1,50 +1,59 @@
 <?php
 
-/*
-    Installation Summary
-*/
-
 // Include Base
 include_once "common/base.php";
 
 // Set Step
 $step = 8;
 
-// Disable Back Button
-if(!isset($_SESSION["last_step"])) header("location: index.php");
-if($_SESSION["last_step"] != $step && $_SESSION["last_step"] != $step - 1)
-    header("location: " . (isset($_SESSION["back_url"]) ? $_SESSION["back_url"] : "index.php"));
-$_SESSION["back_url" ] = $_SERVER["REQUEST_URI"];
-$_SESSION["last_step"] = $step;
+// Enforce Installer Login
+if(empty($_SESSION["installer_email"])) { header("location: installer_login.php"); exit; }
 
-// Define Arrays
-$arrayGender       = $lang["dict_gender"   ];
-$arrayCountry      = $lang["dict_countries"];
-$arrayNominalPower = [
-    "K800340"   => "50000", // batterX c50
-    "K800301"   => "10000", // batterX i10
-    "K800302"   => "15000", // batterX i15
-    "K800303"   => "20000", // batterX i20
-    "K800304"   => "30000", // batterX i30
-    "K010000-2" => "10000", // batterX h10
-    "100384"    => "10000", // batterX h10
-    "100339"    =>  "5000", // batterX h5
+
+
+
+// Fetch external PDFs to append to the generated PDF (server-side to avoid CORS).
+// Warranty PDF: selector on api.batterx.app returns the historically-correct conditions
+// based on installer country + installation date + device partnumber.
+$attachmentPdfUrls = [
+    "https://api.batterx.app/warranty/select.php?" . http_build_query([
+        "installer_country" => $_SESSION["installer_country"]  ?? "",
+        "installation_date" => $_SESSION["installation_date"]  ?? "",
+        "device_partnumber" => $_SESSION["device_partnumber"]  ?? "",
+        "file_type"         => "pdf",
+    ]),
+];
+$attachmentPdfsB64 = [];
+foreach($attachmentPdfUrls as $url) {
+    $bytes = @file_get_contents($url);
+    if($bytes !== false) $attachmentPdfsB64[] = base64_encode($bytes);
+}
+
+
+
+
+// Normalize installer_og_* from installer_* if not yet set (first installation or same installer)
+if(empty($_SESSION["installer_og_email"])) {
+    $_SESSION["installer_og_email"    ] = $_SESSION["installer_email"    ] ?? "";
+    $_SESSION["installer_og_gender"   ] = $_SESSION["installer_gender"   ] ?? "";
+    $_SESSION["installer_og_firstname"] = $_SESSION["installer_firstname"] ?? "";
+    $_SESSION["installer_og_lastname" ] = $_SESSION["installer_lastname" ] ?? "";
+    $_SESSION["installer_og_company"  ] = $_SESSION["installer_company"  ] ?? "";
+    $_SESSION["installer_og_telephone"] = $_SESSION["installer_telephone"] ?? "";
+    $_SESSION["installer_og_country"  ] = $_SESSION["installer_country"  ] ?? "";
+}
+
+
+
+
+// Define string helpers
+
+$genderMap = [
+    "0" => t("ci_gender_mr"),
+    "1" => t("ci_gender_ms"),
 ];
 
-// Get Battery Type
-$batteryType = isset($_SESSION["battery_type"]) ? $_SESSION["battery_type"] : "";
-if($batteryType == "other" && $_SESSION["battery_capacity"] == "0") $batteryType = "";
-
-// Get Settings Table
-$dataSettings = json_decode(file_get_contents("http://localhost/api.php?get=settings"), true);
-
-$backupMode = (isset($_SESSION["system_mode"]) && $_SESSION["system_mode"] == "1") ? true : false;
-
-$isVde4105 = isset($_SESSION["vde4105"]) && $_SESSION["vde4105"] == "1";
-$isTor     = isset($_SESSION["tor"    ]) && $_SESSION["tor"    ] == "1";
-$isEstonia = isset($_SESSION["estonia"]) && $_SESSION["estonia"] == "1";
-
-$objDeviceStandards = (array) [
+$objDeviceStandards = [
     "0" => "Unknown",
     "1" => "VDE0126",
     "2" => "VDE4105",
@@ -56,23 +65,411 @@ $objDeviceStandards = (array) [
     "8" => "Czech",
     "9" => "Estonia"
 ];
-$deviceStandard = isset($objDeviceStandards[$dataSettings["Inverter"]["201"]["s1"]]) ? $objDeviceStandards[$dataSettings["Inverter"]["201"]["s1"]] : "";
 
-$isSameInstaller = false;
-if(empty($_SESSION["installer_og_email"])) $isSameInstaller = true; // first installation
-if($_SESSION["installer_og_email"] == $_SESSION["installer_email"]) $isSameInstaller = true;
-if($isSameInstaller) {
-    $_SESSION["installer_og_email"    ] = $_SESSION["installer_email"    ];
-    $_SESSION["installer_og_gender"   ] = $_SESSION["installer_gender"   ];
-    $_SESSION["installer_og_firstname"] = $_SESSION["installer_firstname"];
-    $_SESSION["installer_og_lastname" ] = $_SESSION["installer_lastname" ];
-    $_SESSION["installer_og_company"  ] = $_SESSION["installer_company"  ];
-    $_SESSION["installer_og_telephone"] = $_SESSION["installer_telephone"];
-    $_SESSION["installer_og_country"  ] = $_SESSION["installer_country"  ];
+
+
+
+
+// Define function helpers
+
+// Session value helper
+function sv($key) { return isset($_SESSION[$key]) ? $_SESSION[$key] : ""; }
+
+// Gender helper
+function genderDisplay($val) {
+    global $genderMap;
+    return isset($genderMap[$val]) ? $genderMap[$val] : "";
+}
+
+// Country display from flat lang keys (returns raw text — caller must escape at output)
+function countryDisplay($code) {
+    return $code ? tRaw("country_" . strtolower($code)) : "";
+}
+
+// kWp formatter (up to 2 decimals, trailing zeros stripped — matches JS toLocaleString({maximumFractionDigits:2}))
+function formatKwp($wp) {
+    $kwp = $wp / 1000;
+    return rtrim(rtrim(number_format($kwp, 2, '.', ''), '0'), '.');
+}
+
+// Serial number pairs helper: groups SNs 2 per line
+function formatSNPairs($raw, $perLine = 2) {
+    $arr = array_values(array_filter(array_map('trim', preg_split('/[\n,]+/', $raw))));
+    $lines = [];
+    for ($i = 0; $i < count($arr); $i += $perLine) {
+        $lines[] = implode(", ", array_slice($arr, $i, $perLine));
+    }
+    return implode("\n", $lines);
+}
+
+
+
+
+// Fetch live settings
+$dataSettings = json_decode(@file_get_contents("http://localhost/api.php?get=settings"), true) ?: [];
+
+// Backup mode from live settings
+$backupMode = (isset($dataSettings["SystemMode"]["0"]["mode"]) && $dataSettings["SystemMode"]["0"]["mode"] == "1");
+
+// Grid standard flags (read from live settings — Inverter[201][s1])
+$gridStandard = isset($dataSettings["Inverter"]["201"]["s1"]) ? $dataSettings["Inverter"]["201"]["s1"] : "0";
+$isVde4105    = ($gridStandard == "2");
+$isTor        = ($gridStandard == "3");
+$isEstonia    = ($gridStandard == "9");
+
+// Grid standard display name
+$pdfGridStandard = isset($objDeviceStandards[$gridStandard]) ? $objDeviceStandards[$gridStandard] : "";
+
+// Battery type
+$batteryType = isset($_SESSION["battery_type"]) ? $_SESSION["battery_type"] : "";
+if($batteryType == "other" && (empty($_SESSION["battery_capacity"]) || $_SESSION["battery_capacity"] == "0")) $batteryType = "";
+
+// Is Clix
+$isClix = isset(PNS_BOX[sv("box_partnumber")]["type"]) && PNS_BOX[sv("box_partnumber")]["type"] == "xc";
+
+// Device partnumber
+$devicePartnumber = isset($_SESSION["device_partnumber"]) ? $_SESSION["device_partnumber"] : "";
+
+// Controllable load
+$controlMaxCharging  = (isset($dataSettings["ControlMaxChargingPowerAC"]["0"]["mode"]) && $dataSettings["ControlMaxChargingPowerAC"]["0"]["mode"] == "1");
+$controlMaxInjection = (isset($dataSettings["ControlMaxInjectionPower"]["0"]["mode"])   && $dataSettings["ControlMaxInjectionPower"]["0"]["mode"]   == "1");
+
+// Live settings display values (SYSTEM + SOLAR sections)
+$solBxWp    = isset($dataSettings["NominalSol"   ]["0"]["v1"]) ? intval($dataSettings["NominalSol"   ]["0"]["v1"]) : 0;
+$solExtWp   = isset($dataSettings["NominalExtSol"]["0"]["v1"]) ? intval($dataSettings["NominalExtSol"]["0"]["v1"]) : 0;
+$injPowerWp = isset($dataSettings["InjectionMode"]["0"]["v1"]) ? intval($dataSettings["InjectionMode"]["0"]["v1"]) : 0;
+$totalSolWp = $solBxWp + $solExtWp;
+
+// Solar strings (batterx)
+$batterxStrings = [];
+foreach([1, 2, 3, 4, 5, 6, 7, 8] as $entity) {
+    $str = $dataSettings["ForecastSolar"][$entity] ?? null;
+    if($str && intval($str["v1"] ?? 0) > 0)
+        $batterxStrings[] = ["num" => $entity, "v1" => intval($str["v1"]), "v2" => intval($str["v2"] ?? 0), "v3" => intval($str["v3"] ?? 0)];
+}
+
+// Solar strings (external)
+$externalStrings = [];
+foreach([101, 102, 103, 104, 105, 106, 107, 108] as $entity) {
+    $str = $dataSettings["ForecastSolar"][$entity] ?? null;
+    if($str && intval($str["v1"] ?? 0) > 0)
+        $externalStrings[] = ["num" => $entity - 100, "v1" => intval($str["v1"]), "v2" => intval($str["v2"] ?? 0), "v3" => intval($str["v3"] ?? 0)];
+}
+
+// Other solar parameters
+$feedinPct = $totalSolWp > 0 ? (int)round($injPowerWp / $totalSolWp * 100) : 0;
+$wideInput = isset($dataSettings["SystemMode"]["0"]["v4"]) && $dataSettings["SystemMode"]["0"]["v4"] == "1";
+$hasExtSol = (isset($dataSettings["ModbusExtSolarDevice"]["0"]["mode"]) && $dataSettings["ModbusExtSolarDevice"]["0"]["mode"] == "1");
+
+// Check if has solar wide input range
+$inverterModel   = $dataSettings["Inverter"]["1"]["s1"] ?? "";
+$firmwareVersion = $dataSettings["Inverter"]["3"]["s1"] ?? "";
+$hasSolarWideInputRange = $inverterModel == "10002" && substr(explode(',', $firmwareVersion)[0], 4) >= "23-11-15";
+
+// Extended parameters
+$hasLfsmoDroop = sv("extended_lfsmoDroop") !== "";
+$hasLfsmoSlope = sv("extended_lfsmoSlope") !== "";
+
+
+
+
+// Pre-composed strings shared between HTML rendering and the PDF (JS reads via json_encode($pdfData))
+
+$pdfData = [];
+
+// Installation
+
+$pdfData["installation_date"] = sv("installation_date");
+
+$pdfData["latest_maintenance"] = date("Y-m-d");
+
+$pdfData["installation_address"] = sv("installation_address");
+$pdfData["installation_address"] .= "\n" . sv("installation_zipcode") . " " . sv("installation_city") . ", " . countryDisplay(sv("installation_country"));
+
+// Installer
+
+$pdfData["installer_og"] = genderDisplay(sv("installer_og_gender")) . " " . sv("installer_og_firstname") . " " . sv("installer_og_lastname") . (sv("installer_og_company") ? " (" . sv("installer_og_company") . ")" : "");
+
+$pdfData["installer_og_email"] = sv("installer_og_email");
+
+$pdfData["installer_og_telephone"] = sv("installer_og_telephone");
+
+$pdfData["installer_on_site"] = sv("installer_on_site");
+
+$pdfData["installer_for_commissioning"] = "";
+if(sv("installer_og_email") !== sv("installer_email")) { // not the same installer
+    $pdfData["installer_for_commissioning"] = genderDisplay(sv("installer_gender")) . " " . sv("installer_firstname") . " " . sv("installer_lastname") . (sv("installer_company") ? " (" . sv("installer_company") . ")" : "");
+    $pdfData["installer_for_commissioning"] .= "\n" . "• " . tRaw("is_email") . ": " . sv("installer_email");
+    $pdfData["installer_for_commissioning"] .= "\n" . "• " . tRaw("is_telephone") . ": " . sv("installer_telephone");
+}
+
+$pdfData["installer_memo"] = sv("note");
+
+// Customer
+
+$pdfData["customer_name"] = genderDisplay(sv("customer_gender")) . " " . sv("customer_firstname") . " " . sv("customer_lastname");
+
+$pdfData["customer_company"] = sv("customer_company");
+
+$pdfData["customer_email"] = sv("customer_email");
+
+$pdfData["customer_telephone"] = sv("customer_telephone");
+
+$pdfData["customer_address"] = sv("customer_address");
+$pdfData["customer_address"] .= "\n" . sv("customer_zipcode") . " " . sv("customer_city") . ", " . countryDisplay(sv("customer_country"));
+
+// System
+
+$pdfData["system_name"] = sv("system_model");
+if($isVde4105) $pdfData["system_name"] .= "\n(" . tRaw("is_system_note_vde4105") . ")";
+if($isTor)     $pdfData["system_name"] .= "\n(" . tRaw("is_system_note_tor")     . ")";
+
+$pdfData["system_mode"] = $backupMode ? tRaw("is_system_mode_backup") : tRaw("is_system_mode_ups");
+
+$pdfData["system_sn_label"]  = $isClix ? tRaw("is_system_sn_cabinet") : tRaw("is_system_sn");
+$pdfData["system_sn_is_new"] = sv("system_serial") == "NEW";
+$pdfData["system_sn"]        = $pdfData["system_sn_is_new"] ? tRaw("is_system_sn_new") : sv("system_serial");
+
+$pdfData["inverter_sn"] = ($dataSettings["Inverter"]["2"]["s1"] ?? "") . " (" . PNS_DEVICE[$devicePartnumber]["name"] . ") (" . $devicePartnumber . ") (" . $pdfGridStandard . ")";
+
+$pdfData["nominal_power"] = isset(PNS_DEVICE[$devicePartnumber]["rated_power"]) ? formatKwp(PNS_DEVICE[$devicePartnumber]["rated_power"]) . " kW" : "";
+
+$pdfData["box_sn_label"] = $boxType == "livex" ? tRaw("is_box_sn_livex") : tRaw("is_box_sn_emx");
+$pdfData["box_sn"]       = sv("box_serial") . " (" . PNS_BOX[sv("box_partnumber")]["name"] . ") (" . sv("box_partnumber") . ") (" . sv("software_version") . ")";
+
+$pdfData["grid_fuse"] = isset($dataSettings["SystemMode"]["0"]["v5"]) && intval($dataSettings["SystemMode"]["0"]["v5"]) > 0 ? $dataSettings["SystemMode"]["0"]["v5"] . " A" : "";
+
+// Controllable Load
+
+$pdfData["controllable_load_max_charging_ac"] = $controlMaxCharging ? tRaw("is_enabled") : tRaw("is_disabled");
+
+$pdfData["controllable_load_max_injection"] = $controlMaxInjection ? tRaw("is_enabled") : tRaw("is_disabled");
+
+// Solar
+
+$pdfData["pv_size_batterx"] = formatKwp($solBxWp) . " kWp";
+
+$pdfData["pv_strings_batterx"] = [];
+foreach($batterxStrings as $s) {
+    $pdfData["pv_strings_batterx"][] = [
+        "power"  => formatKwp($s["v1"]) . " kWp",
+        "decl"   => $s["v2"] . "°",
+        "orient" => $s["v3"] . "°",
+    ];
+}
+
+$pdfData["show_external_solar"] = $solExtWp > 0 || count($externalStrings) > 0 || $hasExtSol;
+
+$pdfData["pv_size_external"] = formatKwp($solExtWp) . " kWp";
+
+$pdfData["pv_strings_external"] = [];
+foreach($externalStrings as $s) {
+    $pdfData["pv_strings_external"][] = [
+        "power"  => formatKwp($s["v1"]) . " kWp",
+        "decl"   => $s["v2"] . "°",
+        "orient" => $s["v3"] . "°",
+    ];
+}
+
+$pdfData["grid_feedin_limitation"] = $feedinPct . "% (" . formatKwp($injPowerWp) . " kW)";
+
+$pdfData["ext_solar_meter"] = $hasExtSol ? tRaw("is_connected") : tRaw("is_not_connected");
+
+$pdfData["show_wide_solar_input_range"] = $wideInput || $hasSolarWideInputRange;
+$pdfData["wide_solar_input_range"]      = $wideInput ? tRaw("is_enabled") : tRaw("is_disabled");
+
+$pdfData["solar_info"] = sv("solar_info");
+
+// Battery
+
+$pdfData["battery_type"] = $batteryType;
+
+if($batteryType !== "") {
+    $pdfData["battery_capacity"] = round(intval(sv("battery_capacity")) / 1000, 1) . " kWh";
+}
+
+if($batteryType === "lifepo") {
+    $pdfData["battery_bms_sn"]    = sv("battery_bms")           ? formatSNPairs(sv("battery_bms"))           : "";
+    $pdfData["battery_module_sn"] = sv("battery_serialnumbers") ? formatSNPairs(sv("battery_serialnumbers")) : "";
+}
+
+if($batteryType === "carbon") {
+    // "12x LC+1300" style (batteries × strings)
+    $pdfData["battery_model"] = "";
+    if(sv("battery_model") && sv("battery_strings")) {
+        $pdfData["battery_model"] = (intval(sv("battery_strings")) * (sv("battery_model") == "LC+2V500" ? 24 : 4)) . "x " . sv("battery_model");
+    }
+}
+
+if($batteryType === "other") {
+    // Pre-formatted "N A" / "N V" strings (or "— A/V" when missing)
+    $otherReg = function($id, $unit) use ($dataSettings) {
+        return isset($dataSettings["Inverter"][$id]["s1"])
+            ? round(intval($dataSettings["Inverter"][$id]["s1"]) / 100, 2) . " " . $unit
+            : "— " . $unit;
+    };
+    $pdfData["battery_max_charging_current"]       = $otherReg("417", "A");
+    $pdfData["battery_max_discharging_current"]    = $otherReg("418", "A");
+    $pdfData["battery_bulk_charging_voltage"]      = $otherReg("415", "V");
+    $pdfData["battery_float_charging_voltage"]     = $otherReg("416", "V");
+    $pdfData["battery_cutoff_voltage_hybrid"]      = $otherReg("411", "V");
+    $pdfData["battery_redischarge_voltage_hybrid"] = $otherReg("413", "V");
+    $pdfData["battery_cutoff_voltage"]             = $otherReg("412", "V");
+    $pdfData["battery_redischarge_voltage"]        = $otherReg("414", "V");
+}
+
+// Grid Parameters
+
+$pdfData["reactive_power_supply"] = "";
+if($isVde4105 || $isTor || $isEstonia) {
+    switch(sv("reactive_mode")) {
+        case "1":
+            $pdfData["reactive_power_supply"] =
+                tRaw("is_reactive_mode_1") . "\n" .
+                tRaw("is_reactive_kinkpoint") . " = 0." . sv("reactive_kink");
+            break;
+        case "2":
+            $cosphi = sv("reactive_cosphi");
+            if($cosphi == "100") {
+                $pdfData["reactive_power_supply"] = tRaw("is_reactive_mode_2") . " = 1.00";
+            } else {
+                $sign = intval($cosphi) < 0 ? " = -0." : " = 0.";
+                $pdfData["reactive_power_supply"] = tRaw("is_reactive_mode_2") . $sign . abs(intval($cosphi));
+            }
+            break;
+        case "3":
+            $qmax = round(floatval(sv("reactive_qmaxsn")), 3);
+            $pdfData["reactive_power_supply"] =
+                tRaw("is_reactive_mode_3") . "\n" .
+                "U1 = " . sv("reactive_v1") . "%   U2 = " . sv("reactive_v2") . "%   U3 = " . sv("reactive_v3") . "%   U4 = " . sv("reactive_v4") . "%\n" .
+                "Qmax/Sn = " . $qmax . "   -Qmax/S = -" . $qmax . "\n" .
+                tRaw("is_reactive_minimum_cosphi") . " = 0.4   " . tRaw("is_reactive_qutime") . " = " . sv("reactive_qutime") . " sec";
+            break;
+        case "4":
+            $pdfData["reactive_power_supply"] = tRaw("is_reactive_mode_4") . " = " . sv("reactive_qfix") . " VAR";
+            break;
+        default:
+            $pdfData["reactive_power_supply"] = tRaw("is_reactive_mode_2") . " = 1.00";
+            break;
+    }
+}
+
+$pdfData["lfsmo"] = "";
+if(sv("extended_lfsmoThreshold")) {
+    $lfsmoLines = [tRaw("is_enabled")];
+    $lfsmoLines[] = tRaw("is_start_of_power_reduction") . " = " . round(intval(sv("extended_lfsmoThreshold")) / 100, 1) . " Hz";
+    if($hasLfsmoDroop) $lfsmoLines[] = tRaw("is_droop")    . " = " . round(intval(sv("extended_lfsmoDroop")) / 100, 1) . "%";
+    if($hasLfsmoSlope) $lfsmoLines[] = tRaw("is_gradient") . " = " . round(intval(sv("extended_lfsmoSlope")), 0) . "% PN/Hz";
+    $pdfData["lfsmo"] = implode("\n", $lfsmoLines);
+}
+
+$pdfData["overvoltage_reduction"] = "";
+if($isTor) {
+    $pdfData["overvoltage_reduction"] =
+        tRaw("is_enabled") . "\n" .
+        tRaw("is_start_point") . " = 110 [% Un]\n" .
+        tRaw("is_end_point")   . " = 112 [% Un]\n" .
+        tRaw("is_pu_time")     . " = " . sv("extended_puTime") . " sec";
+}
+
+$pdfData["lvrt"] = "";
+if($isTor) {
+    $lvrtPoints = ($boxType == "livex")
+        ? ["LVRT Point 1 = 0.30 Un / 0.15 sec",
+           "LVRT Point 2 = 0.75 Un / 0.40 sec",
+           "LVRT Point 3 = 0.85 Un / 0.95 sec"]
+        : ["LVRT Point 1 = 0.15 Un / 0.15 sec",
+           "LVRT Point 2 = 0.30 Un / 0.40 sec",
+           "LVRT Point 3 = 0.50 Un / 0.80 sec",
+           "LVRT Point 4 = 0.75 Un / 1.25 sec",
+           "LVRT Point 5 = 0.85 Un / 1.50 sec"];
+    $pdfData["lvrt"] = tRaw("is_enabled") . "\n" . implode("\n", $lvrtPoints);
+}
+
+$pdfData["grid_connection"] = "";
+if($isTor) {
+    $pdfData["grid_connection"] =
+        tRaw("is_max_grid_voltage")   . " = " . sv("extended_maxGridVoltage")   . " V\n"  .
+        tRaw("is_min_grid_voltage")   . " = " . sv("extended_minGridVoltage")   . " V\n"  .
+        tRaw("is_max_grid_frequency") . " = " . sv("extended_maxGridFrequency") . " Hz\n" .
+        tRaw("is_min_grid_frequency") . " = " . sv("extended_minGridFrequency") . " Hz";
+}
+
+$pdfData["grid_decoupling"] = "";
+if($isTor) {
+    $gdLines = [];
+    $gdLines[] = "Ueff > = "  . sv("extended_UeffOver1")  . " V ("  . sv("extended_UeffOver1Time")  . " s)";
+    $gdLines[] = "Ueff < = "  . sv("extended_UeffUnder1") . " V ("  . sv("extended_UeffUnder1Time") . " s)";
+    $gdLines[] = "Ueff >> = " . sv("extended_UeffOver2")  . " V ("  . sv("extended_UeffOver2Time")  . " s)";
+    $gdLines[] = "Ueff << = " . sv("extended_UeffUnder2") . " V ("  . sv("extended_UeffUnder2Time") . " s)";
+    $gdLines[] = "f > = "     . sv("extended_fOver1")     . " Hz (" . sv("extended_fOver1Time")     . " s)";
+    $gdLines[] = "f < = "     . sv("extended_fUnder1")    . " Hz (" . sv("extended_fUnder1Time")    . " s)";
+    $gdLines[] = tRaw("is_ueff")               . " = " . sv("extended_Ueff")             . " V";
+    $gdLines[] = tRaw("is_grid_connect_delay") . " = " . sv("extended_gridConnectDelay") . " sec";
+    if($boxType != "livex") {
+        $gdLines[] = tRaw("is_grid_reconnect_delay") . " = " . sv("extended_gridReconnectDelay") . " sec";
+    }
+    $pdfData["grid_decoupling"] = implode("\n", $gdLines);
+}
+
+$pdfData["extended_parameters"] = "";
+if($isEstonia) {
+    $epLines = [];
+    $epLines[] = "Ueff > = 1.11 Un";
+    $epLines[] = "Ueff < = 0.85 Un";
+    $epLines[] = "Ueff >> = 1.15 Un";
+    $epLines[] = "Ueff << = 0.20 Un";
+    $epLines[] = "f > = 51.6 Hz";
+    $epLines[] = "f < = 47.4 Hz";
+    $epLines[] = tRaw("is_max_grid_voltage")   . " = 264.5 V";
+    $epLines[] = tRaw("is_min_grid_voltage")   . " = 195.5 V";
+    $epLines[] = tRaw("is_max_grid_frequency") . " = 52.0 Hz";
+    $epLines[] = tRaw("is_min_grid_frequency") . " = 47.0 Hz";
+    $pdfData["extended_parameters"] = implode("\n", $epLines);
+}
+
+// Wallbox (EV Charger)
+
+$pdfData["wallbox_show"] = false;
+$evcMode = intval($dataSettings["EVCharger"]["1"]["mode"] ?? 0);
+if($evcMode > 0) {
+    $pdfData["wallbox_show"] = true;
+
+    // Producer / Model
+    $pdfData["wallbox_producer"] = $dataSettings["EVCharger"]["1"]["s2"] ?? "";
+
+    // Serial number
+    $pdfData["wallbox_serial"] = $dataSettings["EVChargerInfo"]["1"]["s1"] ?? "";
+
+    // Network Configuration — IP + Port, one per line
+    $pdfData["wallbox_network"] =
+        tRaw("is_ip_address") . " = " . ($dataSettings["EVChargerModbus"]["1"]["s1"] ?? "") . "\n" .
+        tRaw("is_port")       . " = " . ($dataSettings["EVChargerModbus"]["1"]["v1"] ?? "");
+
+    // Electrical Wiring — 4 rows, one per line
+    $wiringMap = [
+        "0" => tRaw("is_evc_wiring_3phase"),
+        "1" => tRaw("is_evc_wiring_l1"),
+        "2" => tRaw("is_evc_wiring_l2"),
+        "3" => tRaw("is_evc_wiring_l3"),
+    ];
+    $phaseMap = [
+        "0" => tRaw("is_evc_phase_auto"),
+        "1" => tRaw("is_evc_phase_1phase"),
+        "3" => tRaw("is_evc_phase_3phase"),
+    ];
+    $wiring    = $dataSettings["EVCharger"]["1"]["v3"] ?? "0";
+    $phaseMode = $dataSettings["EVCharger"]["1"]["v4"] ?? "0";
+    $minCur    = round(intval($dataSettings["EVCharger"]["1"]["v1"] ?? 600)  / 100);
+    $maxCur    = round(intval($dataSettings["EVCharger"]["1"]["v2"] ?? 1600) / 100);
+    $pdfData["wallbox_electrical"] =
+        tRaw("is_physical_wiring") . " = " . ($wiringMap[$wiring]   ?? "") . "\n" .
+        tRaw("is_phase_switching") . " = " . ($phaseMap[$phaseMode] ?? "") . "\n" .
+        tRaw("is_min_current")     . " = " . $minCur . " A\n" .
+        tRaw("is_max_current")     . " = " . $maxCur . " A";
 }
 
 ?>
-
 
 
 
@@ -81,596 +478,467 @@ if($isSameInstaller) {
 
 <html>
 
-    <head>
+<head>
 
-        <?php include_once "common/head.php"; ?>
+    <?php include_once "common/head.php"; ?>
 
-        <link rel="stylesheet" href="css/installation_summary.css?v=<?php echo $versionHash; ?>">
+    <link rel="stylesheet" href="css/installation_summary.css?v=<?php echo $versionHash; ?>">
 
-    </head>
+</head>
 
-    <body>
+<body class="has-steps p-4 p-md-5<?php echo !empty($_SESSION["installation_finished"]) ? " success-shown" : ""; ?>">
 
-
-
-
-
-        <!-- Progress Bar -->
-        <div id="progress" class="shadow-lg">
-            <div><div class="progress"><div class="progress-bar progress-bar-striped bg-success progress-bar-animated"></div></div></div>
-            <div data-toggle="modal" data-target="#modalSkipSetup" style="position:absolute;width:1rem;height:1rem;z-index:100;bottom:0;left:0"></div>
-        </div>
-        <!-- Progress Bar -->
+    <?php include_once "common/steps.php"; ?>
 
 
 
 
+    <div class="page-container">
 
-        <div class="modal fade" id="modalSkipSetup" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <div class="modal-body text-center p-0">
-                        <input type="password" class="form-control form-control-outline border-0 text-center p-4" value="" placeholder="Enter batterX auth-code and press enter">
+
+        <h1 id="pageTitle" class="mb-4"><?php echo t("is_title"); ?></h1>
+
+
+        <!-- Summary Card -->
+        <div class="card text-start mb-5" id="summaryCard">
+            <div class="card-body p-0">
+                <div id="summary" class="p-4">
+
+                    <!-- Header -->
+                    <div class="is-header">
+                        <span class="is-header-title"><?php echo t("is_title"); ?></span>
+                        <img src="img/batterx_logo.png" class="is-header-logo" alt="batterX">
                     </div>
-                </div>
-            </div>
-        </div>
 
-
-
-
-
-        <div id="summary" class="mt-5 mx-auto">
-
-            <div class="head border box-margin">
-                <div class="title br">
-                    <span><?php echo $lang["summary"]["installation_summary"]; ?></span>
-                </div>
-                <div class="logo">
-                    <img src="data:image/png;base64,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">
-                </div>
-            </div>
-
-            <div class="installation-date border box-margin">
-                <div class="box-row bb">
-                    <span class="br"><?php echo $lang["summary"]["installation_date"]; ?></span>
-                    <span><?php echo $_SESSION["installation_date"]; ?></span>
-                </div>
-                <div class="box-row">
-                    <span class="br"><?php echo $lang["summary"]["latest_maintenance"]; ?></span>
-                    <span><?php echo date("Y-m-d"); ?></span>
-                </div>
-            </div>
-            
-            <div class="installer-info border box-margin">
-                <div class="box-head">
-                    <span><?php echo $lang["summary"]["installer"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["company"]; ?></span>
-                    <span><?php echo $arrayGender[$_SESSION["installer_og_gender"]] . " " . $_SESSION["installer_og_firstname"] . " " . $_SESSION["installer_og_lastname"] . " (" . $_SESSION["installer_og_company"] . ")"; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["email"]; ?></span>
-                    <span><?php echo $_SESSION["installer_og_email"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["telephone"]; ?></span>
-                    <span><?php echo $_SESSION["installer_og_telephone"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["customer_info"]["installer_on_site"]; ?></span>
-                    <span><?php echo $_SESSION["installer_on_site"]; ?></span>
-                </div>
-                <?php if(!$isSameInstaller): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["one_time_installer"]; ?></span>
-                        <span>
-                            <?php echo $arrayGender[$_SESSION["installer_gender"]] . " " . $_SESSION["installer_firstname"] . " " . $_SESSION["installer_lastname"] . " (" . $_SESSION["installer_company"] . ")"; ?><br>
-                            • <?php echo $lang["common"]["email"]; ?>: <?php echo $_SESSION["installer_email"]; ?><br>
-                            • <?php echo $lang["common"]["telephone"]; ?>: <?php echo $_SESSION["installer_telephone"]; ?>
-                        </span>
+                    <!-- Installation -->
+                    <div class="is-section-head"><?php echo t("is_section_installation"); ?></div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_installation_date"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["installation_date"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <?php if(!empty($_SESSION["note"])): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installer_memo"]; ?></span>
-                        <span style="white-space: pre-wrap"><?php echo $_SESSION["note"]; ?></span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_latest_maintenance"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["latest_maintenance"]); ?></span>
                     </div>
-                <?php endif; ?>
-            </div>
-            
-            <div class="customer-info border box-margin">
-                <div class="box-head">
-                    <span><?php echo $lang["summary"]["customer"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["name"]; ?></span>
-                    <span><?php echo $arrayGender[$_SESSION["customer_gender"]] . " " . $_SESSION["customer_firstname"] . " " . $_SESSION["customer_lastname"]; ?></span>
-                </div>
-                <?php if(!empty($_SESSION["customer_company"])): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["common"]["company"]; ?></span>
-                        <span><?php echo $_SESSION["customer_company"]; ?></span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_installation_address"); ?></span>
+                        <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["installation_address"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["email"]; ?></span>
-                    <span><?php echo $_SESSION["customer_email"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["telephone"]; ?></span>
-                    <span><?php echo $_SESSION["customer_telephone"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["address"]; ?></span>
-                    <span><?php echo $_SESSION["customer_address"] . "<br>" . $_SESSION["customer_zipcode"] . " " . $_SESSION["customer_city"] . ", " . $arrayCountry[$_SESSION["customer_country"]]; ?></span>
-                </div>
-            </div>
 
-            <div class="system-info border box-margin">
-                <div class="box-head">
-                    <span><?php echo $lang["summary"]["installation"]; ?></span>
-                </div>
-                <?php if($batteryType == "lifepo" && !empty($_SESSION["system_model"])): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installation_system_model"]; ?></span>
-                        <span>
-                            <?php
-                                echo $_SESSION["system_model"];
-                                if($isVde4105) echo "<br>(" . $lang["summary"]["installation_system_is_vde4105"] . ")";
-                                if($isTor    ) echo "<br>(" . $lang["summary"]["installation_system_is_tor"    ] . ")";
-                            ?>
-                        </span>
+                    <!-- Installer -->
+                    <div class="is-section-head"><?php echo t("is_section_installer"); ?></div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_company"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["installer_og"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["system_setup"]["system_mode"]; ?></span>
-                    <span><?php echo $_SESSION["system_mode"] == "1" ? $lang["system_setup"]["system_mode_backup"] : $lang["system_setup"]["system_mode_ups"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["summary"]["installation_sn_system"]; ?></span>
-                    <span id="systemSerial"><?php echo $_SESSION["system_serial"] == "NEW" ? ("<i class='text-muted'>" . $lang["summary"]["installation_sn_system_new"] . "</i>") : $_SESSION["system_serial"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["summary"]["installation_sn_inverter"]; ?></span>
-                    <span><?php echo $_SESSION["device_serial"] . " (" . PNS_DEVICE[$_SESSION["device_partnumber"]]["name"] . ") (" . $_SESSION["device_partnumber"] . ") (" . $deviceStandard . ")"; ?></b></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["summary"]["installation_nominal_power"]; ?></span>
-                    <span><?php echo $arrayNominalPower[$_SESSION["device_partnumber"]]; ?> W</span>
-                </div>
-                <?php if($isVde4105 || $isTor || $isEstonia): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installation_reactive_power_supply"]; ?></span>
-                        <span>
-                            <?php
-                                switch($_SESSION["reactive_mode"]) {
-                                    case "0":
-                                        echo $lang["dict_reactive_mode"]["2"] . " = 1.00";
-                                        break;
-                                    case "1":
-                                        echo $lang["dict_reactive_mode"]["1"] . "<br>";
-                                        echo $lang["system_setup"]["reactive_kinkpoint"] . " = 0." . $_SESSION["reactive_kink"];
-                                        break;
-                                    case "2":
-                                        if($_SESSION["reactive_cosphi"] == "100")
-                                            echo $lang["dict_reactive_mode"]["2"] . " = 1.00";
-                                        else {
-                                            echo $lang["dict_reactive_mode"]["2"];
-                                            echo intval($_SESSION["reactive_cosphi"]) < 0 ? " = -0." : " = 0.";
-                                            echo abs(intval($_SESSION["reactive_cosphi"]));
-                                        }
-                                        break;
-                                    case "3":
-                                        echo $lang["dict_reactive_mode"]["3"] . "<br>";
-                                        echo "U1 = " . $_SESSION["reactive_v1"] . "% &nbsp; &nbsp; ";
-                                        echo "U2 = " . $_SESSION["reactive_v2"] . "% &nbsp; &nbsp; ";
-                                        echo "U3 = " . $_SESSION["reactive_v3"] . "% &nbsp; &nbsp; ";
-                                        echo "U4 = " . $_SESSION["reactive_v4"] . "% &nbsp; &nbsp; " . "<br>";
-                                        echo "Qmax/Sn = " . round(floatval($_SESSION["reactive_qmaxsn"]), 3) . " &nbsp; &nbsp; ";
-                                        echo "-Qmax/S = -" . round(floatval($_SESSION["reactive_qmaxsn"]), 3) . " &nbsp; &nbsp; " . "<br>";
-                                        echo "Minimum cosφ = 0.4" . " &nbsp; &nbsp; ";
-                                        echo $lang["system_setup"]["reactive_qutime"] . " = " . $_SESSION["reactive_qutime"] . " sec";
-                                        break;
-                                    case "4":
-                                        echo $lang["dict_reactive_mode"]["4"] . " = " . $_SESSION["reactive_qfix"] . " VAR";
-                                    default:
-                                        break;
-                                }
-                            ?>
-                        </span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_email"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["installer_og_email"]); ?></span>
                     </div>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["system_setup"]["extended_overfrequency_reduction"] ?></span>
-                        <span>
-                            <?php echo $lang["summary"]["extended_enabled"] ?> (✓)<br>
-                            <?php echo $lang["system_setup"]["extended_start_of_reduction"] ?> = <?php echo round(intval($_SESSION["extended_lfsmoThreshold"]) / 100, 1) ?> Hz<br>
-                            <?php if(isset($_SESSION["extended_lfsmoDroop"])): ?>
-                                <?php echo $lang["system_setup"]["extended_droop"] ?> = <?php echo round(intval($_SESSION["extended_lfsmoDroop"]) / 100, 1) ?>%
-                            <?php endif; ?>
-                            <?php if(isset($_SESSION["extended_lfsmoSlope"])): ?>
-                                <?php echo $lang["system_setup"]["extended_gradient"] ?> = <?php echo round(intval($_SESSION["extended_lfsmoSlope"]), 0) ?>% PN/Hz
-                            <?php endif; ?>
-                        </span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_telephone"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["installer_og_telephone"]); ?></span>
                     </div>
-                    <?php if($isTor): ?>
-                        <div class="box-row bt"> <!-- Die Werte werden vom WR automatisch richtig eingestellt -->
-                            <span class="br"><?php echo $lang["summary"]["extended_overvoltage_reduction"] ?></span>
-                            <span>
-                                <?php echo $lang["summary"]["extended_enabled"] ?> (✓)<br>
-                                <?php echo $lang["summary"]["extended_start_point"] ?> = 110 [% Un]<br>
-                                <?php echo $lang["summary"]["extended_end_point"] ?> = 112 [% Un]<br>
-                                <?php echo $lang["system_setup"]["extended_putime"] ?> = <?php echo $_SESSION["extended_puTime"] ?> sec
-                            </span>
-                        </div>
-                        <div class="box-row bt"> <!-- Die Werte werden vom WR automatisch richtig eingestellt -->
-                            <span class="br"><?php echo $lang["summary"]["extended_lvrt"] ?></span>
-                            <?php if($boxType == "livex"): ?>
-                                <span>
-                                    <?php echo $lang["summary"]["extended_enabled"] ?> (✓)<br>
-                                    LVRT Point 1<br>
-                                    LVRT Point 2<br>
-                                    LVRT Point 3
-                                </span>
-                                <span class="pl-0">
-                                    &nbsp;<br>
-                                    = 0.30 Un<br>
-                                    = 0.75 Un<br>
-                                    = 0.85 Un<br>
-                                </span>
-                                <span class="pl-5">
-                                    &nbsp;<br>
-                                    LVRT Point 1<br>
-                                    LVRT Point 2<br>
-                                    LVRT Point 3
-                                </span>
-                                <span class="pl-0">
-                                    &nbsp;<br>
-                                    = 0.15 sec<br>
-                                    = 0.40 sec<br>
-                                    = 0.95 sec
-                                </span>
-                            <?php else: ?>
-                                <span>
-                                    <?php echo $lang["summary"]["extended_enabled"] ?> (✓)<br>
-                                    LVRT Point 1<br>
-                                    LVRT Point 2<br>
-                                    LVRT Point 3<br>
-                                    LVRT Point 4<br>
-                                    LVRT Point 5
-                                </span>
-                                <span class="pl-0">
-                                    &nbsp;<br>
-                                    = 0.15 Un<br>
-                                    = 0.30 Un<br>
-                                    = 0.50 Un<br>
-                                    = 0.75 Un<br>
-                                    = 0.85 Un
-                                </span>
-                                <span class="pl-5">
-                                    &nbsp;<br>
-                                    LVRT Point 1<br>
-                                    LVRT Point 2<br>
-                                    LVRT Point 3<br>
-                                    LVRT Point 4<br>
-                                    LVRT Point 5
-                                </span>
-                                <span class="pl-0">
-                                    &nbsp;<br>
-                                    = 0.15 sec<br>
-                                    = 0.40 sec<br>
-                                    = 0.80 sec<br>
-                                    = 1.25 sec<br>
-                                    = 1.50 sec
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="box-row bt">
-                            <span class="br"><?php echo $lang["system_setup"]["extended_grid_connection_conditions"] ?></span>
-                            <span>
-                                <?php
-                                    echo $lang["system_setup"]["extended_maxgridvoltage"] . "<br>";
-                                    echo $lang["system_setup"]["extended_mingridvoltage"] . "<br>";
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                <?php
-                                    echo "= " . $_SESSION["extended_maxGridVoltage"] . " V" . "<br>";
-                                    echo "= " . $_SESSION["extended_minGridVoltage"] . " V" . "<br>";
-                                ?>
-                            </span>
-                            <span class="pl-5">
-                                <?php
-                                    echo $lang["system_setup"]["extended_maxgridfrequency"] . "<br>";
-                                    echo $lang["system_setup"]["extended_mingridfrequency"] . "<br>";
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                <?php
-                                    echo "= " . $_SESSION["extended_maxGridFrequency"] . " Hz" . "<br>";
-                                    echo "= " . $_SESSION["extended_minGridFrequency"] . " Hz" . "<br>";
-                                ?>
-                            </span>
-                        </div>
-                        <div class="box-row bt">
-                            <span class="br"><?php echo $lang["system_setup"]["extended_grid_decoupling_protection"] ?></span>
-                            <span>
-                                <?php
-                                    echo "Ueff >"  . "<br>";
-                                    echo "Ueff <"  . "<br>";
-                                    echo "Ueff >>" . "<br>";
-                                    echo "Ueff <<" . "<br>";
-                                    echo "f >"     . "<br>";
-                                    echo "f <";
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                <?php
-                                    echo "= " . $_SESSION["extended_UeffOver1"] . " V" . "<br>";
-                                    echo "= " . $_SESSION["extended_UeffUnder1"] . " V" . "<br>";
-                                    echo "= " . $_SESSION["extended_UeffOver2"] . " V" . "<br>";
-                                    echo "= " . $_SESSION["extended_UeffUnder2"] . " V" . "<br>";
-                                    echo "= " . $_SESSION["extended_fOver1"] . " Hz" . "<br>";
-                                    echo "= " . $_SESSION["extended_fUnder1"] . " Hz";
-                                ?>
-                            </span>
-                            <span class="pl-5">
-                                <?php
-                                    echo "Ueff >"  . "<br>";
-                                    echo "Ueff <"  . "<br>";
-                                    echo "Ueff >>" . "<br>";
-                                    echo "Ueff <<" . "<br>";
-                                    echo "f >"     . "<br>";
-                                    echo "f <";
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                <?php
-                                    echo "= " . $_SESSION["extended_UeffOver1Time"] . " sec" . "<br>";
-                                    echo "= " . $_SESSION["extended_UeffUnder1Time"] . " sec" . "<br>";
-                                    echo "= " . $_SESSION["extended_UeffOver2Time"] . " sec" . "<br>";
-                                    echo "= " . $_SESSION["extended_UeffUnder2Time"] . " sec" . "<br>";
-                                    echo "= " . $_SESSION["extended_fOver1Time"] . " sec" . "<br>";
-                                    echo "= " . $_SESSION["extended_fUnder1Time"] . " sec";
-                                ?>
-                            </span>
-                        </div>
-                        <div class="box-row">
-                            <span class="br"></span>
-                            <span>
-                                <?php
-                                    echo $lang["system_setup"]["extended_ueff"] . "<br>";
-                                    echo $lang["system_setup"]["extended_gridconnectdelay"];
-                                    if($boxType != "livex")
-                                        echo "<br>" . $lang["system_setup"]["extended_gridreconnectdelay"];
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                <?php
-                                    echo "= " . $_SESSION["extended_Ueff"] . " V" . "<br>";
-                                    echo "= " . $_SESSION["extended_gridConnectDelay"] . " sec";
-                                    if($boxType != "livex")
-                                        echo "<br>" . "= " . $_SESSION["extended_gridReconnectDelay"] . " sec";
-                                ?>
-                            </span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_technician_on_site"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["installer_on_site"]); ?></span>
+                    </div>
+                    <?php if($pdfData["installer_for_commissioning"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_installer_for_commissioning"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["installer_for_commissioning"]); ?></span>
                         </div>
                     <?php endif; ?>
-                    <?php if($isEstonia): ?>
-                        <div class="box-row bt">
-                            <span class="br"><?php echo $lang["system_setup"]["extended_parameters"] ?></span>
-                            <span>
-                                <?php
-                                    echo "Ueff >"  . "<br>";
-                                    echo "Ueff <"  . "<br>";
-                                    echo "Ueff >>" . "<br>";
-                                    echo "Ueff <<" . "<br>";
-                                    echo "f >"     . "<br>";
-                                    echo "f <";
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                = 1.11 Un<br>
-                                = 0.85 Un<br>
-                                = 1.15 Un<br>
-                                = 0.20 Un<br>
-                                = 51.6 Hz<br>
-                                = 47.4 Hz
-                            </span>
-                            <span class="pl-5">
-                                <?php
-                                    echo $lang["system_setup"]["extended_maxgridvoltage"] . "<br>";
-                                    echo $lang["system_setup"]["extended_mingridvoltage"] . "<br>";
-                                    echo $lang["system_setup"]["extended_maxgridfrequency"] . "<br>";
-                                    echo $lang["system_setup"]["extended_mingridfrequency"];
-                                ?>
-                            </span>
-                            <span class="pl-0">
-                                = 264.5 V<br>
-                                = 195.5 V<br>
-                                = 52.0 Hz<br>
-                                = 47.0 Hz
-                            </span>
+                    <?php if($pdfData["installer_memo"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_installer_memo"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["installer_memo"]); ?></span>
                         </div>
                     <?php endif; ?>
-                <?php endif; ?>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $boxType == "livex" ? $lang["summary"]["installation_sn_livex"] : $lang["summary"]["installation_sn_emx"]; ?></span>
-                    <span><?php echo $_SESSION["box_serial"] . " (" . PNS_BOX[$_SESSION["box_partnumber"]]["name"] . ") (" . $_SESSION["box_partnumber"] . ") (" . $_SESSION["software_version"] . ")"; ?></span>
-                </div>
-                <?php if($batteryType == "lifepo"): ?>
-                    <?php if(isset($_SESSION["battery_bms"])): ?>
-                        <div class="box-row bt">
-                            <span class="br"><?php echo $lang["summary"]["installation_bms"]; ?></span>
-                            <span><?php echo str_replace(",", ", ", $_SESSION["battery_bms"]); // add space after each comma ?></span>
+
+                    <!-- Customer -->
+                    <div class="is-section-head"><?php echo t("is_section_customer"); ?></div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_name"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["customer_name"]); ?></span>
+                    </div>
+                    <?php if($pdfData["customer_company"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_company"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["customer_company"]); ?></span>
                         </div>
                     <?php endif; ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installation_batteries"]; ?></span>
-                        <span>
-                            <?php
-                                $tempArr = explode(",", $_SESSION["battery_serialnumbers"]);
-                                $tempArrNew = (array) [];
-                                for($x = 0; $x < count($tempArr); $x++) {
-                                    if($x % 2 == 0) $tempArrNew[] = (array) [$tempArr[$x]];
-                                    else $tempArrNew[count($tempArrNew) - 1][] = $tempArr[$x];
-                                }
-                                $tempArr = (array) [];
-                                foreach($tempArrNew as $key => $value) $tempArr[] = implode(", ", $value);
-                                echo implode("<br>", $tempArr);
-                            ?>
-                        </span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_email"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["customer_email"]); ?></span>
                     </div>
-                <?php elseif($batteryType == "carbon"): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installation_batteries"]; ?></span>
-                        <span><?php echo (intval($_SESSION["battery_strings"]) * ($_SESSION["battery_model"] == "LC+2V500" ? 24 : 4)) . "x " . $_SESSION["battery_model"] . " (" . $_SESSION["battery_capacity"] . " Wh)"; ?></span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_telephone"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["customer_telephone"]); ?></span>
                     </div>
-                <?php elseif($batteryType == "other"): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installation_batteries"]; ?></span>
-                        <span style="font-size:95%">
-                            <?php echo $lang["system_setup"]["batteries_other_capacity"]                     ?> = <?php echo $_SESSION["battery_capacity"] ?> Wh<br>
-                            <?php echo $lang["system_setup"]["batteries_other_max_charging_current"]         ?> = <?php echo intval($dataSettings["Inverter"]["417"]["s1"]) / 100 ?> A<br>
-                            <?php echo $lang["system_setup"]["batteries_other_max_discharging_current"]      ?> = <?php echo intval($dataSettings["Inverter"]["418"]["s1"]) / 100 ?> A<br>
-                            <?php echo $lang["system_setup"]["batteries_other_bulk_charging_voltage"]        ?> = <?php echo intval($dataSettings["Inverter"]["415"]["s1"]) / 100 ?> V<br>
-                            <?php echo $lang["system_setup"]["batteries_other_float_charging_voltage"]       ?> = <?php echo intval($dataSettings["Inverter"]["416"]["s1"]) / 100 ?> V<br>
-                            <?php echo $lang["system_setup"]["batteries_other_cutoff_voltage_hybrid"]        ?> = <?php echo intval($dataSettings["Inverter"]["411"]["s1"]) / 100 ?> V<br>
-                            <?php echo $lang["system_setup"]["batteries_other_redischarging_voltage_hybrid"] ?> = <?php echo intval($dataSettings["Inverter"]["413"]["s1"]) / 100 ?> V<br>
-                            <?php echo $lang["system_setup"]["batteries_other_cutoff_voltage"]               ?> = <?php echo intval($dataSettings["Inverter"]["412"]["s1"]) / 100 ?> V<br>
-                            <?php echo $lang["system_setup"]["batteries_other_redischarging_voltage"]        ?> = <?php echo intval($dataSettings["Inverter"]["414"]["s1"]) / 100 ?> V
-                        </span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_address"); ?></span>
+                        <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["customer_address"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["summary"]["installation_solar_size"]; ?></span>
-                    <span><?php echo $_SESSION["solar_wattpeak"] . " Wp"; ?></span>
-                </div>
-                <?php if(isset($_SESSION["solar_wideinputrange"])): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["system_setup"]["solar_wide_input_range"]; ?></span>
-                        <span><?php echo (isset($_SESSION["solar_wideinputrange"]) && $_SESSION["solar_wideinputrange"] == "1") ? $lang["summary"]["extended_enabled"] . " (✓)" : $lang["summary"]["extended_disabled"] ?></span>
+
+                    <!-- System -->
+                    <div class="is-section-head"><?php echo t("is_section_system"); ?></div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_system_name"); ?></span>
+                        <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["system_name"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <?php if(!empty($_SESSION["solar_info"])): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["summary"]["installation_solar_info"]; ?></span>
-                        <span style="white-space: pre-wrap"><?php echo $_SESSION["solar_info"]; ?></span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_system_mode"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["system_mode"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["summary"]["installation_solar_feed_in_limitation"]; ?></span>
-                    <span>
-                        <?php echo $_SESSION["solar_feedinlimitation"] . "%"; ?>
-                        <?php echo (isset($_SESSION["has_extsol"]) && $_SESSION["has_extsol"] == "1") ? "<br>" . $lang["system_setup"]["extsol_meter"] . " (✓)" : "" ?>
-                    </span>
-                </div>
-                <?php if($isVde4105): ?>
-                    <div class="box-row bt">
-                        <span class="br"><?php echo $lang["system_setup"]["control_power"]; ?></span>
-                        <span>
-                            <?php echo $lang["system_setup"]["control_max_charging_power_ac"]; ?> = <?php echo (isset($_SESSION["control_max_charging_power_ac"]) && $_SESSION["control_max_charging_power_ac"] == "1") ? $lang["summary"]["extended_enabled"] . " (✓)" : $lang["summary"]["extended_disabled"] ?><br>
-                            <?php echo $lang["system_setup"]["control_max_injection_power"]; ?> = <?php echo (isset($_SESSION["control_max_injection_power"]) && $_SESSION["control_max_injection_power"] == "1") ? $lang["summary"]["extended_enabled"] . " (✓)" : $lang["summary"]["extended_disabled"] ?><br>
-                        </span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo htmlspecialchars($pdfData["system_sn_label"]); ?></span>
+                        <span class="is-value" id="is_system_sn"><?php echo $pdfData["system_sn_is_new"] ? '<i class="text-muted">' . htmlspecialchars($pdfData["system_sn"]) . '</i>' : htmlspecialchars($pdfData["system_sn"]); ?></span>
                     </div>
-                <?php endif; ?>
-                <div class="box-row bt">
-                    <span class="br"><?php echo $lang["common"]["address"]; ?></span>
-                    <span><?php echo $_SESSION["installation_address"] . "<br>" . $_SESSION["installation_zipcode"] . " " . $_SESSION["installation_city"] . ", " . $arrayCountry[$_SESSION["installation_country"]]; ?></span>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_inverter_sn"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["inverter_sn"]); ?></span>
+                    </div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_nominal_power"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["nominal_power"]); ?></span>
+                    </div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo htmlspecialchars($pdfData["box_sn_label"]); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["box_sn"]); ?></span>
+                    </div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_grid_fuse"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["grid_fuse"]); ?></span>
+                    </div>
+
+                    <!-- Battery -->
+                    <?php if($pdfData["battery_type"] !== ""): ?>
+                        <div class="is-section-head"><?php echo t("is_section_battery"); ?></div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_battery_capacity"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_capacity"]); ?></span>
+                        </div>
+                        <?php if($pdfData["battery_type"] === "lifepo"): ?>
+                            <?php if($pdfData["battery_bms_sn"] !== ""): ?>
+                                <div class="is-row">
+                                    <span class="is-label"><?php echo t("is_bms_module_sn"); ?></span>
+                                    <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["battery_bms_sn"]); ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <?php if($pdfData["battery_module_sn"] !== ""): ?>
+                                <div class="is-row">
+                                    <span class="is-label"><?php echo t("is_battery_module_sn"); ?></span>
+                                    <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["battery_module_sn"]); ?></span>
+                                </div>
+                            <?php endif; ?>
+                        <?php elseif($pdfData["battery_type"] === "carbon"): ?>
+                            <?php if($pdfData["battery_model"] !== ""): ?>
+                                <div class="is-row">
+                                    <span class="is-label"><?php echo t("is_battery_model"); ?></span>
+                                    <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_model"]); ?></span>
+                                </div>
+                            <?php endif; ?>
+                        <?php elseif($pdfData["battery_type"] === "other"): ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_max_charging_current"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_max_charging_current"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_max_discharging_current"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_max_discharging_current"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_bulk_charging_voltage"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_bulk_charging_voltage"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_float_charging_voltage"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_float_charging_voltage"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_cutoff_voltage_hybrid"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_cutoff_voltage_hybrid"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_redischarge_voltage_hybrid"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_redischarge_voltage_hybrid"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_cutoff_voltage"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_cutoff_voltage"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_redischarge_voltage"); ?></span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["battery_redischarge_voltage"]); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <!-- Solar -->
+                    <div class="is-section-head"><?php echo t("is_section_solar"); ?></div>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_pv_size_batterx"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["pv_size_batterx"]); ?></span>
+                    </div>
+                    <?php if(count($pdfData["pv_strings_batterx"]) > 0): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_pv_strings_batterx"); ?></span>
+                            <span class="is-value">
+                                <table class="pv-strings">
+                                    <thead>
+                                        <tr>
+                                            <th><?php echo t("is_power"); ?></th>
+                                            <th><?php echo t("is_declination"); ?></th>
+                                            <th><?php echo t("is_orientation"); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach($pdfData["pv_strings_batterx"] as $s): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($s["power"]);  ?></td>
+                                            <td><?php echo htmlspecialchars($s["decl"]);   ?></td>
+                                            <td><?php echo htmlspecialchars($s["orient"]); ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </span>
+                        </div>
+                    <?php else: ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_pv_strings_batterx"); ?></span>
+                            <span class="is-value"><?php echo t("is_not_configured"); ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if($pdfData["show_external_solar"]): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_pv_size_external"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["pv_size_external"]); ?></span>
+                        </div>
+                        <?php if(count($pdfData["pv_strings_external"]) > 0): ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_pv_strings_external"); ?></span>
+                                <span class="is-value">
+                                    <table class="pv-strings">
+                                        <thead>
+                                            <tr>
+                                                <th><?php echo t("is_power"); ?></th>
+                                                <th><?php echo t("is_declination"); ?></th>
+                                                <th><?php echo t("is_orientation"); ?></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach($pdfData["pv_strings_external"] as $s): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($s["power"]);  ?></td>
+                                                    <td><?php echo htmlspecialchars($s["decl"]);   ?></td>
+                                                    <td><?php echo htmlspecialchars($s["orient"]); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </span>
+                            </div>
+                        <?php else: ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_pv_strings_external"); ?></span>
+                                <span class="is-value"><?php echo t("is_not_configured"); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <div class="is-row">
+                        <span class="is-label"><?php echo t("is_grid_feedin_limitation"); ?></span>
+                        <span class="is-value"><?php echo htmlspecialchars($pdfData["grid_feedin_limitation"]); ?></span>
+                    </div>
+                    <?php if($pdfData["show_external_solar"]): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_ext_solar_meter"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["ext_solar_meter"]); ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if($pdfData["show_wide_solar_input_range"]): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_wide_solar_input_range"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["wide_solar_input_range"]); ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if($pdfData["solar_info"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_solar_info"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["solar_info"]); ?></span>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Controllable Load -->
+                    <?php if($isVde4105): ?>
+                        <div class="is-section-head"><?php echo t("is_section_controllable_load"); ?></div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_max_charging_power_ac"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["controllable_load_max_charging_ac"]); ?></span>
+                        </div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_max_injection_power"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["controllable_load_max_injection"]); ?></span>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Grid Parameters -->
+                    <?php if($isVde4105 || $isTor || $isEstonia): ?>
+                        <div class="is-section-head"><?php echo t("is_section_grid"); ?></div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_reactive_power_supply"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["reactive_power_supply"]); ?></span>
+                        </div>
+                        <?php if($pdfData["lfsmo"] !== ""): ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_active_power_reduction_overfreq"); ?></span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["lfsmo"]); ?></span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if($isTor): ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_power_reduction_overvoltage"); ?></span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["overvoltage_reduction"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_lvrt"); ?></span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["lvrt"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_grid_connection_conditions"); ?></span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["grid_connection"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_grid_decoupling_protection"); ?></span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["grid_decoupling"]); ?></span>
+                            </div>
+                        <?php endif; ?>
+                        <?php if($isEstonia): ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_extended_parameters"); ?></span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["extended_parameters"]); ?></span>
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <!-- Wallbox (EV Charger) -->
+                    <?php if($pdfData["wallbox_show"]): ?>
+                        <div class="is-section-head"><?php echo t("is_section_wallbox"); ?></div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_producer_model"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["wallbox_producer"]); ?></span>
+                        </div>
+                        <?php if($pdfData["wallbox_serial"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_serial_number"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["wallbox_serial"]); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_network_configuration"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["wallbox_network"]); ?></span>
+                        </div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_electrical_wiring"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["wallbox_electrical"]); ?></span>
+                        </div>
+                    <?php endif; ?>
+
                 </div>
             </div>
-
-            <div id="confirmLoadCorrect" class="installer-accept border d-none">
-                <div class="box-row">
-                    <span class="w-100 text-justify"><?php echo $backupMode ? $lang["summary"]["confirm_load_final_backup"] : $lang["summary"]["confirm_load_final_ups"]; ?></span>
-                </div>
-                <div class="box-row bt">
-                    <span class="w-100 text-justify"><?php echo $lang["summary"]["confirm_userdocs_final"]; ?></span>
-                </div>
-            </div>
-
         </div>
 
 
-
-
-
-        <div id="confirm" class="pt-5 pb-3 px-3 mx-auto">
-            <div class="custom-control custom-checkbox">
-                <input type="checkbox" class="custom-control-input" id="checkboxAccept2">
-                <label class="custom-control-label" for="checkboxAccept2"><?php echo $lang["summary"]["confirm_info"]; ?></label>
+        <!-- Confirm Section -->
+        <div id="confirmSection" class="text-start">
+            <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="checkboxAccept1">
+                <label class="form-check-label" for="checkboxAccept1">
+                    <?php echo t("is_confirm_info"); ?>
+                </label>
             </div>
-            <div class="custom-control custom-checkbox mt-5">
-                <input type="checkbox" class="custom-control-input" id="checkboxAccept1">
-                <label class="custom-control-label" for="checkboxAccept1"><?php echo $backupMode ? $lang["summary"]["confirm_load_backup"] : $lang["summary"]["confirm_load_ups"]; ?></label>
+            <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="checkboxAccept2">
+                <label class="form-check-label" for="checkboxAccept2">
+                    <?php echo $backupMode ? t("is_confirm_load_backup") : t("is_confirm_load_ups"); ?>
+                </label>
             </div>
-            <div class="custom-control custom-checkbox mt-5">
-                <input type="checkbox" class="custom-control-input" id="checkboxAccept3">
-                <label class="custom-control-label" for="checkboxAccept3"><?php echo $lang["summary"]["confirm_userdocs"]; ?></label>
+            <div class="form-check mb-4 mb-md-5">
+                <input type="checkbox" class="form-check-input" id="checkboxAccept3">
+                <label class="form-check-label" for="checkboxAccept3">
+                    <?php echo t("is_confirm_userdocs"); ?>
+                </label>
             </div>
-        </div>
-
-        
-
-
-
-        <div id="btnFinish" class="px-3 mx-auto">
-            <button id="btnFinishInstallation" class="btn btn-success ripple mb-3 mt-4 px-5 py-3"><?php echo $lang["summary"]["finish_installation"]; ?></button>
-        </div>
-
-
-
-
-
-        <div id="successBox" class="container elevate-1 p-5 my-lg-5" style="display: none">
-
-            <h1 class="text-success"><?php echo $lang["summary"]["final_congratulations"]; ?></h1>
-
-            <p class="mt-2rem"><?php echo $lang["summary"]["final_text1"]; ?></p>
-
-            <p><?php echo $lang["summary"]["final_text2"]; ?></p>
-
-            <p><?php echo $lang["summary"]["final_text3"]; ?></p>
-
-            <p class="mt-2rem"><?php echo $lang["summary"]["final_text4"]; ?>: <br><a href="https://batterx.app" target="_blank">batterx.app</a></p>
-
-            <p class="mt-2rem"><?php echo $lang["summary"]["final_text5"]; ?></p>
-
-            <button id="btnDownload" class="btn btn-sm btn-success ripple py-2 px-4"><?php echo $lang["summary"]["final_download_pdf"]; ?></button>
-
-            <p class="mt-2rem"><?php echo $lang["summary"]["final_text6"]; ?></p>
-
-            <div class="d-flex align-items-center">
-                <button id="btnReboot" class="btn btn-sm btn-primary ripple py-2 px-4"><?php echo $boxType == "livex" ? $lang["summary"]["final_reboot_livex"] : $lang["summary"]["final_reboot_emx"]; ?></button>
-                <div class="notif ml-3"></div>
-            </div>
-
+            <div id="submitError" class="d-none alert alert-danger text-center mb-4" role="alert"></div>
+            <button id="btn_finish" class="btn btn-lg btn-success btn-wide d-block mx-auto ripple" style="visibility:hidden"><?php echo t("is_finish_installation"); ?></button>
         </div>
 
 
+        <!-- Success Section (hidden initially) -->
+        <div id="successSection" class="d-none">
+            <div class="card text-start">
+                <div class="card-body p-5">
+                    <h1 class="text-success mb-4"><?php echo t("is_final_congratulations"); ?></h1>
+                    <p class="mt-4"><?php echo t("is_final_text1"); ?></p>
+                    <p><?php echo t("is_final_text2"); ?></p>
+                    <p><?php echo t("is_final_text3"); ?></p>
+                    <p class="mt-4"><?php echo t("is_final_text4"); ?>:<br>
+                        <a href="https://batterx.app" target="_blank">batterx.app</a>
+                    </p>
+                    <p class="mt-4"><?php echo t("is_final_text5"); ?></p>
+                    <button id="btn_download" class="btn btn-success btn-wide ripple mb-2">
+                        <i class="bi bi-download me-2"></i><?php echo t("is_final_download_pdf"); ?>
+                    </button>
+                    <p class="mt-4"><?php echo t("is_final_text6"); ?></p>
+                    <button id="btn_reboot" class="btn btn-primary btn-wide ripple">
+                        <i class="bi bi-arrow-clockwise me-2"></i><?php echo $boxType == "livex" ? t("is_final_reboot_livex") : t("is_final_reboot_emx"); ?>
+                    </button>
+                    <div id="rebootStatus" class="text-muted d-none pt-2 mt-4"></div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
 
 
 
-        <input id="lang" type="hidden" value="<?php echo $_SESSION["lang"]; ?>">
+
+    <!-- Auth code: invisible 1.5rem trigger at bottom-left corner (same pattern as old installation_summary.php) -->
+    <div id="authCodeTrigger" style="position:fixed;width:1rem;height:1rem;z-index:100;bottom:0;left:0;"></div>
+
+    <!-- Modal: Auth Code (triggered by hidden corner click, not by Finish button) -->
+    <div id="modalAuthCode" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-body text-center p-0">
+                    <input type="password" class="form-control border-0 text-center p-4" id="authCodeInput"
+                           placeholder="Enter batterX auth-code and press enter" autocomplete="off">
+                </div>
+            </div>
+        </div>
+    </div>
 
 
 
 
+    <?php include_once "common/footer.php"; ?>
 
-        <?php include_once "common/footer.php"; ?>
+    <script>
+        const dataObj              = <?php echo json_encode($_SESSION); ?>;
+        const dataSettings         = <?php echo json_encode($dataSettings); ?>;
+        const pdfData              = <?php echo json_encode($pdfData); ?>;
+        const isVde4105            = <?php echo json_encode($isVde4105); ?>;
+        const isTor                = <?php echo json_encode($isTor); ?>;
+        const isEstonia            = <?php echo json_encode($isEstonia); ?>;
+        const pdfConfirmLoad       = <?php echo json_encode($backupMode ? tRaw("is_confirm_load_final_backup") : tRaw("is_confirm_load_final_ups")); ?>;
+        const pdfConfirmUserDocs   = <?php echo json_encode(tRaw("is_confirm_userdocs_final")); ?>;
+        const attachmentPdfsB64    = <?php echo json_encode($attachmentPdfsB64); ?>;
+    </script>
 
-        <script>
-            const dataObj = <?php echo json_encode($_SESSION); ?>;
-        </script>
+    <script src="js/installation_summary.js?v=<?php echo $versionHash; ?>"></script>
 
-        <script src="js/dist/jspdf.js?v=<?php echo $versionHash; ?>"></script>
-        <script src="js/dist/html2canvas.js?v=<?php echo $versionHash; ?>"></script>
-        <script src="js/installation_summary.js?v=<?php echo $versionHash; ?>"></script>
-
-
-
-
-
-    </body>
+</body>
 
 </html>

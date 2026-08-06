@@ -4,7 +4,7 @@ $("#lang_fr").on("click", () => { window.location.href = "software_update.php?la
 $("#lang_cs").on("click", () => { window.location.href = "software_update.php?lang=cs"; });
 $("#lang_es").on("click", () => { window.location.href = "software_update.php?lang=es"; });
 
-selectLanguageArray = [
+const selectLanguageArray = [
     "Select Language",
     "Sprache auswählen",
     "Choisir la langue",
@@ -12,10 +12,10 @@ selectLanguageArray = [
     "Seleccione el idioma"
 ];
 
-count = 0;
+let count = 0;
 setInterval(() => {
     count++;
-    $("h1").fadeOut(1000, function() {
-        $(this).text(selectLanguageArray[count % selectLanguageArray.length]).fadeIn(1000);
+    $("h1").fadeOut(500, function() {
+        $(this).text(selectLanguageArray[count % selectLanguageArray.length]).fadeIn(500);
     });
-}, 5000);
+}, 2500);

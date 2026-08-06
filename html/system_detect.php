@@ -1,27 +1,21 @@
 <?php
 
-/*
-    System Detect
-*/
-
 // Include Base
 include_once "common/base.php";
 
 // Set Step
 $step = 4;
 
-// Disable Back Button
-if(!isset($_SESSION["last_step"])) header("location: index.php");
-if($_SESSION["last_step"] != $step && $_SESSION["last_step"] != $step - 1)
-    header("location: " . (isset($_SESSION["back_url"]) ? $_SESSION["back_url"] : "index.php"));
-$_SESSION["back_url" ] = $_SERVER["REQUEST_URI"];
-$_SESSION["last_step"] = $step;
+// Enforce Installer Login
+if(empty($_SESSION["installer_email"])) { header("location: installer_login.php"); exit; }
 
-// Get Installation Country
+
+
+
+// Use for country-specific grid standard UI
 $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["installation_country"] : "de";
 
 ?>
-
 
 
 
@@ -30,194 +24,225 @@ $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["ins
 
 <html>
 
-    <head>
+<head>
 
-        <?php include_once "common/head.php"; ?>
+    <?php include_once "common/head.php"; ?>
 
-        <link rel="stylesheet" href="css/system_detect.css?v=<?php echo $versionHash; ?>">
+    <link rel="stylesheet" href="css/system_detect.css?v=<?php echo $versionHash; ?>">
 
-    </head>
+</head>
 
-    <body>
+<body class="has-steps p-4 p-md-5">
+
+    <?php include_once "common/steps.php"; ?>
 
 
 
 
+    <div class="page-container">
 
-        <!-- Progress Bar -->
-        <div id="progress" class="shadow-lg">
-            <div><div class="progress"><div class="progress-bar progress-bar-striped bg-success progress-bar-animated"></div></div></div>
-            <div><button id="btn_next" class="btn btn-success ripple" disabled><?php echo $lang["btn"]["continue"]; ?></button></div>
+        <h1 id="pageTitle" class="mb-4">batterX</h1>
+
+        <!-- Loading State -->
+        <div id="inverterLoading" class="card text-center p-4 p-md-5">
+            <div id="loadingStatusIcon">
+                <div class="spinner-border text-success"></div>
+            </div>
+            <p id="loadingText" class="mt-3 mb-0"><?= $lang["sd_connecting"] ?></p>
+            <p id="loadingHint" class="d-none text-danger small mt-2"><?= $lang["sd_hint"] ?></p>
+            <p id="loadingCountdown" class="d-none text-muted small mt-2 mb-0"></p>
         </div>
-        <!-- Progress Bar -->
 
+        <!-- Detected State (hidden until inverter confirmed) -->
+        <div id="inverterDetected" class="d-none">
 
-
-
-
-        <main>
-
-
-
-            <div id="inverterUnknown" class="container elevate-1">
-                <h1><?php echo $lang["system_detect"]["inverter_unknown"] ?></h1>
-                <div>
-                    <div class="notif loading"></div>
-                    <span class="message"><?php echo $lang["system_detect"]["please_connect_inverter"]; ?></span>
+            <!-- Card: Device Info -->
+            <div class="card mb-4">
+                <div class="card-body p-4 text-center">
+                    <img id="deviceImage" src="" class="device-img mb-3" alt="">
+                    <p id="serialNumber" class="fs-5 mb-0"></p>
                 </div>
             </div>
 
-
-
-            <div id="inverterDetected" class="container d-none">
-
-                <div class="card elevate-1">
-                    <div class="card-body">
-                        <h1>batter<span class="x">X</span> <span class="model"></span></h1>
-                        <img src="">
-                        <span class="serialnumber">S/N: <b></b></span>
-                    </div>
+            <!-- Card: Firmware Up To Date -->
+            <div id="firmwareUpToDate" class="card text-start mb-4 d-none">
+                <div class="card-body p-4 d-flex align-items-center justify-content-center gap-2">
+                    <i class="bi bi-check-circle-fill text-success fs-4 flex-shrink-0"></i>
+                    <?= $lang["sd_firmware_up_to_date"] ?>
                 </div>
+            </div>
 
-                <div id="firmwareUpdateSuccess" class="card elevate-1 mt-3 py-2 d-none">
-                    <div class="card-body d-flex justify-content-center align-items-center py-3">
-                        <div class="cert-status notif success d-block mr-3"></div>
-                        <div class="fw-update-title text-success"><?php echo $lang["system_detect"]["firmware_update"]; ?></div>
-                    </div>
+            <!-- Card: Firmware Update Needed -->
+            <div id="firmwareUpdate" class="card mb-4 text-start d-none">
+                <div class="card-header">
+                    <i class="bi bi-arrow-up-circle"></i>
+                    <?= $lang["sd_firmware_update"] ?>
                 </div>
+                <div class="card-body p-4 text-center">
 
-                <div id="firmwareUpdateContainer" class="card elevate-1 mt-3 py-2 d-none">
-                    <div class="card-body py-4">
-                        <div class="fw-update-title"><?php echo $lang["system_detect"]["firmware_update"]; ?></div>
-                        <div class="mt-4">
-                            <div class="small"><?php echo $lang["system_detect"]["installed_version"]; ?></div>
-                            <div id="installedVersion" class="text-monospace small mt-1" style="line-height: 1.25"></div>
-                        </div>
-                        <div class="mt-3">
-                            <div class="small"><?php echo $lang["system_detect"]["latest_version"]; ?></div>
-                            <div id="latestVersion" class="text-monospace small mt-1" style="line-height: 1.25"></div>
-                        </div>
-                        <div id="estimatedDurationContainer" class="mt-4" style="font-size:0.9rem"><?php echo $lang["system_detect"]["estimated_duration"]; ?>: <b id="estimatedDuration"></b></div>
-                        <div class="px-2 mx-1 mt-2">
-                            <button id="firmwareUpdateStart" class="btn btn-sm px-4 py-2 btn-success ripple"><b><?php echo $lang["system_detect"]["start_firmware_update"]; ?></b></button>
-                            <div id="firmwareUpdateProgress" class="d-none mt-4 pt-2 px-4">
-                                <div class="progress">
-                                    <div id="firmwareUpdateProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"></div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-sm-6">
+                            <div class="p-2 border rounded">
+                                <p class="small mb-1"><?= $lang["sd_installed_version"] ?></p>
+                                <div class="small">
+                                    <div id="installedVersion" class="font-monospace small"></div>
                                 </div>
-                                <div id="firmwareUpdateProgressText" class="text-center mt-2 small"><?php echo $lang["system_detect"]["updating_firmware"]; ?></div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div class="p-2 border rounded">
+                                <p class="small mb-1"><?= $lang["sd_latest_version"] ?></p>
+                                <div class="small">
+                                    <div id="latestVersion" class="font-monospace small"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div id="machineModelContainer" class="card elevate-1 mt-3 py-2 d-none">
-                    <div class="card-body py-4">
-                        <div class="standard-cont">
-                            <div class="cert-status notif loading"></div>
-                            <span class="standard">TOR</span>
-                        </div>
-                        <div>
-                            <div id="germanyMachineModelBox" class="mt-4 mb-2 d-none">
-                                <select id="germanyMachineModelSelect" class="custom-select custom-select-outline border-secondary">
-                                    <option value="2">VDE4105</option>
-                                    <option value="1">VDE0126</option>
-                                </select>
-                                <button id="germanyMachineModelBtn" class="btn btn-secondary ripple"><?php echo $lang["btn"]["apply"] ?></button>
-                            </div>
-                        </div>
-                        <div>
-                            <div id="machineModelBox" class="mt-4 mb-2 d-none">
-                                <select id="machineModelSelect" class="custom-select custom-select-outline border-danger"></select>
-                                <button id="machineModelBtn" class="btn btn-danger ripple"><?php echo $lang["btn"]["apply"] ?></button>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="cert-loading loading mt-4 mb-2"></div>
-                        </div>
+                    <div id="estimatedDurationContainer" class="mb-3">
+                        <?= $lang["sd_estimated_duration"] ?> <b id="estimatedDuration"></b>
                     </div>
-                </div>
 
+                    <div>
+                        <button id="firmwareUpdateStart" class="btn btn-success btn-wide ripple"><?= $lang["sd_begin_fw_update"] ?></button>
+                    </div>
+
+                    <div id="firmwareUpdateProgress" class="mt-4 d-none">
+                        <div class="progress mb-2">
+                            <div id="firmwareUpdateProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width:0%;"></div>
+                        </div>
+                        <p id="firmwareUpdateProgressText" class="text-muted small mb-0"><?= $lang["sd_updating_fw_wait"] ?></p>
+                    </div>
+
+                </div>
             </div>
 
+            <!-- Card: Grid Standard -->
+            <div id="gridStandardCard" class="card mb-4 text-start d-none">
+                <div class="card-header">
+                    <i class="bi bi-lightning-charge"></i>
+                    <?= $lang["sd_grid_standard"] ?>
+                </div>
+                <div class="card-body p-4">
 
-
-        </main>
-
-
-
-
-
-        <div class="modal fade" id="modalConfirmDeviceStandard" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <h5 class="modal-header mb-0">Bestätigung</h5>
-                    <div class="modal-body">
-                        <p class="message mb-0">Möchten Sie die Auswall der Norm <b id="modalConfirmDeviceStandardValue">___</b> bestätigen?</p>
+                    <div id="gridStatus" class="d-flex align-items-center justify-content-center gap-2">
+                        <i id="gridStatusIcon" class="bi fs-4"></i>
+                        <span id="gridStatusText"></span>
                     </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-sm btn-block btn-danger px-4 py-2 w-auto flex-grow-1 ripple" data-dismiss="modal"><b>Nein</b></button>
-                        <button id="modalConfirmDeviceStandardBtn" type="button" class="btn btn-sm px-4 py-2 w-auto flex-grow-1 btn-success ripple"><b>Ja</b></button>
+
+                    <!-- Germany-specific selector (VDE4105 / VDE0126) -->
+                    <div id="germanySelector" class="mt-3 d-none">
+                        <div class="d-flex gap-2 justify-content-center">
+                            <select id="germanyMachineModelSelect" class="form-select">
+                                <option value="2">VDE4105</option>
+                                <option value="1">VDE0126</option>
+                            </select>
+                            <button id="germanyMachineModelBtn" class="btn btn-secondary ripple flex-shrink-0" disabled><?= $lang["sd_apply"] ?></button>
+                        </div>
                     </div>
+
+                    <!-- General selector (all available standards) -->
+                    <div id="generalSelector" class="mt-3 d-none">
+                        <div class="d-flex gap-2 justify-content-center">
+                            <select id="machineModelSelect" class="form-select"></select>
+                            <button id="machineModelBtn" class="btn btn-secondary ripple flex-shrink-0" disabled><?= $lang["sd_apply"] ?></button>
+                        </div>
+                    </div>
+
+                    <!-- Applying spinner -->
+                    <div id="gridApplying" class="d-none">
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <div class="spinner-border text-success" style="width:1.5rem;height:1.5rem;border-width:2px;"></div>
+                            <span><?= $lang["sd_applying_standard"] ?></span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <button id="btn_continue" class="btn btn-lg btn-success btn-wide d-block mx-auto ripple d-none" disabled><?= $lang["btn_continue"] ?></button>
+
+    </div>
+
+
+
+
+    <!-- Modal: Confirm device standard (Germany without VDE4105) -->
+    <div class="modal fade" id="modalConfirmDeviceStandard" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?= $lang["sd_confirm_title"] ?></h5>
+                </div>
+                <div class="modal-body">
+                    <p id="modalConfirmDeviceStandardBody" class="mb-0"></p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary flex-grow-1 ripple" data-bs-dismiss="modal"><?= $lang["btn_no"] ?></button>
+                    <button id="modalConfirmDeviceStandardBtn" class="btn btn-success flex-grow-1 ripple"><?= $lang["btn_yes"] ?></button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="modal fade" id="modalConfirmNoBattery" data-backdrop="static" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <h5 class="modal-header mb-0"><?php echo $lang["system_detect"]["no_battery_detected"]; ?></h5>
-                    <div class="modal-body">
-                        <p><?php echo $lang["system_detect"]["no_battery_detected_refresh_info"]; ?></p>
-                        <div class="text-center">
-                            <button type="button" class="refresh btn btn-sm px-4 py-2 btn-success w-100 ripple"><b><?php echo $lang["system_detect"]["no_battery_detected_refresh_btn"]; ?></b></button>
-                        </div>
-                        <p class="mt-3"><?php echo $lang["system_detect"]["no_battery_detected_confirm_info"]; ?></p>
-                        <div class="text-center">
-                            <button type="button" class="confirm btn btn-sm px-4 py-2 btn-warning w-100 ripple"><b><?php echo $lang["system_detect"]["no_battery_detected_confirm_btn"]; ?></b></button>
-                        </div>
-                    </div>
+    <!-- Modal: No battery detected -->
+    <div class="modal fade" id="modalNoBattery" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?= $lang["sd_no_battery_title"] ?></h5>
+                </div>
+                <div class="modal-body">
+                    <p><?= $lang["sd_no_battery_check"] ?></p>
+                    <button type="button" class="refresh btn btn-success w-100 mb-3 ripple"><?= $lang["sd_no_battery_refresh"] ?></button>
+                    <p><?= $lang["sd_no_battery_confirm_text"] ?></p>
+                    <button type="button" class="confirm btn btn-warning w-100 ripple"><?= $lang["sd_no_battery_confirm"] ?></button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="modal fade" id="modalConfirmFirmwareUpdate" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <h5 class="modal-header mb-0"><?php echo $lang["system_detect"]["please_note"]; ?></h5>
-                    <div class="modal-body">
-                        <p><?php echo $lang["system_detect"]["please_note_info_1"]; ?></p>
-                        <p><?php echo $lang["system_detect"]["please_note_info_2"]; ?></p>
-                        <div class="text-center mt-3">
-                            <button type="button" class="confirm btn btn-sm px-4 py-2 btn-success w-100 ripple"><b><?php echo $lang["system_detect"]["start_firmware_update"]; ?></b></button>
-                        </div>
-                    </div>
+    <!-- Modal: Confirm firmware update -->
+    <div class="modal fade" id="modalConfirmFirmwareUpdate" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?= $lang["sd_fw_note_title"] ?></h5>
+                </div>
+                <div class="modal-body">
+                    <p><?= $lang["sd_fw_note_body1"] ?></p>
+                    <p class="mb-3"><?= $lang["sd_fw_note_body2"] ?></p>
+                    <button type="button" class="confirm btn btn-success w-100 ripple"><?= $lang["sd_begin_fw_update"] ?></button>
                 </div>
             </div>
         </div>
+    </div>
 
 
 
 
+    <?php include_once "common/footer.php"; ?>
 
-        <?php include_once "common/footer.php"; ?>
+    <script>
+        const installationCountry      = <?php echo json_encode($installationCountry); ?>;
 
-        <script>
-            const installationCountry = <?php echo json_encode($installationCountry); ?>;
-            
-            const armLatestVersion = <?php echo json_encode($armLatestVersion); ?>;
-            const dspSmLatestVersion = <?php echo json_encode($dspSmLatestVersion); ?>;
-            const dspLgLatestVersion = <?php echo json_encode($dspLgLatestVersion); ?>;
-            const bmsLatestVersion = <?php echo json_encode($bmsLatestVersion); ?>;
+        const iArmLatestVersion        = <?php echo json_encode($iArmLatestVersion); ?>;
+        const iDspSmLatestVersion      = <?php echo json_encode($iDspSmLatestVersion); ?>;
+        const iDspLgLatestVersion      = <?php echo json_encode($iDspLgLatestVersion); ?>;
+        const iBmsLatestVersion        = <?php echo json_encode($iBmsLatestVersion); ?>;
+        const iArmEstimatedDuration    = <?php echo json_encode($iArmEstimatedDuration); ?>;
+        const iDspSmEstimatedDuration  = <?php echo json_encode($iDspSmEstimatedDuration); ?>;
+        const iDspLgEstimatedDuration  = <?php echo json_encode($iDspLgEstimatedDuration); ?>;
+        const iBmsEstimatedDuration    = <?php echo json_encode($iBmsEstimatedDuration); ?>;
 
-            const armEstimatedDuration = <?php echo json_encode($armEstimatedDuration); ?>;
-            const dspSmEstimatedDuration = <?php echo json_encode($dspSmEstimatedDuration); ?>;
-            const dspLgEstimatedDuration = <?php echo json_encode($dspLgEstimatedDuration); ?>;
-            const bmsEstimatedDuration = <?php echo json_encode($bmsEstimatedDuration); ?>;
-        </script>
+        const cMergedLatestVersion     = <?php echo json_encode($cMergedLatestVersion); ?>;
+        const cMergedEstimatedDuration = <?php echo json_encode($cMergedEstimatedDuration); ?>;
+    </script>
 
-        <script src="js/dist/moment.js?v=<?php echo $versionHash; ?>"></script>
-        <script src="js/system_detect.js?v=<?php echo $versionHash; ?>"></script>
+    <script src="js/system_detect.js?v=<?php echo $versionHash; ?>"></script>
 
-    </body>
+</body>
 
 </html>

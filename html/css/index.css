@@ -1,30 +1,28 @@
-*:not(input):not(select):not(textarea) { user-select: none }
-
 body {
-    min-height: 100vh;
-    padding: 0;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-.card {
-    background-color: white;
-    padding: 5vmin;
-    text-align: center;
+
+
+
+.langs-card {
+    width: 100%;
+    max-width: 720px;
 }
 
 .logo {
-    width: 50vmin;
-    height: 20vmin;
-    margin: 0 10vmin;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    width: 300px;
 }
 
 h1 {
-    margin: 0;
-    font-size: 4vmin;
     font-weight: 300;
-    margin: 5vmin 0;
+    font-size: 1.5rem;
 }
 
 .row, .box {
@@ -34,39 +32,60 @@ h1 {
 
 .box {
     cursor: pointer;
-    border-radius: 0.25rem;
-    padding-top: 2vmin !important;
-    padding-bottom: 2vmin !important;
+    border-radius: var(--bs-border-radius-sm);
+    text-align: center;
 }
 .box:hover  { background: rgba(0, 0, 0, 0.10); }
 .box:active { background: rgba(0, 0, 0, 0.15); }
 
-.box > div {
+.box .flag {
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
-    height: 7.5vmin;
+    margin-left: auto;
+    margin-right: auto;
+    height: 4rem;
+    width: 4rem;
 }
 
-.box span {
+.box .label {
     display: block;
     line-height: 1;
-    font-size: 2vmin;
-    margin-top: 2vmin;
+    font-size: 1rem;
     font-weight: 400;
+    margin-top: 1rem;
 }
 
-#lang_en > div { background-image: url(../img/lang_en.png) }
-#lang_de > div { background-image: url(../img/lang_de.png) }
-#lang_fr > div { background-image: url(../img/lang_fr.png) }
-#lang_cs > div { background-image: url(../img/lang_cs.png) }
-#lang_es > div { background-image: url(../img/lang_es.png) }
+#lang_en .flag { background-image: url(../img/lang_en.png); }
+#lang_de .flag { background-image: url(../img/lang_de.png); }
+#lang_fr .flag { background-image: url(../img/lang_fr.png); }
+#lang_cs .flag { background-image: url(../img/lang_cs.png); }
+#lang_es .flag { background-image: url(../img/lang_es.png); }
+
+
+
 
 #softwareVersion {
     display: block;
-    position: absolute;
-    bottom: 1vmin;
+    position: fixed;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
     font-weight: bold;
-    font-size: 2vmin;
-    font-family: var(--font-family-monospace);
+    font-family: var(--bs-font-monospace);
+}
+
+
+
+
+@media (min-width: 768px) {
+
+    .logo {
+        width: 400px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
 }

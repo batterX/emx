@@ -1,28 +1,24 @@
 <?php
 
-/*
-    System Test
-*/
-
 // Include Base
 include_once "common/base.php";
 
 // Set Step
 $step = 6;
 
-// Disable Back Button
-if(!isset($_SESSION["last_step"])) header("location: index.php");
-if($_SESSION["last_step"] != $step && $_SESSION["last_step"] != $step - 1)
-    header("location: " . (isset($_SESSION["back_url"]) ? $_SESSION["back_url"] : "index.php"));
-$_SESSION["back_url" ] = $_SERVER["REQUEST_URI"];
-$_SESSION["last_step"] = $step;
+// Enforce Installer Login
+if(empty($_SESSION["installer_email"])) { header("location: installer_login.php"); exit; }
 
-$noBattery  = (!isset($_SESSION["battery_type"]) || ($_SESSION["battery_type"] == "other" && $_SESSION["battery_capacity"] == "0")) ? true : false;
-$backupMode = (isset($_SESSION["system_mode"]) && $_SESSION["system_mode"] == "1") ? true : false;
-$batteryType = isset($_SESSION["battery_type"]) ? $_SESSION["battery_type"] : "";
+
+
+
+$batteryType     = isset($_SESSION["battery_type"])     ? $_SESSION["battery_type"]             : "";
+$batteryCapacity = isset($_SESSION["battery_capacity"]) ? intval($_SESSION["battery_capacity"]) : 0;
+$systemMode      = isset($_SESSION["system_mode"])      ? $_SESSION["system_mode"]              : "0";
+$noBattery       = ($batteryType == "other" && $batteryCapacity == 0) || $batteryType == "";
+$backupMode      = ($systemMode == "1");
 
 ?>
-
 
 
 
@@ -31,106 +27,124 @@ $batteryType = isset($_SESSION["battery_type"]) ? $_SESSION["battery_type"] : ""
 
 <html>
 
-    <head>
+<head>
 
-        <?php include_once "common/head.php"; ?>
+    <?php include_once "common/head.php"; ?>
 
-        <link rel="stylesheet" href="css/system_test.css?v=<?php echo $versionHash; ?>">
+    <link rel="stylesheet" href="css/system_test.css?v=<?php echo $versionHash; ?>">
 
-    </head>
+</head>
 
-    <body>
+<body class="has-steps p-4 p-md-5">
 
-
-
-
-
-        <!-- Progress Bar -->
-        <div id="progress" class="shadow-lg">
-            <div><div class="progress"><div class="progress-bar progress-bar-striped bg-success progress-bar-animated"></div></div></div>
-            <div><button id="btn_next" class="btn btn-success ripple" disabled><?php echo $lang["btn"]["continue"]; ?></button></div>
-        </div>
-        <!-- Progress Bar -->
+    <?php include_once "common/steps.php"; ?>
 
 
 
 
+    <div class="page-container">
 
-        <div class="modal" id="warningsModal" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title text-center w-100" style="color:red"><?php echo $lang["system_test"]["warning"] ?></h5>
+
+        <h1 class="mb-4"><?php echo t("st_title"); ?></h1>
+
+
+        <!-- Section: Energy Meter (always shown) -->
+        <div class="card text-start mb-4" id="testEnergyMeterCard">
+            <div class="card-header">
+                <i class="bi bi-lightning-charge"></i> <?php echo t("st_energy_meter"); ?>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div id="testEnergyMeterIcon" class="test-icon">
+                        <i class="bi bi-circle text-secondary opacity-50"></i>
                     </div>
-                    <div class="modal-body">
-                        <p class="m-0 text-center"></p>
-                    </div>
+                    <div id="testEnergyMeterStatus" class="opacity-50">Waiting...</div>
                 </div>
             </div>
         </div>
 
 
-
-
-
-        <div class="container pb-5 pt-5">
-
-            <h1 class="card-header bg-transparent border-0 text-center"><?php echo $lang["system_test"]["system_test"]; ?></h1>
-
-            <div class="card elevate-1">
-                <div class="card-body">
-                    <div class="row m-0 p-0">
-
-                        <div class="col-lg-6 m-0 p-3">
-
-                            <div id="testEnergyMeter" class="status d-flex align-items-center">
-                                <div class="notif"></div>
-                                <span><?php echo $lang["system_test"]["energy_meter"]; ?></span>
-                            </div>
-
-                            <div id="testBatteryCharging" class="status d-flex align-items-center mt-4" <?php echo $noBattery ? "style='display:none !important'" : "" ?>>
-                                <div class="notif"></div>
-                                <span><?php echo $lang["system_test"]["battery_charging"]; ?><span></span></span>
-                            </div>
-
-                            <div id="testUpsMode" class="status d-flex align-items-center mt-4" <?php echo $noBattery || $backupMode ? "style='display:none !important'" : "" ?>>
-                                <div class="notif"></div>
-                                <span><?php echo $lang["system_test"]["ups_mode"]; ?><span></span></span>
-                            </div>
-
-                        </div>
-
-                        <div id="log" class="col-lg-6 m-0 pl-lg-3 rounded mt-3 mt-lg-0"></div>
-
+        <!-- Section: Battery Charging (hidden when no battery) -->
+        <?php if (!$noBattery): ?>
+        <div class="card text-start mb-4" id="testBatteryChargingCard">
+            <div class="card-header">
+                <i class="bi bi-battery-charging"></i> <?php echo t("st_battery_charging"); ?>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div id="testBatteryChargingIcon" class="test-icon">
+                        <i class="bi bi-circle text-secondary opacity-50"></i>
                     </div>
+                    <div id="testBatteryChargingStatus" class="opacity-50">Waiting...</div>
+                </div>
+                <div id="testBatteryChargingAction" class="d-none alert alert-danger mt-4 mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i><span id="testBatteryChargingActionMessage"></span>
                 </div>
             </div>
-
         </div>
+        <?php endif; ?>
+
+
+        <!-- Section: UPS Mode (hidden when no battery or in backup mode) -->
+        <?php if (!$noBattery && !$backupMode): ?>
+        <div class="card text-start mb-4" id="testUpsModeCard">
+            <div class="card-header">
+                <i class="bi bi-power"></i> <?php echo t("st_ups_mode"); ?>
+            </div>
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div id="testUpsModeIcon" class="test-icon">
+                        <i class="bi bi-circle text-secondary opacity-50"></i>
+                    </div>
+                    <div id="testUpsModeStatus" class="opacity-50">Waiting...</div>
+                </div>
+                <div id="testUpsModeAction" class="d-none alert alert-danger mt-4 mb-0" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i><span id="testUpsModeActionMessage"></span>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+
+        <!-- Continue Button -->
+
+        <button id="btn_next" class="btn btn-lg btn-success btn-wide d-block mx-auto ripple d-none" disabled><?= $lang["btn_continue"] ?></button>
+
+
+    </div>
 
 
 
 
-
-        <?php include_once "common/footer.php"; ?>
-
-        <script src="js/dist/moment.js?v=<?php echo $versionHash; ?>"></script>
-        <script>
-            const noBattery   = <?php echo $noBattery  ? "true" : "false" ?>;
-            const backupMode  = <?php echo $backupMode ? "true" : "false" ?>;
-            const hasExtSol   = <?php echo (isset($_SESSION["has_extsol" ]) && $_SESSION["has_extsol" ] == "1") ? "true" : "false" ?>;
-            const hasMeter1   = <?php echo (isset($_SESSION["has_meter1" ]) && $_SESSION["has_meter1" ] == "1") ? "true" : "false" ?>;
-            const hasMeter2   = <?php echo (isset($_SESSION["has_meter2" ]) && $_SESSION["has_meter2" ] == "1") ? "true" : "false" ?>;
-            const hasMeter3   = <?php echo (isset($_SESSION["has_meter3" ]) && $_SESSION["has_meter3" ] == "1") ? "true" : "false" ?>;
-            const hasMeter4   = <?php echo (isset($_SESSION["has_meter4" ]) && $_SESSION["has_meter4" ] == "1") ? "true" : "false" ?>;
-            const batteryType = "<?php echo $batteryType ?>";
-        </script>
-        <script src="js/system_test.js?v=<?php echo $versionHash; ?>"></script>
-
-
+    <!-- Modal: Warnings (static backdrop, no close button, just reload page button) -->
+    <div id="warningsModal" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header justify-content-center">
+                    <h5 class="modal-title text-danger"><?php echo t("st_warning_title"); ?></h5>
+                </div>
+                <div class="modal-body text-center" id="warningMessage">
+                </div>
+                <div class="modal-footer">
+                    <button id="btnWarningRetry" class="btn btn-success w-100 ripple"><?php echo t("btn_reload_page"); ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
 
-    </body>
+
+    <?php include_once "common/footer.php"; ?>
+
+    <script>
+        const batteryType = <?php echo json_encode($batteryType); ?>;
+        const noBattery   = <?php echo json_encode($noBattery);   ?>;
+        const backupMode  = <?php echo json_encode($backupMode);   ?>;
+    </script>
+
+    <script src="js/system_test.js?v=<?php echo $versionHash; ?>"></script>
+
+</body>
 
 </html>

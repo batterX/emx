@@ -1,29 +1,28 @@
 <?php
 
-/*
-    Installer Login
-*/
-
 // Include Base
 include_once "common/base.php";
 
 // Set Step
 $step = 2;
 
-// Disable Back Button
-if(!isset($_SESSION["last_step"])) header("location: index.php");
-if($_SESSION["last_step"] != $step && $_SESSION["last_step"] != $step - 1)
-    header("location: " . (isset($_SESSION["back_url"]) ? $_SESSION["back_url"] : "index.php"));
-$_SESSION["back_url" ] = $_SERVER["REQUEST_URI"];
-$_SESSION["last_step"] = $step;
+// Reset session - preserve lang + software_version
+$lang_keep = $_SESSION["lang"] ?? "en";
+$sv_keep   = $_SESSION["software_version"] ?? "";
+session_unset();
+$_SESSION["lang"] = $lang_keep;
+if($sv_keep) $_SESSION["software_version"] = $sv_keep;
 
-// Set "software_version" to SESSION
-if(isset($_GET["software_version"])) $_SESSION["software_version"] = $_GET["software_version"];
 
-// Get Apikey
+
+
+// Save "software_version" to SESSION
+if(isset($_GET["software_version"]))
+    $_SESSION["software_version"] = $_GET["software_version"];
+
+// Save "box_apikey" to SESSION
 $output = shell_exec("cat /proc/cpuinfo");
-$find = "Serial";
-$pos = strpos($output, $find);
+$pos    = strpos($output, "Serial");
 $serial = substr($output, $pos + 10, 16);
 $apikey = sha1(strval($serial));
 $_SESSION["box_apikey"] = $apikey;
@@ -33,64 +32,72 @@ $_SESSION["box_apikey"] = $apikey;
 
 
 
-
 <!DOCTYPE html>
 
 <html>
 
-    <head>
+<head>
 
-        <?php include_once "common/head.php"; ?>
+    <?php include_once "common/head.php"; ?>
 
-        <link rel="stylesheet" href="css/installer_login.css?v=<?php echo $versionHash; ?>">
+    <link rel="stylesheet" href="css/installer_login.css?v=<?php echo $versionHash; ?>">
 
-    </head>
+</head>
 
-    <body>
+<body class="has-steps p-4 p-md-5">
+
+    <?php include_once "common/steps.php"; ?>
 
 
 
 
+    <div class="page-container">
 
-        <!-- Progress Bar -->
-        <div id="progress" class="shadow-lg">
-            <div><div class="progress"><div class="progress-bar progress-bar-striped bg-success progress-bar-animated"></div></div></div>
-            <div><button id="btn_next" class="btn btn-success ripple" type="submit" form="loginForm" disabled><?php echo $lang["btn"]["login"]; ?></button></div>
+        <h1 class="mb-4"><?php echo t("il_title"); ?></h1>
+
+        <div class="card p-4 p-md-5">
+            <form id="loginForm" novalidate>
+                <div class="login-inner">
+
+                    <div class="form-floating mb-3">
+                        <input id="email" type="email" class="form-control" placeholder="<?php echo t("il_email"); ?>" autocomplete="email" required autofocus>
+                        <label for="email"><?php echo t("il_email"); ?></label>
+                    </div>
+
+                    <div class="form-floating mb-2 password-field">
+                        <input id="password" type="password" class="form-control" placeholder="<?php echo t("il_password"); ?>" autocomplete="current-password" required>
+                        <label for="password"><?php echo t("il_password"); ?></label>
+                        <button type="button" id="btn_toggle_password" class="password-toggle" tabindex="-1" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="mb-4 text-center">
+                        <a href="https://batterx.app/forgotpassword.php" target="_blank" class="small"><?php echo t("il_forgot_password"); ?></a>
+                    </div>
+
+                    <p id="errorMsg" class="d-none mb-3"><?php echo t("il_wrong_credentials"); ?></p>
+                    <p id="warningMsg" class="d-none mb-3"><?php echo t("il_wrong_installer"); ?></p>
+
+                    <button id="btn_login" type="submit" class="btn btn-lg btn-success btn-wide d-block mx-auto ripple" disabled><?php echo t("btn_login"); ?></button>
+
+                </div>
+            </form>
         </div>
-        <!-- Progress Bar -->
+
+    </div>
 
 
 
 
+    <?php include_once "common/footer.php"; ?>
 
-        <main>
+    <script>
+        const apikey = <?php echo json_encode($apikey); ?>;
+    </script>
 
-            <div class="container elevate-1">
-                <h1><?php echo $lang["installer_login"]["installer_login"]; ?></h1>
-                <form id="loginForm">
-                    <div class="mb-4"><input id="email"    class="form-control form-control-outline rounded-pill" type="email"    placeholder="<?php echo $lang["common"]["email"   ]; ?>" required></div>
-                    <div class="mb-3"><input id="password" class="form-control form-control-outline rounded-pill" type="password" placeholder="<?php echo $lang["common"]["password"]; ?>" required></div>
-                    <div class="mb-2 text-center"><a href="https://batterx.app/forgotpassword.php" target="_blank" class="text-success" style="font-size:14px">Forgot password?</a></div>
-                    <span id="errorMsg"   class="d-none mt-4"><?php echo $lang["installer_login"]["wrong_email_or_password"]; ?></span>
-                    <span id="warningMsg" class="d-none mt-4"><?php echo $lang["installer_login"]["wrong_system_installer" ]; ?></span>
-                </form>
+    <script src="js/installer_login.js?v=<?php echo $versionHash; ?>"></script>
 
-            </div>
-
-        </main>
-
-
-
-
-
-        <?php include_once "common/footer.php"; ?>
-
-        <script>
-            const apikey = <?php echo json_encode($apikey); ?>;
-        </script>
-
-        <script src="js/installer_login.js?v=<?php echo $versionHash; ?>"></script>
-
-    </body>
+</body>
 
 </html>

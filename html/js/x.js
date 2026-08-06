@@ -16,7 +16,6 @@ function mainLoop() {
 
 
 
-
             var json_has = function(type, entity) {
                 if(entity !== undefined)
                     return json.hasOwnProperty(''+type) && json[type].hasOwnProperty(''+entity);
@@ -38,15 +37,11 @@ function mainLoop() {
 
 
 
-
             if(json.hasOwnProperty("logtime") && json.hasOwnProperty("servertime")) {
                 var logDate = new Date(json["logtime"].split(" ").join("T") + "Z");
-                var nowDate = new Date(json["servertime"].split(" ").join("T") + "Z"); // Use server time instead of local PC time
+                var nowDate = new Date(json["servertime"].split(" ").join("T") + "Z");
                 var dif = (nowDate - logDate) / 1000;
-                console.log(logDate);
-                console.log(nowDate);
-                console.log(dif);
-                $("#timestamp").text(json["logtime"]).css("color", (dif > 60) ? "red" : "var(--color-on-main)");
+                $("#timestamp").text(json["logtime"]).css("color", (dif > 60) ? "red" : "");
                 // Show|Hide ClearDatabase
                 if(dif > 60) $(".clear-db").removeClass("d-none");
                 else         $(".clear-db").addClass   ("d-none");
@@ -54,7 +49,6 @@ function mainLoop() {
                 // Show ClearDatabase
                 $(".clear-db").removeClass("d-none");
             }
-
 
 
 
@@ -76,7 +70,6 @@ function mainLoop() {
 
 
 
-
             if(json_has("2833", "0")) $("#2833_0").html(round(json_get("2833", "0") * 0.01, 1));
             if(json_has("2834", "0")) $("#2834_0").html(round(json_get("2834", "0") * 0.01, 1));
             if(json_has("2835", "0")) $("#2835_0").html(round(json_get("2835", "0") * 0.01, 1));
@@ -90,7 +83,6 @@ function mainLoop() {
             if(json_has("2899", "0")) $("#2899_0").html(round(json_get("2899", "0") * 1   , 1));
 
             if(json_has("2913", "0")) $("#2913_0").html(round(json_get("2913", "0") * 1   , 1));
-
 
 
 
@@ -112,7 +104,6 @@ function mainLoop() {
 
 
 
-
             if(json_has("2833", "2")) $("#2833_2").html(round(json_get("2833", "2") * 0.01, 1));
             if(json_has("2834", "2")) $("#2834_2").html(round(json_get("2834", "2") * 0.01, 1));
             if(json_has("2835", "2")) $("#2835_2").html(round(json_get("2835", "2") * 0.01, 1));
@@ -126,7 +117,6 @@ function mainLoop() {
             if(json_has("2899", "2")) $("#2899_2").html(round(json_get("2899", "2") * 1   , 1));
 
             if(json_has("2913", "2")) $("#2913_2").html(round(json_get("2913", "2") * 1   , 1));
-
 
 
 
@@ -148,7 +138,6 @@ function mainLoop() {
 
 
 
-
             if(json_has("1553", "1")) $("#1553_1").html(round(json_get("1553", "1") * 0.01, 1));
             if(json_has("1554", "1")) $("#1554_1").html(round(json_get("1554", "1") * 0.01, 1));
 
@@ -163,12 +152,10 @@ function mainLoop() {
 
 
 
-
             if(json_has("1042", "1")) $("#1042_1").html(round(json_get("1042", "1") * 0.01, 1));
             if(json_has("1058", "1")) $("#1058_1").html(round(json_get("1058", "1") * 0.01, 1));
             if(json_has("1121", "1")) $("#1121_1").html(round(json_get("1121", "1") * 1   , 1));
             if(json_has("1074", "1")) $("#1074_1").html(round(json_get("1074", "1") * 1   , 1));
-
 
 
 
@@ -181,213 +168,88 @@ function mainLoop() {
 
 
 
-
-            if(json_has('2337')) {
-                if(json_has('2337', '1')) {
-                    var isOn = (json_get('2337', '1').toString().slice(-1) == "1");
-                    var isForced = json_get('2337', '1').toString().length != 2 || json_get('2337', '1').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.out1 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.out1 .auto, .out1 .on, .out1 .off').removeAttr('disabled');
-                    if(!isForced) $('.out1 .auto').attr('disabled', true);
-                    else $('.out1 .' + (isOn ? 'on' : 'off')).attr('disabled', true);
+            for(var n = 1; n <= 4; n++) {
+                if(json_has('2337', ''+n)) {
+                    var val = json_get('2337', ''+n).toString();
+                    var isOn = (val.slice(-1) == "1");
+                    var isForced = val.length == 2 && val.charAt(0) == '1';
+                    $('.out' + n + ' span').text(isOn ? "ON" : "OFF");
+                    $('.out' + n + ' .auto, .out' + n + ' .on, .out' + n + ' .off').removeAttr('disabled');
+                    if(!isForced) $('.out' + n + ' .auto').attr('disabled', true);
+                    else          $('.out' + n + ' .' + (isOn ? 'on' : 'off')).attr('disabled', true);
                 }
-                if(json_has('2337', '2')) {
-                    var isOn = (json_get('2337', '2').toString().slice(-1) == "1");
-                    var isForced = json_get('2337', '2').toString().length != 2 || json_get('2337', '2').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.out2 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.out2 .auto, .out2 .on, .out2 .off').removeAttr('disabled');
-                    if(!isForced) $('.out2 .auto').attr('disabled', true);
-                    else $('.out2 .' + (isOn ? 'on' : 'off')).attr('disabled', true);
+                if(json_has('2465', ''+n)) {
+                    var val = json_get('2465', ''+n).toString();
+                    var isOn = (val.slice(-1) == "1");
+                    var isForced = val.length == 2 && val.charAt(0) == '1';
+                    $('.cmd' + n + ' span').text(isOn ? "ON" : "OFF");
+                    $('.cmd' + n + ' .auto, .cmd' + n + ' .on, .cmd' + n + ' .off').removeAttr('disabled');
+                    if(!isForced) $('.cmd' + n + ' .auto').attr('disabled', true);
+                    else          $('.cmd' + n + ' .' + (isOn ? 'on' : 'off')).attr('disabled', true);
                 }
-                if(json_has('2337', '3')) {
-                    var isOn = (json_get('2337', '3').toString().slice(-1) == "1");
-                    var isForced = json_get('2337', '3').toString().length != 2 || json_get('2337', '3').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.out3 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.out3 .auto, .out3 .on, .out3 .off').removeAttr('disabled');
-                    if(!isForced) $('.out3 .auto').attr('disabled', true);
-                    else $('.out3 .' + (isOn ? 'on' : 'off')).attr('disabled', true);
-                }
-                if(json_has('2337', '4')) {
-                    var isOn = (json_get('2337', '4').toString().slice(-1) == "1");
-                    var isForced = json_get('2337', '4').toString().length != 2 || json_get('2337', '4').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.out4 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.out4 .auto, .out4 .on, .out4 .off').removeAttr('disabled');
-                    if(!isForced) $('.out4 .auto').attr('disabled', true);
-                    else $('.out4 .' + (isOn ? 'on' : 'off')).attr('disabled', true);
+                if(json_has('2321', ''+n)) {
+                    var isOn = (json_get('2321', ''+n) == "1");
+                    $('.in' + n + ' span').text(isOn ? "ON" : "OFF");
                 }
             }
-
-
-
-
-
-            if(json_has('2465')) {
-                if(json_has('2465', '1')) {
-                    var isOn = (json_get('2465', '1').toString().slice(-1) == "1");
-                    var isForced = json_get('2465', '1').toString().length != 2 || json_get('2465', '1').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.cmd1 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.cmd1 .auto, .cmd1 .on, .cmd1 .off').removeAttr('disabled');
-                    if(!isForced) $('.cmd1 .auto').attr('disabled', true);
-                    else $('.cmd1 .' + (isOn?'on':'off')).attr('disabled', true);
-                }
-                if(json_has('2465', '2')) {
-                    var isOn = (json_get('2465', '2').toString().slice(-1) == "1");
-                    var isForced = json_get('2465', '2').toString().length != 2 || json_get('2465', '2').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.cmd2 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.cmd2 .auto, .cmd2 .on, .cmd2 .off').removeAttr('disabled');
-                    if(!isForced) $('.cmd2 .auto').attr('disabled', true);
-                    else $('.cmd2 .' + (isOn?'on':'off')).attr('disabled', true);
-                }
-                if(json_has('2465', '3')) {
-                    var isOn = (json_get('2465', '3').toString().slice(-1) == "1");
-                    var isForced = json_get('2465', '3').toString().length != 2 || json_get('2465', '3').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.cmd3 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.cmd3 .auto, .cmd3 .on, .cmd3 .off').removeAttr('disabled');
-                    if(!isForced) $('.cmd3 .auto').attr('disabled', true);
-                    else $('.cmd3 .' + (isOn?'on':'off')).attr('disabled', true);
-                }
-                if(json_has('2465', '4')) {
-                    var isOn = (json_get('2465', '4').toString().slice(-1) == "1");
-                    var isForced = json_get('2465', '4').toString().length != 2 || json_get('2465', '4').toString().charAt(0) != '1' ? false : true;
-                    // Set Status
-                    $('.cmd4 span').text(isOn ? "ON" : "OFF");
-                    // Set Active Button
-                    $('.cmd4 .auto, .cmd4 .on, .cmd4 .off').removeAttr('disabled');
-                    if(!isForced) $('.cmd4 .auto').attr('disabled', true);
-                    else $('.cmd4 .' + (isOn?'on':'off')).attr('disabled', true);
-                }
-            }
-
-
-
-
-
-            if(json_has('2321')) {
-                if(json_has('2321', '1')) {
-                    var isOn = (json_get('2321', '1') == "1");
-                    $('.in1 span').text(isOn ? "ON" : "OFF");
-                }
-                if(json_has('2321', '2')) {
-                    var isOn = (json_get('2321', '2') == "1");
-                    $('.in2 span').text(isOn ? "ON" : "OFF");
-                }
-                if(json_has('2321', '3')) {
-                    var isOn = (json_get('2321', '3') == "1");
-                    $('.in3 span').text(isOn ? "ON" : "OFF");
-                }
-                if(json_has('2321', '4')) {
-                    var isOn = (json_get('2321', '4') == "1");
-                    $('.in4 span').text(isOn ? "ON" : "OFF");
-                }
-            }
-
 
 
 
 
         }
     });
-        
+
 }
 
 
 
 
+// GPIO button handlers — data-type=20737 for outputs, 20738 for cmds
+for(let n = 1; n <= 4; n++) {
+    $('.out' + n + ' .auto').on('click', () => $.get({ url: "api.php?set=command&type=20737&text1=" + n + "&text2=2" }));
+    $('.out' + n + ' .on'  ).on('click', () => $.get({ url: "api.php?set=command&type=20737&text1=" + n + "&text2=1" }));
+    $('.out' + n + ' .off' ).on('click', () => $.get({ url: "api.php?set=command&type=20737&text1=" + n + "&text2=0" }));
 
-$('.out1 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=1&text2=2", success: function(response) { console.log(response); } }); });
-$('.out1 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=1&text2=1", success: function(response) { console.log(response); } }); });
-$('.out1 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=1&text2=0", success: function(response) { console.log(response); } }); });
-
-$('.out2 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=2&text2=2", success: function(response) { console.log(response); } }); });
-$('.out2 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=2&text2=1", success: function(response) { console.log(response); } }); });
-$('.out2 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=2&text2=0", success: function(response) { console.log(response); } }); });
-
-$('.out3 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=3&text2=2", success: function(response) { console.log(response); } }); });
-$('.out3 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=3&text2=1", success: function(response) { console.log(response); } }); });
-$('.out3 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=3&text2=0", success: function(response) { console.log(response); } }); });
-
-$('.out4 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=4&text2=2", success: function(response) { console.log(response); } }); });
-$('.out4 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=4&text2=1", success: function(response) { console.log(response); } }); });
-$('.out4 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20737&text1=4&text2=0", success: function(response) { console.log(response); } }); });
-
-
-
-
-
-$('.cmd1 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=1&text2=2", success: function(response) { console.log(response); } }); });
-$('.cmd1 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=1&text2=1", success: function(response) { console.log(response); } }); });
-$('.cmd1 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=1&text2=0", success: function(response) { console.log(response); } }); });
-
-$('.cmd2 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=2&text2=2", success: function(response) { console.log(response); } }); });
-$('.cmd2 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=2&text2=1", success: function(response) { console.log(response); } }); });
-$('.cmd2 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=2&text2=0", success: function(response) { console.log(response); } }); });
-
-$('.cmd3 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=3&text2=2", success: function(response) { console.log(response); } }); });
-$('.cmd3 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=3&text2=1", success: function(response) { console.log(response); } }); });
-$('.cmd3 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=3&text2=0", success: function(response) { console.log(response); } }); });
-
-$('.cmd4 .auto').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=4&text2=2", success: function(response) { console.log(response); } }); });
-$('.cmd4 .on  ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=4&text2=1", success: function(response) { console.log(response); } }); });
-$('.cmd4 .off ').on('click', function() { $.get({ url: "api.php?set=command&type=20738&text1=4&text2=0", success: function(response) { console.log(response); } }); });
-
+    $('.cmd' + n + ' .auto').on('click', () => $.get({ url: "api.php?set=command&type=20738&text1=" + n + "&text2=2" }));
+    $('.cmd' + n + ' .on'  ).on('click', () => $.get({ url: "api.php?set=command&type=20738&text1=" + n + "&text2=1" }));
+    $('.cmd' + n + ' .off' ).on('click', () => $.get({ url: "api.php?set=command&type=20738&text1=" + n + "&text2=0" }));
+}
 
 
 
 
 $.get({
     url: "cmd/apikey.php",
-    success: function(apikey) {
-        $('#apikey').html(apikey);
-    }
+    success: (apikey) => { $('#apikey').html(apikey); }
 });
 
 
 
 
-
-$('#btnReboot').on('click', function() {
-    if(!confirm("Are you sure you want to REBOOT the LiveX?")) return false;
+$('#btnReboot').on('click', async () => {
+    if(!(await _confirm("Are you sure you want to REBOOT the EMS?"))) return;
+    $('#btnReboot').attr('disabled', true);
     $.get({
         url: "cmd/reboot.php",
-        complete: function(res) {
-            setTimeout(function() { location.reload(1) }, 5000);
-        }
+        complete: () => { setTimeout(() => location.reload(), 5000); }
     });
-    $('#btnReboot').attr('disabled', true);
 });
 
-$('#btnShutdown').on('click', function() {
-    if(!confirm("Are you sure you want to SHUTDOWN the LiveX?")) return false;
+$('#btnShutdown').on('click', async () => {
+    if(!(await _confirm("Are you sure you want to SHUTDOWN the EMS?"))) return;
+    $('#btnShutdown').attr('disabled', true);
     $.get({
         url: "cmd/shutdown.php",
-        complete: function(res) {
-            setTimeout(function() { location.reload(1) }, 5000);
-        }
+        complete: () => { setTimeout(() => location.reload(), 5000); }
     });
-    $('#btnShutdown').attr('disabled', true);
 });
 
-$('#btnClearDatabase').on('click', function() {
-    if(!confirm("Are you sure you want to CLEAR the Database?")) return false;
+$('#btnClearDatabase').on('click', async () => {
+    if(!(await _confirm("Are you sure you want to CLEAR the Database?"))) return;
     $.get({
         url: "api.php?cleardb=1",
-        success: function(response) {
-            console.log(response);
-            if(response == 1) alert("SUCCESS");
+        success: (response) => {
+            if(response == 1) _alert("SUCCESS");
         }
     });
 });

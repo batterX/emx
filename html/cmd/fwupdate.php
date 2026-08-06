@@ -5,7 +5,7 @@ session_start();
 if(empty($_POST)) exit();
 
 $fwActions = ["status", "start"];
-$fwTypes = ["arm", "dsp-sm", "dsp-lg", "bms", "multi"];
+$fwTypes   = ["i-arm", "i-dsp-sm", "i-dsp-lg", "i-bms", "c-merged"];
 
 if(!isset($_POST["action"]) || empty($_POST["action"])) exit();
 if(!in_array($_POST["action"], $fwActions)) exit();
@@ -41,15 +41,14 @@ if($_POST["action"] == "start") {
         echo "1";
         exit();
     }
-    $type = $_POST["type"];
+    $type    = $_POST["type"];
     $version = $_POST["version"];
-    $baseUrl = "https://api.batterx.app/special/firmware/i-series/";
     switch($type) {
-        case "arm": $url = $baseUrl . "arm/WA0-00001-" . $version . ".bin"; break;
-        case "bms": $url = $baseUrl . "bms/WA1-00003-00(00OLP_E1_2" . $version . "_EBS-C).bin"; break;
-        case "dsp-lg": $url = $baseUrl . "dsp-lg/WDM-03200-" . $version . ".bin"; break;
-        case "dsp-sm": $url = $baseUrl . "dsp-sm/WDM-03000-" . $version . ".bin"; break;
-        case "multi": $url = $baseUrl . "multi/WA1-00003-00(00OLP_C1_" . $version . "_EBS-P).bin"; break;
+        case "i-arm":    $url = "https://api.batterx.app/special/firmware/i-series/arm/WA0-00001-"                   . $version . ".bin"; break;
+        case "i-bms":    $url = "https://api.batterx.app/special/firmware/i-series/bms/WA1-00003-00(00OLP_E1_2"      . $version . "_EBS-C).bin"; break;
+        case "i-dsp-lg": $url = "https://api.batterx.app/special/firmware/i-series/dsp-lg/WDM-03200-"                . $version . ".bin"; break;
+        case "i-dsp-sm": $url = "https://api.batterx.app/special/firmware/i-series/dsp-sm/WDM-03000-"                . $version . ".bin"; break;
+        case "c-merged": $url = "https://api.batterx.app/special/firmware/c-series/merged/V1-"                       . $version . "_H4100.bin"; break;
         default: echo "0"; exit();
     }
     $command = "sudo nsenter -t 1 -m sh -c \"nohup /home/pi/FWUpdate " . escapeshellarg($url) . " > /dev/null 2>&1 &\" && sleep 5 && pgrep FWUpdate > /dev/null && echo 'FWUpdate_OK' || echo 'FWUpdate_NOK'";
