@@ -10,7 +10,7 @@
 // MARK: Constants
 
 $boxType         = "emx";
-$softwareVersion = "v26.8.2";
+$softwareVersion = "v26.8.3";
 
 $versionHash     = time();
 
