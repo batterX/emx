@@ -10,7 +10,7 @@
 // MARK: Constants
 
 $boxType         = "emx";
-$softwareVersion = "v26.8.3";
+$softwareVersion = "v26.10.1";
 
 $versionHash     = time();
 
@@ -20,8 +20,10 @@ $versionHash     = time();
 // MARK: Initial Stuff
 
 // Set character encoding to UTF-8
-mb_internal_encoding("UTF-8");
-mb_http_output("UTF-8");
+if(function_exists('mb_internal_encoding')) {
+    mb_internal_encoding("UTF-8");
+    mb_http_output("UTF-8");
+}
 
 // Secure Session Cookie
 $cookieParams = session_get_cookie_params();
@@ -30,6 +32,9 @@ session_set_cookie_params($cookieParams["lifetime"], $cookieParams["path"], $coo
 // Start Session
 session_start();
 session_regenerate_id();
+
+// Software version of the code running on this device (required by the cloud on finish_installation)
+$_SESSION["software_version"] = $softwareVersion;
 
 
 
@@ -83,13 +88,18 @@ function t($key, $replacements = []) {
 // MARK: Firmware Update Variables
 
 $iArmLatestVersion        = ["09", "18"];
-$iDspSmLatestVersion      = ["04", "04"];
+$iDspSmLatestVersion      = ["04", "05"];
 $iDspLgLatestVersion      = ["06", "10"];
 $iBmsLatestVersion        = ["95", "51"];
+$iBmsS3LatestVersion      = ["03", "03"]; // S3 BAT → WA1-00009-{aa}({bb}).bin
 $iArmEstimatedDuration    = 5;
 $iDspSmEstimatedDuration  = 8;
 $iDspLgEstimatedDuration  = 8;
 $iBmsEstimatedDuration    = 10;
+$iBmsS3EstimatedDuration  = 10;
 
 $cMergedLatestVersion     = ["09", "06", "04", "45"]; // [aa, bb, cc, dd] → V1-{aa}{bb}-{cc}{dd}_H4100.bin
 $cMergedEstimatedDuration = 8;
+
+$cBmsLatestVersion        = ["05", "01", "07", "11"]; // R1/R2 → V1-{aa}{bb}-{cc}{dd}_BZF00.bin, settings hold "aa.bb" or "aa.bb-cc.dd"
+$cBmsEstimatedDuration    = 10;

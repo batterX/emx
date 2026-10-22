@@ -47,6 +47,10 @@
 
 #battery_section_9 span { line-height: 1.2; }
 
+/* Wallbox modal: display-only §14a mirror checkbox — keep full opacity (Bootstrap dims disabled checks to 0.5) */
+#evcSteuveLimit:disabled,
+#evcSteuveLimit:disabled ~ .form-check-label { opacity: 1; }
+
 .setting-progress span {
     font-size: 1.25rem;
     margin-left: 1rem;

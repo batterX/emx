@@ -28,6 +28,8 @@ var isAlreadyRegistered = false;
 
 var cloudSetSyncActive = true;
 
+var isS3Battery = false; // i-Series with S3 BAT (Inverter[1101] = 3) — set in applySettingsSerialnumbers()
+
 var lastSystemConfirmDisabled = false;
 
 var reactive_mode   = "";
@@ -446,6 +448,7 @@ async function initialLoad() {
     if (settings.hasOwnProperty("SystemMode") && parseInt(settings["SystemMode"]["0"]["v5"]) > 0) {
         $("#bx_gridfuseamps").val(settings["SystemMode"]["0"]["v5"]);
     }
+    overlayImportedSystem();
 
     // New system route
     if (!isAlreadyRegistered) {
@@ -744,53 +747,64 @@ async function importSystemSettings() {
     var response = importedData.settings;
 
     const settings = [
-        { varName: "ModbusExtSolarDevice", entity: "0" },
-        { varName: "InvertMeterSign",  entity: "0" },
-        { varName: "UserMeter",        entity: "1" },
-        { varName: "UserMeter",        entity: "2" },
-        { varName: "UserMeter",        entity: "3" },
-        { varName: "UserMeter",        entity: "4" },
-        { varName: "EVCharger",        entity: "1" },
-        { varName: "EVChargerDefault", entity: "1" },
-        { varName: "EVChargerModbus",  entity: "1" },
-        { varName: "EVChargerOp",      entity: "1" },
-        { varName: "EVChargerPeriod",  entity: "11" },
-        { varName: "EVChargerPeriod",  entity: "12" },
-        { varName: "EVChargerPeriod",  entity: "13" },
-        { varName: "PrepareBatteryExtension", entity: "0" },
-        { varName: "BxOutPin", entity: "1" },
-        { varName: "BxOutPin", entity: "2" },
-        { varName: "BxOutPin", entity: "3" },
-        { varName: "BxOutPin", entity: "4" },
-        { varName: "SystemMode", entity: "0" },
-        { varName: "GridInjection", entity: "0" },
-        { varName: "BatteryCharging", entity: "0" },
-        { varName: "BatteryChargingAC", entity: "0" },
-        { varName: "BatteryDischarging", entity: "0" },
-        { varName: "BatteryDischargingAC", entity: "0" },
-        { varName: "IgnoreWarnings", entity: "0" },
-        { varName: "BatteryMinSoC", entity: "0" },
-        { varName: "InjectionMode", entity: "0" },
-        { varName: "DynamicTariff", entity: "0" },
-        { varName: "DynamicTariffEntsoe", entity: "0" },
-        { varName: "DynamicTariffTibber", entity: "0" },
-        { varName: "ForecastSolar", entity: "0" },
-        { varName: "ForecastSolar", entity: "1" },
-        { varName: "ForecastSolar", entity: "2" },
-        { varName: "ForecastSolar", entity: "3" },
-        { varName: "ForecastSolar", entity: "4" },
-        { varName: "ForecastSolar", entity: "5" },
-        { varName: "ForecastSolar", entity: "6" },
-        { varName: "ForecastSolar", entity: "7" },
-        { varName: "ForecastSolar", entity: "8" },
-        { varName: "ForecastSolar", entity: "101" },
-        { varName: "ForecastSolar", entity: "102" },
-        { varName: "ForecastSolar", entity: "103" },
-        { varName: "ForecastSolar", entity: "104" },
-        { varName: "ForecastSolar", entity: "105" },
-        { varName: "ForecastSolar", entity: "106" },
-        { varName: "ForecastSolar", entity: "107" },
-        { varName: "ForecastSolar", entity: "108" }
+        { varName: "ModbusExtSolarDevice",      entity: "0"   },
+        { varName: "InvertMeterSign",           entity: "0"   },
+        { varName: "UserMeter",                 entity: "1"   },
+        { varName: "UserMeter",                 entity: "2"   },
+        { varName: "UserMeter",                 entity: "3"   },
+        { varName: "UserMeter",                 entity: "4"   },
+        { varName: "ModbusExtStorageDevice",    entity: "0"   },
+        { varName: "ModbusGridDeviceTcp",       entity: "0"   },
+        { varName: "ModbusExtSolarDeviceTcp",   entity: "0"   },
+        { varName: "ModbusExtStorageDeviceTcp", entity: "0"   },
+        { varName: "UserMeterTcp",              entity: "1"   },
+        { varName: "UserMeterTcp",              entity: "2"   },
+        { varName: "UserMeterTcp",              entity: "3"   },
+        { varName: "UserMeterTcp",              entity: "4"   },
+        { varName: "EVCharger",                 entity: "1"   },
+        { varName: "EVChargerDefault",          entity: "1"   },
+        { varName: "EVChargerModbus",           entity: "1"   },
+        { varName: "EVChargerOp",               entity: "1"   },
+        { varName: "EVChargerPeriod",           entity: "11"  },
+        { varName: "EVChargerPeriod",           entity: "12"  },
+        { varName: "EVChargerPeriod",           entity: "13"  },
+        { varName: "Generator",                 entity: "0"   },
+        { varName: "GeneratorQuiet",            entity: "0"   },
+        { varName: "PrepareBatteryExtension",   entity: "0"   },
+        { varName: "GridOperatorControl",       entity: "0"   },
+        { varName: "BxOutPin",                  entity: "1"   },
+        { varName: "BxOutPin",                  entity: "2"   },
+        { varName: "BxOutPin",                  entity: "3"   },
+        { varName: "BxOutPin",                  entity: "4"   },
+        { varName: "SystemMode",                entity: "0"   },
+        { varName: "GridInjection",             entity: "0"   },
+        { varName: "BatteryCharging",           entity: "0"   },
+        { varName: "BatteryChargingAC",         entity: "0"   },
+        { varName: "BatteryDischarging",        entity: "0"   },
+        { varName: "BatteryDischargingAC",      entity: "0"   },
+        { varName: "IgnoreWarnings",            entity: "0"   },
+        { varName: "BatteryMinSoC",             entity: "0"   },
+        { varName: "InjectionMode",             entity: "0"   },
+        { varName: "DynamicTariff",             entity: "0"   },
+        { varName: "DynamicTariffEntsoe",       entity: "0"   },
+        { varName: "DynamicTariffTibber",       entity: "0"   },
+        { varName: "ForecastSolar",             entity: "0"   },
+        { varName: "ForecastSolar",             entity: "1"   },
+        { varName: "ForecastSolar",             entity: "2"   },
+        { varName: "ForecastSolar",             entity: "3"   },
+        { varName: "ForecastSolar",             entity: "4"   },
+        { varName: "ForecastSolar",             entity: "5"   },
+        { varName: "ForecastSolar",             entity: "6"   },
+        { varName: "ForecastSolar",             entity: "7"   },
+        { varName: "ForecastSolar",             entity: "8"   },
+        { varName: "ForecastSolar",             entity: "101" },
+        { varName: "ForecastSolar",             entity: "102" },
+        { varName: "ForecastSolar",             entity: "103" },
+        { varName: "ForecastSolar",             entity: "104" },
+        { varName: "ForecastSolar",             entity: "105" },
+        { varName: "ForecastSolar",             entity: "106" },
+        { varName: "ForecastSolar",             entity: "107" },
+        { varName: "ForecastSolar",             entity: "108" }
     ];
 
     const totalSteps = settings.length;
@@ -936,6 +950,111 @@ $("#carbon_battery_model, #carbon_battery_strings").on("change", function() {
 
 
 
+// Fills + locks the BMS / module serial number fields from the settings table; true once both fields are filled
+function applySettingsSerialnumbers(settings) {
+    // Set BMS Battery Serialnumbers based on connection status and counts
+    const bmsSerialnumbers = [];
+    const moduleSerialnumbers = [];
+    // Check if Master is connected (1001: 0=NotConnected, 1=Connected)
+    const masterConnected = settings["Inverter"]["1001"] && settings["Inverter"]["1001"]["s1"] == "1";
+    const masterCount = masterConnected && settings["Inverter"]["1004"] ? parseInt(settings["Inverter"]["1004"]["s1"]) || 0 : 0;
+    let slavesToCheck = [];
+    if (masterConnected) {
+        // Add Master serial number
+        if (settings["Inverter"]["1002"] && settings["Inverter"]["1002"]["s1"]) {
+            bmsSerialnumbers.push(settings["Inverter"]["1002"]["s1"]);
+        }
+        // Determine which slaves to check based on master count
+        if (masterCount >= 1) slavesToCheck.push(1);
+        if (masterCount >= 2) slavesToCheck.push(2);
+        if (masterCount >= 3) slavesToCheck.push(3);
+    } else {
+        // Master not connected, check only Slave 1 (might be connected alone)
+        slavesToCheck.push(1);
+    }
+    // Process each relevant slave
+    slavesToCheck.forEach(slaveNum => {
+        const modelId = slaveNum === 1 ? 1101 : (slaveNum === 2 ? 1201 : 1301);
+        const serialId = slaveNum === 1 ? 1102 : (slaveNum === 2 ? 1202 : 1302);
+        const countId = slaveNum === 1 ? 1104 : (slaveNum === 2 ? 1204 : 1304);
+        const moduleBaseId = slaveNum === 1 ? 1110 : (slaveNum === 2 ? 1210 : 1310);
+        // Check if slave is connected (model != 0)
+        const slaveConnected = settings["Inverter"][modelId] && settings["Inverter"][modelId]["s1"] != "0";
+        if (slaveConnected) {
+            // S3 BAT (i-Series): no separate BMS, the batteries are listed in the module slots
+            const isS3 = inverterModel >= "11000" && inverterModel < "11100" && settings["Inverter"][modelId]["s1"] == "3";
+            if (isS3) isS3Battery = true;
+            // Add slave serial number to BMS list
+            if (!isS3 && settings["Inverter"][serialId] && settings["Inverter"][serialId]["s1"]) {
+                bmsSerialnumbers.push(settings["Inverter"][serialId]["s1"]);
+            }
+            // Get slave module count
+            const slaveCount = settings["Inverter"][countId] ? parseInt(settings["Inverter"][countId]["s1"]) || 0 : 0;
+            // Add module serial numbers based on count (up to 10 modules)
+            for (let i = 0; i < Math.min(slaveCount, 10); i++) {
+                const moduleId = moduleBaseId + i;
+                if (settings["Inverter"][moduleId] && settings["Inverter"][moduleId]["s1"]) {
+                    moduleSerialnumbers.push(settings["Inverter"][moduleId]["s1"]);
+                }
+            }
+        }
+    });
+    // Populate fields if data exists
+    if (bmsSerialnumbers.length > 0) {
+        $("#lifepo_bms").val(bmsSerialnumbers.join("\n"));
+        $("#lifepo_bms").attr("disabled", true);
+    }
+    if (moduleSerialnumbers.length > 0) {
+        $("#lifepo_serialnumbers").val(moduleSerialnumbers.join("\n"));
+        $("#lifepo_serialnumbers").attr("disabled", true);
+    }
+    // S3 BAT has no BMS serial number — hide the BMS field
+    if (isS3Battery) {
+        $("#lifepo_bms").val("");
+        $("#lifepo_bms_section").addClass("d-none");
+    }
+    return $("#lifepo_serialnumbers").val().trim() !== "" && (isS3Battery || $("#lifepo_bms").val().trim() !== "");
+}
+
+var bmsSnCountdownInterval;
+
+function startBmsSnCountdown() {
+    const totalSeconds = 300;
+    let elapsed = 0;
+    $("#lifepoSnProgressBar").css("width", "0%");
+    $("#lifepoSnProgressText").text(t("ss_lifepo_sn_countdown", { time: "5:00" }));
+    bmsSnCountdownInterval = setInterval(() => {
+        elapsed++;
+        if (elapsed <= totalSeconds) {
+            const remaining = totalSeconds - elapsed;
+            const m = Math.floor(remaining / 60);
+            const s = (remaining % 60).toString().padStart(2, "0");
+            $("#lifepoSnProgressBar").css("width", (elapsed / totalSeconds) * 100 + "%");
+            $("#lifepoSnProgressText").text(t("ss_lifepo_sn_countdown", { time: `${m}:${s}` }));
+        } else {
+            clearInterval(bmsSnCountdownInterval);
+            $("#lifepoSnProgressBar").css("width", "100%");
+            $("#lifepoSnProgressText").text(t("ss_lifepo_sn_countdown_wait"));
+        }
+    }, 1000);
+}
+
+// Re-reads the settings every 30s until the serial numbers are in; paused while the setup is running
+async function pollBmsSerialnumbers() {
+    while (true) {
+        await sleep(30000);
+        if (isSettingParameters) continue;
+        const [settings] = await get_settings();
+        if (!settings || isSettingParameters) continue;
+        if (applySettingsSerialnumbers(settings)) {
+            clearInterval(bmsSnCountdownInterval);
+            $("#lifepo_sn_read_delay").addClass("d-none");
+            updateSectionButton("battery");
+            return;
+        }
+    }
+}
+
 function showBatteryData(info, settings) {
 
     // Show/hide radio options and BMS field based on system type
@@ -1004,60 +1123,17 @@ function showBatteryData(info, settings) {
         }
     }
 
+    // i/c-Series: serial numbers come only from the inverter, never typed or taken from the cloud
+    if (inverterModel >= "11000") $("#lifepo_bms, #lifepo_serialnumbers").val("").attr("disabled", true);
+
     // Set batteries serial numbers from local settings table (works only for some devices)
     if (settings && settings.hasOwnProperty("Inverter")) {
-        // Set BMS Battery Serialnumbers based on connection status and counts
-        const bmsSerialnumbers = [];
-        const moduleSerialnumbers = [];
-        // Check if Master is connected (1001: 0=NotConnected, 1=Connected)
-        const masterConnected = settings["Inverter"]["1001"] && settings["Inverter"]["1001"]["s1"] == "1";
-        const masterCount = masterConnected && settings["Inverter"]["1004"] ? parseInt(settings["Inverter"]["1004"]["s1"]) || 0 : 0;
-        let slavesToCheck = [];
-        if (masterConnected) {
-            // Add Master serial number
-            if (settings["Inverter"]["1002"] && settings["Inverter"]["1002"]["s1"]) {
-                bmsSerialnumbers.push(settings["Inverter"]["1002"]["s1"]);
-            }
-            // Determine which slaves to check based on master count
-            if (masterCount >= 1) slavesToCheck.push(1);
-            if (masterCount >= 2) slavesToCheck.push(2);
-            if (masterCount >= 3) slavesToCheck.push(3);
-        } else {
-            // Master not connected, check only Slave 1 (might be connected alone)
-            slavesToCheck.push(1);
-        }
-        // Process each relevant slave
-        slavesToCheck.forEach(slaveNum => {
-            const modelId = slaveNum === 1 ? 1101 : (slaveNum === 2 ? 1201 : 1301);
-            const serialId = slaveNum === 1 ? 1102 : (slaveNum === 2 ? 1202 : 1302);
-            const countId = slaveNum === 1 ? 1104 : (slaveNum === 2 ? 1204 : 1304);
-            const moduleBaseId = slaveNum === 1 ? 1110 : (slaveNum === 2 ? 1210 : 1310);
-            // Check if slave is connected (model != 0)
-            const slaveConnected = settings["Inverter"][modelId] && settings["Inverter"][modelId]["s1"] != "0";
-            if (slaveConnected) {
-                // Add slave serial number to BMS list
-                if (settings["Inverter"][serialId] && settings["Inverter"][serialId]["s1"]) {
-                    bmsSerialnumbers.push(settings["Inverter"][serialId]["s1"]);
-                }
-                // Get slave module count
-                const slaveCount = settings["Inverter"][countId] ? parseInt(settings["Inverter"][countId]["s1"]) || 0 : 0;
-                // Add module serial numbers based on count (up to 10 modules)
-                for (let i = 0; i < Math.min(slaveCount, 10); i++) {
-                    const moduleId = moduleBaseId + i;
-                    if (settings["Inverter"][moduleId] && settings["Inverter"][moduleId]["s1"]) {
-                        moduleSerialnumbers.push(settings["Inverter"][moduleId]["s1"]);
-                    }
-                }
-            }
-        });
-        // Populate fields if data exists
-        if (bmsSerialnumbers.length > 0) {
-            $("#lifepo_bms").val(bmsSerialnumbers.join("\n"));
-            $("#lifepo_bms").attr("disabled", true);
-        }
-        if (moduleSerialnumbers.length > 0) {
-            $("#lifepo_serialnumbers").val(moduleSerialnumbers.join("\n"));
-            $("#lifepo_serialnumbers").attr("disabled", true);
+        const complete = applySettingsSerialnumbers(settings);
+        // Serial numbers are read from the BMS only every 5 min — keep checking until they're there
+        if (inverterModel >= "11000" && !complete) {
+            $("#lifepo_sn_read_delay").removeClass("d-none");
+            startBmsSnCountdown();
+            pollBmsSerialnumbers();
         }
     }
 
@@ -1089,6 +1165,14 @@ function showBatterySection() {
 
 
 
+function refreshColumnLinks(prefix, entities) {
+    const visibleCount = entities.filter(e => !$(`#pv_string_${e}`).hasClass("d-none")).length;
+    $(`#${prefix}_strings_config_label`).toggleClass("d-none", visibleCount > 0);
+    $(`#${prefix}_add_string`).toggleClass("d-none", visibleCount === 0 || visibleCount === entities.length);
+}
+
+
+
 $("#batterx_strings_config_label").on("click", () => {
     $(`#batterx_strings_config_label`).addClass("d-none");
     $(`#pv_string_1`).removeClass("d-none");
@@ -1107,24 +1191,33 @@ $("#batterx_add_string").on("click", () => {
     for (const entity of batterxStringEntities) {
         if ($(`#pv_string_${entity}`).hasClass("d-none")) {
             $(`#pv_string_${entity}`).removeClass("d-none");
-            if (entity == batterxStringEntities[batterxStringEntities.length - 1]) {
-                $(`#batterx_add_string`).addClass("d-none");
-            }
-            return;
+            break;
         }
     }
+    refreshColumnLinks("batterx", batterxStringEntities);
 });
 
 $("#ext_add_string").on("click", () => {
     for (const entity of externalStringEntities) {
         if ($(`#pv_string_${entity}`).hasClass("d-none")) {
             $(`#pv_string_${entity}`).removeClass("d-none");
-            if (entity == externalStringEntities[externalStringEntities.length - 1]) {
-                $(`#ext_add_string`).addClass("d-none");
-            }
-            return;
+            break;
         }
     }
+    refreshColumnLinks("ext", externalStringEntities);
+});
+
+$(".pv-string-remove").on("click", function() {
+    const entity = $(this).data("entity");
+    $(`#pv_string_${entity}_power`      ).val("");
+    $(`#pv_string_${entity}_declination`).val("");
+    $(`#pv_string_${entity}_orientation`).val("");
+    $(`#pv_string_${entity}`).addClass("d-none");
+    const isBatterx = entity < 100;
+    refreshColumnLinks(
+        isBatterx ? "batterx" : "ext",
+        isBatterx ? batterxStringEntities : externalStringEntities
+    );
 });
 
 
@@ -1153,7 +1246,33 @@ function showExtSolarSection() {
     updateSectionButton("solar");
 }
 
+function hideExtSolarSection() {
+    $("#batterx_col").removeClass("col-md-6").addClass("col-md-8");
+    $("#ext_col").removeClass("col-md-6").addClass("col-md-4");
+    $("#ext_solar_content").addClass("d-none");
+    $("#ext_solar_placeholder").removeClass("d-none");
+
+    $("#solar_wattpeak_ext").val("");
+    $("#extsol_check").prop("checked", false).trigger("change");
+
+    externalStringEntities.forEach(entity => {
+        $(`#pv_string_${entity}_power`      ).val("");
+        $(`#pv_string_${entity}_declination`).val("");
+        $(`#pv_string_${entity}_orientation`).val("");
+        $(`#pv_string_${entity}`).addClass("d-none");
+    });
+    refreshColumnLinks("ext", externalStringEntities);
+
+    updateFeedinKwp();
+    updateSectionButton("solar");
+}
+
 $("#ext_solar_add_btn").on("click", showExtSolarSection);
+
+$("#ext_solar_remove_btn").on("click", async () => {
+    if (!(await _confirm(t("ss_ext_solar_remove_confirm")))) return;
+    hideExtSolarSection();
+});
 
 
 
@@ -1191,24 +1310,16 @@ function showSolarData(info, settings) {
     // Set PV string configuration
     if (settings && settings["ForecastSolar"]) {
         const forecastSolar = settings["ForecastSolar"];
-        // Show for batterX inverter
-        var batterxVisibleCount = 0;
         batterxStringEntities.forEach(entity => {
             const entityStr = entity.toString();
             populateSolarString(entityStr, forecastSolar.hasOwnProperty(entityStr) ? forecastSolar[entityStr] : null);
-            if (forecastSolar.hasOwnProperty(entityStr) && parseInt(forecastSolar[entityStr]["v1"])) batterxVisibleCount += 1;
         });
-        $("#batterx_strings_config_label").toggleClass("d-none", batterxVisibleCount > 0);
-        $("#batterx_add_string").toggleClass("d-none", batterxVisibleCount == 0 || batterxVisibleCount == batterxStringEntities.length);
-        // Show for external solar inverter
-        var externalVisibleCount = 0;
+        refreshColumnLinks("batterx", batterxStringEntities);
         externalStringEntities.forEach(entity => {
             const entityStr = entity.toString();
             populateSolarString(entityStr, forecastSolar.hasOwnProperty(entityStr) ? forecastSolar[entityStr] : null);
-            if (forecastSolar.hasOwnProperty(entityStr) && parseInt(forecastSolar[entityStr]["v1"])) externalVisibleCount += 1;
         });
-        $("#ext_strings_config_label").toggleClass("d-none", externalVisibleCount > 0);
-        $("#ext_add_string").toggleClass("d-none", externalVisibleCount == 0 || externalVisibleCount == externalStringEntities.length);
+        refreshColumnLinks("ext", externalStringEntities);
         // Auto-reveal external solar section if data exists
         const extWattpeak = parseFloat($("#solar_wattpeak_ext").val()) || 0;
         if (extWattpeak > 0) showExtSolarSection();
@@ -1243,6 +1354,7 @@ function showSolarData(info, settings) {
     // Update feed-in kWp display
     updateFeedinKwp();
 
+    overlayImportedSolar();
 }
 
 function showSolarSection() {
@@ -1259,21 +1371,56 @@ function showSolarSection() {
 
 
 
+// Pmin defaults (kW): 1 controllable consumption device / 2 devices (with wallbox)
+const STEUVE_PMIN_DEFAULT_KW = 4.2;
+const STEUVE_PMIN_WALLBOX_KW = 7.56;
+
+// Effective §14a wallbox flag — exactly what makeNewParams() writes to EVCharger[1].v6
+function isSteuveWallboxLimitActive() {
+    return $("#steuve_connection").val() !== "0"
+        && $("#steuve_consumption_check").is(":checked")
+        && $("#steuve_wallbox_check").is(":checked");
+}
+
+// Pmin W → kW for the field; 0 (setting) / "" (import file) = not set → default for the given wallbox state
+function steuvePminKw(pminW, wallbox) {
+    return pminW > 0 ? pminW / 1000 : (wallbox ? STEUVE_PMIN_WALLBOX_KW : STEUVE_PMIN_DEFAULT_KW);
+}
+
+// Visibility + derived fields only — never touches Pmin (that's reset by the wallbox listener)
+function updateSteuveUi() {
+    const mode = $("#steuve_connection").val();
+    $("#steuve_content"             ).toggleClass("d-none", mode === "0");
+    $("#steuve_image_fnn2bit"       ).toggleClass("d-none", mode !== "1");
+    $("#steuve_image_terminal_strip").toggleClass("d-none", mode !== "2");
+    $("#steuve_consumption_content" ).toggleClass("d-none", !$("#steuve_consumption_check").is(":checked"));
+    $("#steuve_device_count"        ).val($("#steuve_wallbox_check").is(":checked") ? "2" : "1");
+    // Mirror into the disabled checkbox in the wallbox modal
+    $("#evcSteuveLimit"             ).prop("checked", isSteuveWallboxLimitActive());
+}
+
+
+
 function showSteuVE(info, settings) {
 
     // Show only for VDE4105
     if (!isVde4105) return;
 
-    // Set SteuVE (Controllable Load)
+    // Set SteuVE (GridOperatorControl)
     if (settings) {
-        if (settings.hasOwnProperty("ControlMaxChargingPowerAC")) {
-            $("#controlMaxChargingPowerAC_check").prop("checked", settings["ControlMaxChargingPowerAC"]["0"]["mode"] != "0");
-        }
-        if (settings.hasOwnProperty("ControlMaxInjectionPower")) {
-            $("#controlMaxInjectionPower_check").prop("checked", settings["ControlMaxInjectionPower"]["0"]["mode"] != "0");
-        }
+        const goc     = settings["GridOperatorControl"]?.["0"];
+        const wallbox = settings["EVCharger"]?.["1"]?.["v6"] == "1";
+        const pminW   = parseInt(goc?.["v3"]) || 0;
+        const mode    = goc?.["mode"] ?? "0";
+        $("#steuve_connection"       ).val($(`#steuve_connection option[value="${mode}"]`).length ? mode : "0");
+        $("#steuve_generation_check" ).prop("checked", goc?.["v2"] == "1");
+        $("#steuve_consumption_check").prop("checked", goc?.["v1"] == "1");
+        $("#steuve_wallbox_check"    ).prop("checked", wallbox);
+        $("#steuve_pmin"             ).val(steuvePminKw(pminW, wallbox));
     }
+    updateSteuveUi();
 
+    overlayImportedSteuVE();
 }
 
 function showSteuVESection() {
@@ -1363,6 +1510,7 @@ function showReactive(info, settings) {
         }
     }
 
+    overlayImportedReactive();
 }
 
 function showReactiveSection() {
@@ -1380,27 +1528,128 @@ function showReactiveSection() {
 
 
 
-function updateUserMeterCount() {
-    const count = ["#meter1_mode", "#meter2_mode", "#meter3_mode", "#meter4_mode"]
-        .filter(id => parseInt($(id).val()) > 0).length;
-    const connected = count > 0;
-    const label = connected ? t("ss_other_count", { count }) : t("ss_other_none");
-    $("#userMeterCount")
-        .text(`(${label})`)
-        .toggleClass("text-muted", !connected)
-        .toggleClass("text-success fw-bold", connected);
+// IPv4 dotted quad, octets 0–255, no leading zeros (same octet rules as FILTER_VALIDATE_IP in the ping endpoints)
+const IPV4_REGEX = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+
+function isValidIpv4(ip) {
+    return IPV4_REGEX.test(ip.trim());
 }
 
-$("#meter1_mode, #meter2_mode, #meter3_mode, #meter4_mode").on("change", updateUserMeterCount);
+// IP is required only while the IP row is visible: meter connected and TCP model selected
+function isMeterIpInvalid(key) {
+    const connected = (parseInt($(`#${key}_mode`     ).val()) || 0) > 0;
+    const tcp       = (parseInt($(`#${key}_tcp_model`).val()) || 0) > 0;
+    return connected && tcp && !isValidIpv4($(`#${key}_tcp_ip`).val());
+}
+
+// IP is required whenever a wallbox producer is selected
+function isWallboxIpInvalid() {
+    return (parseInt($("#evcProducer").val()) || 0) > 0 && !isValidIpv4($("#evcIp").val());
+}
+
+
+
+const ENERGY_METERS = [
+    { key: "grid",    baseVar: null,                     baseEntity: null, tcpVar: "ModbusGridDeviceTcp",       tcpEntity: "0"                 },
+    { key: "extsol",  baseVar: "ModbusExtSolarDevice",   baseEntity: "0",  tcpVar: "ModbusExtSolarDeviceTcp",   tcpEntity: "0"                 },
+    { key: "extstor", baseVar: "ModbusExtStorageDevice", baseEntity: "0",  tcpVar: "ModbusExtStorageDeviceTcp", tcpEntity: "0"                 },
+    { key: "meter1",  baseVar: "UserMeter",              baseEntity: "1",  tcpVar: "UserMeterTcp",              tcpEntity: "1", hasLabel: true },
+    { key: "meter2",  baseVar: "UserMeter",              baseEntity: "2",  tcpVar: "UserMeterTcp",              tcpEntity: "2", hasLabel: true },
+    { key: "meter3",  baseVar: "UserMeter",              baseEntity: "3",  tcpVar: "UserMeterTcp",              tcpEntity: "3", hasLabel: true },
+    { key: "meter4",  baseVar: "UserMeter",              baseEntity: "4",  tcpVar: "UserMeterTcp",              tcpEntity: "4", hasLabel: true },
+];
+
+function updateMeterCardVisibility(key) {
+    const connected = parseInt($(`#${key}_mode`).val()) || 0;
+    $(`#${key}_config`).toggleClass("d-none", connected === 0);
+    if (connected === 0) return;
+    const model = parseInt($(`#${key}_tcp_model`).val()) || 0;
+    $(`#${key}_modbus_id_row`).toggleClass("d-none", model > 0);
+    $(`#${key}_tcp_rows`     ).toggleClass("d-none", model === 0);
+}
+
+function updateMeterVerifyButton(key) {
+    const hasIp = $(`#${key}_tcp_ip`).val().trim() !== "";
+    $(`#${key}_verify_btn`).prop("disabled", !hasIp);
+}
+
+function updateEnergyMeterCount() {
+    const ipInvalid = ENERGY_METERS.some(m => isMeterIpInvalid(m.key));
+    const count = ENERGY_METERS.filter(m => (parseInt($(`#${m.key}_mode`).val()) || 0) > 0).length;
+    const connected = count > 0;
+    const label = ipInvalid ? t("ss_ip_address_invalid") : (connected ? t("ss_other_count", { count }) : t("ss_other_none"));
+    $("#energyMeterCount")
+        .text(`(${label})`)
+        .removeClass("text-muted text-success text-danger fw-bold")
+        .addClass(ipInvalid ? "text-danger fw-bold" : (connected ? "text-success fw-bold" : "text-muted"));
+}
+
+// Connected select change → visibility (+ count for user meters)
+ENERGY_METERS.forEach(m => {
+    $(`#${m.key}_mode`).on("change", () => {
+        // Reset Model back to RTU default when disconnecting
+        if ((parseInt($(`#${m.key}_mode`).val()) || 0) === 0) {
+            $(`#${m.key}_tcp_model`).val("0");
+        }
+        updateMeterCardVisibility(m.key);
+        updateEnergyMeterCount();
+    });
+    $(`#${m.key}_tcp_model`).on("change", () => {
+        updateMeterCardVisibility(m.key);
+        updateEnergyMeterCount();
+    });
+    $(`#${m.key}_tcp_ip`).on("input", () => {
+        $(`#${m.key}_verify_result`).empty();
+        updateMeterVerifyButton(m.key);
+        updateEnergyMeterCount();
+    });
+});
+
+// External Solar checkbox → mirror value into disabled #extsol_mode select
+$("#extsol_check").on("change", function() {
+    const checked = $(this).is(":checked");
+    $("#extsol_mode").val(checked ? "1" : "0");
+    if (!checked) $("#extsol_tcp_model").val("0");
+    updateMeterCardVisibility("extsol");
+    updateEnergyMeterCount();
+});
+
+// Per-meter Verify Communication button (delegated by id-suffix)
+$("[id$='_verify_btn']").on("click", async function() {
+    const key = this.id.replace("_verify_btn", "");
+    const $btn    = $(this);
+    const $result = $(`#${key}_verify_result`);
+    const originalText = $btn.text();
+    $btn.prop("disabled", true).html(`&nbsp;<span class="spinner-border spinner-border-sm" role="status"></span>&nbsp;`);
+    $result.empty();
+    await sleep(1000);
+    try {
+        const response = await $.post("cmd/meter_ping.php", {
+            ip:   $(`#${key}_tcp_ip`).val().trim(),
+            port: 502
+        });
+        if (response === "1") {
+            $result.html(`<i class="bi bi-check-circle-fill text-success me-2" title="${t("ss_em_verify_success")}"></i>`);
+        } else {
+            $result.html(`<i class="bi bi-x-circle-fill text-danger me-2" title="${t("ss_em_verify_failed")}"></i>`);
+        }
+    } catch (e) {
+        $result.html(`<i class="bi bi-x-circle-fill text-danger me-2" title="${t("ss_em_verify_failed")}"></i>`);
+    } finally {
+        $btn.text(originalText);
+        updateMeterVerifyButton(key);
+    }
+});
 
 
 
 function updateWallboxCount() {
     const connected = parseInt($("#evcProducer").val()) > 0;
+    const ipInvalid = isWallboxIpInvalid();
     $("#wallboxCount")
-        .text(`(${t(connected ? "ss_other_connected" : "ss_other_none")})`)
-        .toggleClass("text-muted", !connected)
-        .toggleClass("text-success fw-bold", connected);
+        .text(`(${ipInvalid ? t("ss_ip_address_invalid") : t(connected ? "ss_other_connected" : "ss_other_none")})`)
+        .removeClass("text-muted text-success text-danger fw-bold")
+        .addClass(ipInvalid ? "text-danger fw-bold" : (connected ? "text-success fw-bold" : "text-muted"));
 }
 
 $("#evcProducer").on("change", function() {
@@ -1408,6 +1657,7 @@ $("#evcProducer").on("change", function() {
     const hasProducer = mode > 0;
     $("#evcNetworkCard"   ).toggleClass("d-none", !hasProducer);
     $("#evcElectricalCard").toggleClass("d-none", !hasProducer);
+    $("#evcSteuveCard"    ).toggleClass("d-none", !hasProducer);
     const url = EVC_PRODUCER_URLS[mode];
     if (url) {
         $("#evcProducerInfoLink").attr("href", url);
@@ -1429,8 +1679,6 @@ $("#evcMaxCurrent").on("change", function() {
     }
 });
 
-
-
 function updateEvcVerifyButton() {
     const hasIp   = $("#evcIp"  ).val().trim() !== "";
     const hasPort = $("#evcPort").val().trim() !== "";
@@ -1440,6 +1688,7 @@ function updateEvcVerifyButton() {
 $("#evcIp, #evcPort").on("input", () => {
     $("#evcVerifyResult").empty();
     updateEvcVerifyButton();
+    updateWallboxCount();
 });
 
 $("#btnEvcVerify").on("click", async () => {
@@ -1471,28 +1720,168 @@ $("#btnEvcVerify").on("click", async () => {
 
 
 
+// Device supports a generator (partnumbers.json) and the settings rows exist — set in showGenerator()
+var hasGenerator      = false;
+var hasGeneratorQuiet = false;
+
+// Lowest SoC the generator settings accept, the absolute minimum MinSoC allowed (same as the portal)
+const GENERATOR_MIN_SOC = 15;
+
+const GENERATOR_TYPE_KEYS = ["ss_gen_type_none", "ss_gen_type_mobile", "ss_gen_type_stationary", "ss_gen_type_offgrid"];
+
+// "22:00" -> 2200, or null when not a valid time
+function generatorTimeToHHMM(str) {
+    const match = /^(\d{2}):(\d{2})(:\d{2})?$/.exec((str || "").trim());
+    if (!match || parseInt(match[1]) > 23 || parseInt(match[2]) > 59) return null;
+    return parseInt(match[1]) * 100 + parseInt(match[2]);
+}
+
+// 2200 -> "22:00"
+function generatorHHMMToTime(hhmm) {
+    const s = String(parseInt(hhmm) || 0).padStart(4, "0");
+    return `${s.substring(0, 2)}:${s.substring(2, 4)}`;
+}
+
+// Lang key of the first problem, or null when valid — same checks as the portal, only for the fields of the selected type
+function getGeneratorError() {
+    if (!hasGenerator) return null;
+    const isEmpty = x => x === "" || x === null || x === undefined;
+    const number  = x => isEmpty(x) ? NaN : Number(x);
+
+    const mode = number($("#generatorType").val());
+
+    // Mobile, Stationary, Off-grid
+    if (mode >= 1) {
+        const ratedPower   = Math.round(number($("#generatorRatedPower").val()) * 1000);
+        const desiredPower = Math.round(number($("#generatorDesiredPower").val()));
+        if (!(ratedPower >= 100 && ratedPower <= 6000000)) return "ss_gen_error_rated_power";
+        if (!(desiredPower >= 1 && desiredPower <= 100))  return "ss_gen_error_desired_power";
+    }
+
+    // Stationary, Off-grid
+    if (mode >= 2) {
+        const startSoc = Math.round(number($("#generatorStartSoc").val()));
+        const stopSoc  = Math.round(number($("#generatorStopSoc").val()));
+        const output   = number($("#generatorGpioOutput").val());
+        if (!(startSoc >= GENERATOR_MIN_SOC && startSoc <= 100) || !(stopSoc >= GENERATOR_MIN_SOC && stopSoc <= 100)) return "ss_gen_error_soc";
+        if (startSoc >= stopSoc) return "ss_gen_error_soc_order";
+        if (![1, 2, 3, 4].includes(output)) return "ss_gen_error_output";
+    }
+
+    // Off-grid: quiet time
+    if (mode === 3 && hasGeneratorQuiet && $("#generatorQuietMode").val() === "1") {
+        const quietStart   = generatorTimeToHHMM($("#generatorQuietStart").val());
+        const quietEnd     = generatorTimeToHHMM($("#generatorQuietEnd").val());
+        const targetVal    = $("#generatorQuietTargetSoc").val();
+        const emergencyVal = $("#generatorQuietEmergencySoc").val();
+        const targetSoc    = isEmpty(targetVal)    ? 0 : Math.round(number(targetVal));
+        const emergencySoc = isEmpty(emergencyVal) ? 0 : Math.round(number(emergencyVal));
+        if (quietStart === null || quietEnd === null || quietStart === quietEnd) return "ss_gen_error_quiet_time";
+        // 0 = off, otherwise the same range as the start / stop SoC
+        const validQuietSoc = x => x === 0 || (x >= GENERATOR_MIN_SOC && x <= 100);
+        if (!validQuietSoc(targetSoc) || !validQuietSoc(emergencySoc)) return "ss_gen_error_quiet_soc";
+    }
+
+    return null;
+}
+
+// Show only the fields that apply to the selected type and quiet time
+function updateGeneratorFields() {
+    const mode  = parseInt($("#generatorType").val()) || 0;
+    const quiet = parseInt($("#generatorQuietMode").val()) || 0;
+    $("#generatorPowerRows"   ).toggleClass("d-none", mode < 1);
+    $("#generatorAutoRows"    ).toggleClass("d-none", mode < 2);
+    $("#generatorQuietSection").toggleClass("d-none", mode !== 3 || !hasGeneratorQuiet);
+    $("#generatorQuietRows"   ).toggleClass("d-none", quiet !== 1);
+    $("#generatorInfoSection" ).toggleClass("d-none", mode < 1);
+}
+
+function updateGeneratorStatus() {
+    const mode  = parseInt($("#generatorType").val()) || 0;
+    const error = getGeneratorError();
+    $("#generatorStatus")
+        .text(`(${error ? t(error) : (mode > 0 ? t(GENERATOR_TYPE_KEYS[mode]) : t("ss_other_none"))})`)
+        .removeClass("text-muted text-success text-danger fw-bold")
+        .addClass(error ? "text-danger fw-bold" : (mode > 0 ? "text-success fw-bold" : "text-muted"));
+}
+
+$("#generatorType, #generatorQuietMode").on("change", () => {
+    updateGeneratorFields();
+    updateGeneratorStatus();
+});
+
+$("#generatorRatedPower, #generatorDesiredPower, #generatorStartSoc, #generatorStopSoc, #generatorGpioOutput, #generatorQuietStart, #generatorQuietEnd, #generatorQuietTargetSoc, #generatorQuietEmergencySoc")
+    .on("input change", updateGeneratorStatus);
+
+// Fills the modal from the settings table (same rules as the portal's modal show handler)
+function showGenerator(info, settings) {
+    hasGenerator      = !!PNS_DEVICE[devicePartNumber]?.generator && !!settings?.["Generator"]?.["0"];
+    hasGeneratorQuiet = !!settings?.["GeneratorQuiet"]?.["0"];
+    $("#generatorRow").toggleClass("d-none", !hasGenerator);
+    if (!hasGenerator) return;
+
+    // Generator info from cloud (if available)
+    if (info && info.hasOwnProperty("generator_info")) $("#generatorInfo").val(info.generator_info);
+
+    const generator = settings["Generator"]["0"];
+    const quiet     = hasGeneratorQuiet ? settings["GeneratorQuiet"]["0"] : {};
+
+    // Required fields: a stored 0 shows as empty
+    const orEmpty = x => parseInt(x) > 0 ? parseInt(x) : "";
+    const output  = parseInt(generator["v5"]) || 0;
+    $("#generatorType        ").val((parseInt(generator["mode"]) || 0).toString());
+    $("#generatorRatedPower  ").val(parseInt(generator["v1"]) > 0 ? parseInt(generator["v1"]) / 1000 : "");
+    $("#generatorDesiredPower").val(orEmpty(generator["v2"]));
+    $("#generatorStartSoc    ").val(orEmpty(generator["v3"]));
+    $("#generatorStopSoc     ").val(orEmpty(generator["v4"]));
+    $("#generatorGpioOutput  ").val(output >= 1 && output <= 4 ? output.toString() : "");
+
+    // Output names, as set in the GPIO setup
+    [1, 2, 3, 4].forEach(n => {
+        const name = (settings["BxOutPin"]?.[n.toString()]?.["name"] || "").trim();
+        $(`#generatorGpioOutput option[value='${n}']`).text(`${t("ss_gen_output")} ${n}` + (name ? ` (${name})` : ""));
+    });
+
+    // Quiet time: times empty while both are 0, SoCs as stored (0 = off)
+    const quietStart = parseInt(quiet["v1"]) || 0;
+    const quietEnd   = parseInt(quiet["v2"]) || 0;
+    $("#generatorQuietMode        ").val(parseInt(quiet["mode"]) === 1 ? "1" : "0");
+    $("#generatorQuietStart       ").val(quietStart > 0 || quietEnd > 0 ? generatorHHMMToTime(quietStart) : "");
+    $("#generatorQuietEnd         ").val(quietStart > 0 || quietEnd > 0 ? generatorHHMMToTime(quietEnd  ) : "");
+    $("#generatorQuietTargetSoc   ").val(parseInt(quiet["v3"]) || 0);
+    $("#generatorQuietEmergencySoc").val(parseInt(quiet["v4"]) || 0);
+
+    updateGeneratorFields();
+    updateGeneratorStatus();
+
+    overlayImportedGenerator();
+}
+
+
+
 function showOther(info, settings) {
 
-    // Set user meters data
-    if (settings && settings.hasOwnProperty("UserMeter")) {
-        if (settings["UserMeter"].hasOwnProperty("1")) {
-            $("#meter1_mode ").val(settings["UserMeter"]["1"]["mode"]);
-            $("#meter1_label").val(settings["UserMeter"]["1"]["s1"  ]);
-        }
-        if (settings["UserMeter"].hasOwnProperty("2")) {
-            $("#meter2_mode ").val(settings["UserMeter"]["2"]["mode"]);
-            $("#meter2_label").val(settings["UserMeter"]["2"]["s1"  ]);
-        }
-        if (settings["UserMeter"].hasOwnProperty("3")) {
-            $("#meter3_mode ").val(settings["UserMeter"]["3"]["mode"]);
-            $("#meter3_label").val(settings["UserMeter"]["3"]["s1"  ]);
-        }
-        if (settings["UserMeter"].hasOwnProperty("4")) {
-            $("#meter4_mode ").val(settings["UserMeter"]["4"]["mode"]);
-            $("#meter4_label").val(settings["UserMeter"]["4"]["s1"  ]);
-        }
+    // Set energy meter data (7 cards: grid, extsol, extstor, meter1..4)
+    if (settings) {
+        ENERGY_METERS.forEach(m => {
+            if (m.baseVar && settings[m.baseVar]?.[m.baseEntity]) {
+                const row = settings[m.baseVar][m.baseEntity];
+                $(`#${m.key}_mode`).val(row.mode);
+                if (m.hasLabel) $(`#${m.key}_label`).val(row.s1);
+            }
+            if (settings[m.tcpVar]?.[m.tcpEntity]) {
+                const row = settings[m.tcpVar][m.tcpEntity];
+                $(`#${m.key}_tcp_model`).val(row.mode);
+                $(`#${m.key}_tcp_ip`   ).val(row.s1);
+            }
+            if (m.key === "extsol") {
+                $("#extsol_mode").val($("#extsol_check").is(":checked") ? "1" : "0");
+            }
+            updateMeterCardVisibility(m.key);
+            updateMeterVerifyButton(m.key);
+        });
     }
-    updateUserMeterCount();
+    updateEnergyMeterCount();
 
     // Set wallbox (EVC) data
     const hasEvcBase       = settings && settings.hasOwnProperty("EVCharger"      ) && settings["EVCharger"      ].hasOwnProperty("1");
@@ -1533,12 +1922,295 @@ function showOther(info, settings) {
     updateWallboxCount();
     updateEvcVerifyButton();
 
+    showGenerator(info, settings);
+
+    overlayImportedOther();
 }
 
 function showOtherSection() {
     $("#other").removeClass("d-none");
     updateSectionButton("other");
     return true;
+}
+
+
+
+
+
+// MARK: Import Project
+// Overlay helpers
+
+
+
+// Skip-empty (spec: "" ≠ 0, never overwrite with a zero from an empty string)
+function importVal(v)  { return (typeof v === "string" && v !== "") ? v : undefined; }
+function importBool(v) { return typeof v === "boolean" ? v : undefined; }
+
+// Unit conversion — Wp → kWp for solar sizes + string powers (only conversion needed by the overlays;
+// reactive and extended values use their raw file encodings which match the UI select option values 1:1)
+function wpToKwp(wpStr) {
+    const n = parseFloat(wpStr);
+    return isNaN(n) ? undefined : n / 1000;
+}
+
+// cosphi sign split: "-95" → {sign:"1", value:"95"}   "95" → {sign:"0", value:"95"}   "100" → {sign:"0", value:"100"}
+function cosphiParse(str) {
+    if (!str) return undefined;
+    const n = parseFloat(str);
+    if (isNaN(n)) return undefined;
+    if (Math.abs(n) === 100) return { sign: "0", value: "100" };
+    return { sign: n < 0 ? "1" : "0", value: String(Math.abs(n)) };
+}
+
+
+
+// #system card — grid main fuse (called from end of initialLoad after #bx_gridfuseamps is populated)
+function overlayImportedSystem() {
+    if (!importedProject) return;
+    const v = importVal(importedProject.grid?.main_fuse);
+    if (v !== undefined) $("#bx_gridfuseamps").val(v);
+}
+
+
+
+// Solar section — sizes, strings (batterX + external), feed-in, regulation, ext meter, solar_info
+function overlayImportedSolar() {
+    if (!importedProject) return;
+    const s   = importedProject.solar    ?? {};
+    const int = s.internal               ?? {};
+    const ext = s.external               ?? {};
+
+    // Sizes (Wp → kWp)
+    const intKwp = wpToKwp(int.size);
+    if (intKwp !== undefined) $("#solar_wattpeak").val(intKwp);
+    const extKwp = wpToKwp(ext.size);
+    if (extKwp !== undefined) $("#solar_wattpeak_ext").val(extKwp);
+
+    // Internal strings (entities 1..8)
+    for (let n = 1; n <= 8; n++) {
+        const str = int["string_" + n] ?? {};
+        const p   = wpToKwp(str.power);
+        if (p === undefined) continue;
+        $(`#pv_string_${n}_power`).val(p);
+        const d = importVal(str.declination);
+        const o = importVal(str.orientation);
+        if (d !== undefined) $(`#pv_string_${n}_declination`).val(d);
+        if (o !== undefined) $(`#pv_string_${n}_orientation`).val(o);
+        $(`#pv_string_${n}`).removeClass("d-none");
+    }
+    refreshColumnLinks("batterx", batterxStringEntities);
+
+    // External strings (entities 101..108)
+    let hasExtString = false;
+    for (let n = 1; n <= 8; n++) {
+        const str = ext["string_" + n] ?? {};
+        const p   = wpToKwp(str.power);
+        if (p === undefined) continue;
+        hasExtString = true;
+        $(`#pv_string_${100 + n}_power`).val(p);
+        const d = importVal(str.declination);
+        const o = importVal(str.orientation);
+        if (d !== undefined) $(`#pv_string_${100 + n}_declination`).val(d);
+        if (o !== undefined) $(`#pv_string_${100 + n}_orientation`).val(o);
+        $(`#pv_string_${100 + n}`).removeClass("d-none");
+    }
+    refreshColumnLinks("ext", externalStringEntities);
+
+    // Feed-in % + dynamic feed-in checkbox
+    const fp = importVal(s.feed_in_percent);
+    if (fp !== undefined) $("#solar_feedinlimitation").val(fp);
+    const dfic = importBool(s.dynamic_feed_in_control);
+    if (dfic !== undefined) $("#regulation_check").prop("checked", dfic);
+
+    // External solar meter checkbox — trigger change so Energy Meters modal's #extsol_mode stays in sync
+    const mc = importBool(ext.meter_connected);
+    if (mc !== undefined) $("#extsol_check").prop("checked", mc).trigger("change");
+
+    // Solar info textarea
+    const si = importVal(s.solar_info);
+    if (si !== undefined) $("#solar_info").val(si);
+
+    // Auto-reveal ext solar section when the import brings any external content
+    if ((extKwp !== undefined && extKwp > 0) || hasExtString || mc === true) {
+        showExtSolarSection();
+    }
+
+    updateFeedinKwp();
+}
+
+
+
+// Steuve section (GridOperatorControl) — VDE4105 only per spec, and only when current inverter is on VDE4105
+function overlayImportedSteuVE() {
+    if (!importedProject) return;
+    if (importedProject.grid?.standard !== "2") return;
+    if (!isVde4105) return;
+    const st = importedProject.steuve ?? {};
+
+    // Connection type — only if the option exists (e.g. EEBUS "3" is not offered yet)
+    const mode = importVal(st.mode);
+    if (mode !== undefined && $(`#steuve_connection option[value="${mode}"]`).length) {
+        $("#steuve_connection").val(mode);
+    }
+
+    // Checkboxes — .prop() only, no change trigger (the wallbox listener would reset Pmin)
+    const gc = importBool(st.generation_control);
+    const cc = importBool(st.consumption_control);
+    const ev = importBool(st.evcharger_14a);
+    if (gc !== undefined) $("#steuve_generation_check" ).prop("checked", gc);
+    if (cc !== undefined) $("#steuve_consumption_check").prop("checked", cc);
+    if (ev !== undefined) $("#steuve_wallbox_check"    ).prop("checked", ev);
+
+    // Pmin (W → kW) — "" means "not set" here (exception to the skip-empty rule) → default for the resulting wallbox state
+    if (typeof st.pmin === "string") {
+        $("#steuve_pmin").val(steuvePminKw(parseInt(st.pmin) || 0, $("#steuve_wallbox_check").is(":checked")));
+    }
+
+    updateSteuveUi();
+}
+
+
+
+// Reactive + Extended (LFSMO) — VDE4105 only per spec
+function overlayImportedReactive() {
+    if (!importedProject) return;
+    if (importedProject.grid?.standard !== "2") return;
+    if (!isVde4105) return;
+
+    const r        = importedProject.reactive ?? {};
+    const fileMode = r.mode;
+
+    // File uses inverter protocol-202 numbering (0=Off, 1=Fixed cosφ, 2=Qfix, 3=cosφ(P), 4=Q(U)).
+    // The assistant UI's #reactive_mode still uses dict_reactive_mode (0/1/2/3/4). Map file → UI here.
+    const fileToUiMode = { "0": "0", "1": "2", "2": "4", "3": "1", "4": "3" };
+    const uiMode = fileToUiMode[fileMode];
+
+    // "" = not decided → uiMode undefined → skip everything (spec: "" ≠ "0"). "0" = Off deliberately.
+    if (uiMode !== undefined) {
+        $("#reactive_mode").val(uiMode).trigger("change"); // change reveals matching sub-section
+        // Branch on FILE mode (protocol-202) — spec's field-usage rules are keyed to that
+        if (fileMode === "3") {
+            // cosφ(P) kink — select's option values are raw ×100 (e.g. "50" for 0.5) matching the file
+            if (importVal(r.kink)) $("#reactive_mode1_kink").val(r.kink).trigger("change"); // fire change so SVG kink label updates
+        } else if (fileMode === "1") {
+            // Fixed cosφ — split signed file value into UI sign + absolute value (both raw ×100)
+            const cp = cosphiParse(r.cosphi);
+            if (cp !== undefined) {
+                $("#reactive_mode2_cosphi_sign").val(cp.sign);
+                $("#reactive_mode2_cosphi"     ).val(cp.value);
+            }
+        } else if (fileMode === "4") {
+            // Q(U)
+            if (importVal(r.v1))     $("#reactive_mode3_v1"    ).val(r.v1);
+            if (importVal(r.v2))     $("#reactive_mode3_v2"    ).val(r.v2);
+            if (importVal(r.v3))     $("#reactive_mode3_v3"    ).val(r.v3);
+            if (importVal(r.v4))     $("#reactive_mode3_v4"    ).val(r.v4);
+            if (importVal(r.qmaxsn)) $("#reactive_mode3_qmaxsn").val(r.qmaxsn); // spec says unscaled
+            if (importVal(r.qutime)) $("#reactive_mode3_qutime").val(r.qutime);
+            // Fire change so SVG Q(U) labels update
+            $("#reactive_mode3_v1, #reactive_mode3_v2, #reactive_mode3_v3, #reactive_mode3_v4").trigger("change");
+        }
+        // File mode 2 (Qfix) — spec says qfix is always "" in the file, no overlay
+    }
+
+    // Extended (LFSMO) — file stores raw ×100 values matching the UI select option values
+    const e = importedProject.extended ?? {};
+    if (importVal(e.lfsmo_threshold)) $("#extended_lfsmoThreshold").val(e.lfsmo_threshold);
+    if (importVal(e.lfsmo_droop))     $("#extended_lfsmoDroop"    ).val(e.lfsmo_droop);
+    // Note: the file spec now carries lfsmo_droop only. The alternative UI field #extended_lfsmoSlope
+    // (shown when the inverter doesn't expose Droop) is not overlaid — installer fills it manually.
+}
+
+
+
+// EVCharger — evcharger.mode=0 special case: only `name` applied, producer forced to disabled
+function overlayImportedOther() {
+    if (!importedProject) return;
+    const ev = importedProject.evcharger;
+    if (!ev) return;
+
+    // Name always applied (spec: even when mode=0, name is the installer's note)
+    const name = importVal(ev.name);
+    if (name !== undefined) $("#evcTitle").val(name);
+
+    // Mode="0" → force producer to disabled and stop (spec's mode=0 rule)
+    if (ev.mode === "0") {
+        $("#evcProducer").val("0").trigger("change");
+        return;
+    }
+
+    // Producer: (mode, model_text) matching — mirrors showOther's cloud-path pattern
+    const modeStr  = importVal(ev.mode);
+    const modelStr = importVal(ev.model);
+    if (modeStr !== undefined) {
+        $("#evcProducer option[data-dynamic]").remove();
+        let found = false;
+        $("#evcProducer option").each(function() {
+            if (parseInt($(this).val()) === parseInt(modeStr)
+                && $(this).text().trim() === (modelStr ?? "").trim()) {
+                $(this).prop("selected", true);
+                found = true;
+                return false;
+            }
+        });
+        if (!found) {
+            const label = modelStr ?? modeStr;
+            $("#evcProducer").append(`<option value="${modeStr}" data-dynamic="1" selected>${label}</option>`);
+        }
+        $("#evcProducer").trigger("change"); // reveals #evcNetworkCard + #evcElectricalCard, updates count
+    }
+
+    // Network + electrical fields
+    if (importVal(ev.ip))          $("#evcIp"       ).val(ev.ip);
+    if (importVal(ev.port))        $("#evcPort"     ).val(ev.port);
+    if (importVal(ev.wiring))      $("#evcWiring"   ).val(ev.wiring);
+    if (importVal(ev.phase_mode))  $("#evcPhaseMode").val(ev.phase_mode);
+    if (importVal(ev.min_current)) $("#evcMinCurrent").val(ev.min_current);
+    if (importVal(ev.max_current)) $("#evcMaxCurrent").val(ev.max_current);
+
+    updateEvcVerifyButton();
+    updateWallboxCount();
+}
+
+
+
+// Generator — only where the device has one (quiet fields only with a GeneratorQuiet row); not gated on the grid standard
+function overlayImportedGenerator() {
+    if (!importedProject || !hasGenerator) return;
+    const g = importedProject.generator ?? {};
+
+    // Dropdowns — only values that exist as an option (same as the steuve overlay)
+    const hasOption = (sel, v) => v !== undefined && $(`${sel} option[value="${v}"]`).length > 0;
+
+    const mode = importVal(g.mode);
+    if (hasOption("#generatorType", mode)) $("#generatorType").val(mode);
+
+    // Power — VA → kVA
+    const ratedVa = parseFloat(importVal(g.power_rating));
+    if (!isNaN(ratedVa)) $("#generatorRatedPower").val(ratedVa / 1000);
+    if (importVal(g.power_limit) !== undefined) $("#generatorDesiredPower").val(g.power_limit);
+
+    // Automatic start
+    if (importVal(g.start_soc) !== undefined) $("#generatorStartSoc").val(g.start_soc);
+    if (importVal(g.stop_soc ) !== undefined) $("#generatorStopSoc" ).val(g.stop_soc);
+    const output = importVal(g.output);
+    if (hasOption("#generatorGpioOutput", output)) $("#generatorGpioOutput").val(output);
+
+    // Quiet time — "0" is midnight / off, not empty
+    if (hasGeneratorQuiet) {
+        const quietMode = importVal(g.quiet_mode);
+        if (hasOption("#generatorQuietMode", quietMode)) $("#generatorQuietMode").val(quietMode);
+        if (importVal(g.quiet_start) !== undefined) $("#generatorQuietStart").val(generatorHHMMToTime(g.quiet_start));
+        if (importVal(g.quiet_end  ) !== undefined) $("#generatorQuietEnd"  ).val(generatorHHMMToTime(g.quiet_end));
+        if (importVal(g.quiet_target_soc   ) !== undefined) $("#generatorQuietTargetSoc"   ).val(g.quiet_target_soc);
+        if (importVal(g.quiet_emergency_soc) !== undefined) $("#generatorQuietEmergencySoc").val(g.quiet_emergency_soc);
+    }
+
+    if (importVal(g.info) !== undefined) $("#generatorInfo").val(g.info);
+
+    // No validation here — out-of-range values show up on the status line
+    updateGeneratorFields();
+    updateGeneratorStatus();
 }
 
 
@@ -1635,10 +2307,11 @@ sectionValidators["solar"] = () => {
     if ($("#solar_wattpeak").val() === "") return;
     if ($("#solar_feedinlimitation").val() === "") return;
     if (!$("#ext_solar_content").hasClass("d-none") && $("#solar_wattpeak_ext").val() === "") return;
+    if (!$("#solar_wideinputrange_container").hasClass("d-none") && $("#solar_wideinputrange").val() === "") return;
     return true;
 };
 
-$("#solar_wattpeak, #solar_feedinlimitation, #solar_wattpeak_ext").on("input change", () => updateSectionButton("solar"));
+$("#solar_wattpeak, #solar_feedinlimitation, #solar_wattpeak_ext, #solar_wideinputrange").on("input change", () => updateSectionButton("solar"));
 
 
 
@@ -1657,8 +2330,24 @@ $("#btn_steuve_next").on("click", function() {
 });
 
 sectionValidators["steuve"] = () => {
+    if ($("#steuve_connection").val() === "0") return true;
+    if (!$("#steuve_consumption_check").is(":checked")) return true;
+    if (!(parseFloat($("#steuve_pmin").val()) > 0)) return;
     return true;
 };
+
+$("#steuve_connection, #steuve_consumption_check").on("change", () => {
+    updateSteuveUi();
+    updateSectionButton("steuve");
+});
+
+$("#steuve_wallbox_check").on("change", function() {
+    $("#steuve_pmin").val(this.checked ? STEUVE_PMIN_WALLBOX_KW : STEUVE_PMIN_DEFAULT_KW);
+    updateSteuveUi();
+    updateSectionButton("steuve");
+});
+
+$("#steuve_pmin").on("input", () => updateSectionButton("steuve"));
 
 
 
@@ -1707,6 +2396,9 @@ $("#modalExtendedParameters").on("hidden.bs.modal", () => updateSectionButton("r
 // Other Section
 
 sectionValidators["other"] = () => {
+    if (isWallboxIpInvalid()) return;
+    if (ENERGY_METERS.some(m => isMeterIpInvalid(m.key))) return;
+    if (getGeneratorError()) return;
     return true;
 };
 
@@ -1820,6 +2512,20 @@ async function mainFormSubmit() {
         } finally {
             $("#btn_next").prop("disabled", false); // Enable button
         }
+    }
+
+    // ── i/c/k-Series: PE bond between input and protected output requires confirmation ──
+    // Without it the inverter drops its output on grid loss, so the UPS Mode test in
+    // system_test.php can never pass (testUpsMode_test has no retry/skip path).
+    if (inverterModel >= "11000") {
+        const confirmed = await new Promise(resolve => {
+            const $m = $("#modalConfirmPeOutput");
+            $m.off("click.pe hidden.bs.modal.pe")
+              .one("click.pe", "button", () => { $m.modal("hide"); resolve(true);  })
+              .one("hidden.bs.modal.pe", () => { resolve(false); })
+              .modal("show");
+        });
+        if (!confirmed) return;
     }
 
     // ── TOR: clamp values, show summary — Confirm proceeds, Modify re-opens edit modal ──
@@ -1947,6 +2653,7 @@ async function updateSession() {
 
     tempData.system_serial     = (isClix || isOldSys()) ? $("#bx_system").val().trim() : "NEW";
     tempData.solar_info        = $("#solar_info      ").val().trim();
+    tempData.generator_info    = hasGenerator && (parseInt($("#generatorType").val()) || 0) > 0 ? $("#generatorInfo").val().trim() : ""; // empty without a generator
     tempData.note              = $("#installer_memo  ").val().trim();
     tempData.installation_date = installationDate;
 
@@ -2031,6 +2738,7 @@ async function updateSession() {
     tempData.battery_strings       = "";
     tempData.battery_bms           = "";
     tempData.battery_serialnumbers = "";
+    tempData.battery_voltage       = "";
 
     if (isLiFePO()) {
         tempData.battery_type = "lifepo";
@@ -2059,6 +2767,7 @@ async function updateSession() {
             if (!PNS_BATTERY.hasOwnProperty(pn) || !PNS_BATTERY[pn].capacity)
                 return showSettingParametersError("E059. Unknown battery partnumber " + pn + " (S/N " + sn + ")");
             totalCapacity += parseInt(PNS_BATTERY[pn].capacity);
+            if (tempData.battery_voltage === "" && PNS_BATTERY[pn].voltage) tempData.battery_voltage = String(PNS_BATTERY[pn].voltage); // first battery's voltage
         }
         tempData.battery_capacity = totalCapacity;
     } else if (isCarbon()) { // only for h-Series
@@ -2344,14 +3053,15 @@ async function beginSetup() {
                 // Sleep to allow battery to start talking
                 $("#setupProgress").text("Waiting for battery communication...");
                 await sleep(10000);
-            } else if (inverterModel >= "11000") { // i-Series (S1 BAT battery)
+            } else if (inverterModel >= "11000") { // i-Series (S1 BAT or S3 BAT battery)
                 // Set battery type
                 $("#setupProgress").text("Configuring battery...");
-                const response = await $.get({ url: "api.php?set=command&type=24064&entity=401&text2=2" }); // battery type
+                const iBatteryType = isS3Battery ? "4" : "2"; // 4=S3 BAT, 2=S1 BAT
+                const response = await $.get({ url: `api.php?set=command&type=24064&entity=401&text2=${iBatteryType}` }); // battery type
                 if (response != "1") return showSettingParametersError("E025a. Please refresh the page! (Bad response while writing command to local database)");
                 // Wait for battery type parameter to be confirmed in settings
                 $("#setupProgress").text("Waiting for battery type confirmation...");
-                const parameterSet = await waitForSettingsParameter("Inverter", "401", "s1", "2");
+                const parameterSet = await waitForSettingsParameter("Inverter", "401", "s1", iBatteryType);
                 if (!parameterSet) return showSettingParametersError("E026. Timeout waiting for battery type parameter to be applied. Please try again.");
                 // Sleep to allow battery to start talking
                 $("#setupProgress").text("Waiting for battery communication...");
@@ -2427,7 +3137,7 @@ async function verifyModulesCommunication() {
             return [false, t("ss_lifepo_communication_problem")];
 
         // Verify number of modules
-        const moduleWh = inverterModel >= "11100" ? 16000 : (inverterModel >= "11000" ? 2550 : 3500);
+        const moduleWh = inverterModel >= "11100" ? 16000 : (inverterModel >= "11000" ? (isS3Battery ? 10380 : 2550) : 3500);
         const recognizedModules = Math.round(parseInt(bmsCapacity) / moduleWh);
         let countModules = 0;
         $("#lifepo_serialnumbers").val().trim().split("\n").forEach(sn => {
@@ -2555,8 +3265,26 @@ const PARAM_DEFS = [
     ["meter2Label",                           "S", "UserMeter",                 "2",   "s1"],
     ["meter3Label",                           "S", "UserMeter",                 "3",   "s1"],
     ["meter4Label",                           "S", "UserMeter",                 "4",   "s1"],
-    ["controlMaxChargingPowerACMode",         "C", 20769,   0, ""],
-    ["controlMaxInjectionPowerMode",          "C", 20770,   0, ""],
+    ["extstorMode",                           "S", "ModbusExtStorageDevice",    "0", "mode"],
+    ["gridTcpMode",                           "S", "ModbusGridDeviceTcp",       "0", "mode"],
+    ["gridTcpIp",                             "S", "ModbusGridDeviceTcp",       "0",   "s1"],
+    ["extsolTcpMode",                         "S", "ModbusExtSolarDeviceTcp",   "0", "mode"],
+    ["extsolTcpIp",                           "S", "ModbusExtSolarDeviceTcp",   "0",   "s1"],
+    ["extstorTcpMode",                        "S", "ModbusExtStorageDeviceTcp", "0", "mode"],
+    ["extstorTcpIp",                          "S", "ModbusExtStorageDeviceTcp", "0",   "s1"],
+    ["meter1TcpMode",                         "S", "UserMeterTcp",              "1", "mode"],
+    ["meter1TcpIp",                           "S", "UserMeterTcp",              "1",   "s1"],
+    ["meter2TcpMode",                         "S", "UserMeterTcp",              "2", "mode"],
+    ["meter2TcpIp",                           "S", "UserMeterTcp",              "2",   "s1"],
+    ["meter3TcpMode",                         "S", "UserMeterTcp",              "3", "mode"],
+    ["meter3TcpIp",                           "S", "UserMeterTcp",              "3",   "s1"],
+    ["meter4TcpMode",                         "S", "UserMeterTcp",              "4", "mode"],
+    ["meter4TcpIp",                           "S", "UserMeterTcp",              "4",   "s1"],
+    ["gridOperatorControlMode",               "S", "GridOperatorControl",       "0", "mode"],
+    ["gridOperatorControlConsumption",        "S", "GridOperatorControl",       "0",   "v1"],
+    ["gridOperatorControlGeneration",         "S", "GridOperatorControl",       "0",   "v2"],
+    ["gridOperatorControlPmin",               "S", "GridOperatorControl",       "0",   "v3"],
+    ["evcGridOperatorControl",                "S", "EVCharger",                 "1",   "v6"],
     ["evcTitle",                              "S", "EVCharger",                 "1",   "s1"],
     ["evcMode",                               "S", "EVCharger",                 "1", "mode"],
     ["evcProducerName",                       "S", "EVCharger",                 "1",   "s2"],
@@ -2566,6 +3294,17 @@ const PARAM_DEFS = [
     ["evcPhaseMode",                          "S", "EVCharger",                 "1",   "v4"],
     ["evcMinCurrent",                         "S", "EVCharger",                 "1",   "v1"],
     ["evcMaxCurrent",                         "S", "EVCharger",                 "1",   "v2"],
+    ["genQuietMode",                          "S", "GeneratorQuiet",            "0", "mode", true],
+    ["genQuietStart",                         "S", "GeneratorQuiet",            "0",   "v1", true],
+    ["genQuietEnd",                           "S", "GeneratorQuiet",            "0",   "v2", true],
+    ["genQuietTargetSoc",                     "S", "GeneratorQuiet",            "0",   "v3", true],
+    ["genQuietEmergencySoc",                  "S", "GeneratorQuiet",            "0",   "v4", true],
+    ["genMode",                               "S", "Generator",                 "0", "mode", true],
+    ["genRatedPower",                         "S", "Generator",                 "0",   "v1", true],
+    ["genDesiredPower",                       "S", "Generator",                 "0",   "v2", true],
+    ["genStartSoc",                           "S", "Generator",                 "0",   "v3", true],
+    ["genStopSoc",                            "S", "Generator",                 "0",   "v4", true],
+    ["genOutput",                             "S", "Generator",                 "0",   "v5", true],
     ["systemTimezone",                        "S", "SystemTimezone",            "0",   "s1"],
     ["prepareBatteryExtension",               "S", "PrepareBatteryExtension",   "0", "mode"],
     ["cloudSet",                              "S", "CloudSet",                  "0", "mode"],
@@ -2693,70 +3432,93 @@ function makeNewParams() {
         }
     }
 
-    p["nominalSol"   ] = Math.round(parseFloat($("#solar_wattpeak"    ).val() || 0) * 1000);
-    p["nominalExtSol"] = Math.round(parseFloat($("#solar_wattpeak_ext").val() || 0) * 1000);
-    p["forecastSol1_v1"  ] = Math.round((parseFloat($("#pv_string_1_power"      ).val()) || 0) * 1000);
-    p["forecastSol1_v2"  ] = parseInt(             $("#pv_string_1_declination" ).val()) || 0;
-    p["forecastSol1_v3"  ] = parseInt(             $("#pv_string_1_orientation" ).val()) || 0;
-    p["forecastSol2_v1"  ] = Math.round((parseFloat($("#pv_string_2_power"      ).val()) || 0) * 1000);
-    p["forecastSol2_v2"  ] = parseInt(             $("#pv_string_2_declination" ).val()) || 0;
-    p["forecastSol2_v3"  ] = parseInt(             $("#pv_string_2_orientation" ).val()) || 0;
-    p["forecastSol3_v1"  ] = Math.round((parseFloat($("#pv_string_3_power"      ).val()) || 0) * 1000);
-    p["forecastSol3_v2"  ] = parseInt(             $("#pv_string_3_declination" ).val()) || 0;
-    p["forecastSol3_v3"  ] = parseInt(             $("#pv_string_3_orientation" ).val()) || 0;
-    p["forecastSol4_v1"  ] = Math.round((parseFloat($("#pv_string_4_power"      ).val()) || 0) * 1000);
-    p["forecastSol4_v2"  ] = parseInt(             $("#pv_string_4_declination"  ).val()) || 0;
-    p["forecastSol4_v3"  ] = parseInt(             $("#pv_string_4_orientation"  ).val()) || 0;
-    p["forecastSol5_v1"  ] = Math.round((parseFloat($("#pv_string_5_power"      ).val()) || 0) * 1000);
-    p["forecastSol5_v2"  ] = parseInt(             $("#pv_string_5_declination"  ).val()) || 0;
-    p["forecastSol5_v3"  ] = parseInt(             $("#pv_string_5_orientation"  ).val()) || 0;
-    p["forecastSol6_v1"  ] = Math.round((parseFloat($("#pv_string_6_power"      ).val()) || 0) * 1000);
-    p["forecastSol6_v2"  ] = parseInt(             $("#pv_string_6_declination"  ).val()) || 0;
-    p["forecastSol6_v3"  ] = parseInt(             $("#pv_string_6_orientation"  ).val()) || 0;
-    p["forecastSol7_v1"  ] = Math.round((parseFloat($("#pv_string_7_power"      ).val()) || 0) * 1000);
-    p["forecastSol7_v2"  ] = parseInt(             $("#pv_string_7_declination"  ).val()) || 0;
-    p["forecastSol7_v3"  ] = parseInt(             $("#pv_string_7_orientation"  ).val()) || 0;
-    p["forecastSol8_v1"  ] = Math.round((parseFloat($("#pv_string_8_power"      ).val()) || 0) * 1000);
-    p["forecastSol8_v2"  ] = parseInt(             $("#pv_string_8_declination"  ).val()) || 0;
-    p["forecastSol8_v3"  ] = parseInt(             $("#pv_string_8_orientation"  ).val()) || 0;
-    p["forecastSol101_v1"] = Math.round((parseFloat($("#pv_string_101_power"    ).val()) || 0) * 1000);
-    p["forecastSol101_v2"] = parseInt(             $("#pv_string_101_declination").val()) || 0;
-    p["forecastSol101_v3"] = parseInt(             $("#pv_string_101_orientation").val()) || 0;
-    p["forecastSol102_v1"] = Math.round((parseFloat($("#pv_string_102_power"    ).val()) || 0) * 1000);
-    p["forecastSol102_v2"] = parseInt(             $("#pv_string_102_declination").val()) || 0;
-    p["forecastSol102_v3"] = parseInt(             $("#pv_string_102_orientation").val()) || 0;
-    p["forecastSol103_v1"] = Math.round((parseFloat($("#pv_string_103_power"    ).val()) || 0) * 1000);
-    p["forecastSol103_v2"] = parseInt(             $("#pv_string_103_declination").val()) || 0;
-    p["forecastSol103_v3"] = parseInt(             $("#pv_string_103_orientation").val()) || 0;
-    p["forecastSol104_v1"] = Math.round((parseFloat($("#pv_string_104_power"    ).val()) || 0) * 1000);
-    p["forecastSol104_v2"] = parseInt(             $("#pv_string_104_declination").val()) || 0;
-    p["forecastSol104_v3"] = parseInt(             $("#pv_string_104_orientation").val()) || 0;
-    p["forecastSol105_v1"] = Math.round((parseFloat($("#pv_string_105_power"    ).val()) || 0) * 1000);
-    p["forecastSol105_v2"] = parseInt(             $("#pv_string_105_declination").val()) || 0;
-    p["forecastSol105_v3"] = parseInt(             $("#pv_string_105_orientation").val()) || 0;
-    p["forecastSol106_v1"] = Math.round((parseFloat($("#pv_string_106_power"    ).val()) || 0) * 1000);
-    p["forecastSol106_v2"] = parseInt(             $("#pv_string_106_declination").val()) || 0;
-    p["forecastSol106_v3"] = parseInt(             $("#pv_string_106_orientation").val()) || 0;
-    p["forecastSol107_v1"] = Math.round((parseFloat($("#pv_string_107_power"    ).val()) || 0) * 1000);
-    p["forecastSol107_v2"] = parseInt(             $("#pv_string_107_declination").val()) || 0;
-    p["forecastSol107_v3"] = parseInt(             $("#pv_string_107_orientation").val()) || 0;
-    p["forecastSol108_v1"] = Math.round((parseFloat($("#pv_string_108_power"    ).val()) || 0) * 1000);
-    p["forecastSol108_v2"] = parseInt(             $("#pv_string_108_declination").val()) || 0;
-    p["forecastSol108_v3"] = parseInt(             $("#pv_string_108_orientation").val()) || 0;
-    p["regulationMode"] = $("#regulation_check").is(":checked") ? "1" : "0";
-    p["extsolMode"    ] = $("#extsol_check    ").is(":checked") ? "1" : "0";
-    p["meter1Mode"    ] = $("#meter1_mode     ").val();
-    p["meter2Mode"    ] = $("#meter2_mode     ").val();
-    p["meter3Mode"    ] = $("#meter3_mode     ").val();
-    p["meter4Mode"    ] = $("#meter4_mode     ").val();
-    p["meter1Label"   ] = $("#meter1_label    ").val();
-    p["meter2Label"   ] = $("#meter2_label    ").val();
-    p["meter3Label"   ] = $("#meter3_label    ").val();
-    p["meter4Label"   ] = $("#meter4_label    ").val();
+    p["nominalSol"       ] = Math.round( parseFloat($("#solar_wattpeak"           ).val()  || 0) * 1000);
+    p["nominalExtSol"    ] = Math.round( parseFloat($("#solar_wattpeak_ext"       ).val()  || 0) * 1000);
+    p["forecastSol1_v1"  ] = Math.round((parseFloat($("#pv_string_1_power"        ).val()) || 0) * 1000);
+    p["forecastSol1_v2"  ] = parseInt(              $("#pv_string_1_declination"  ).val()) || 0;
+    p["forecastSol1_v3"  ] = parseInt(              $("#pv_string_1_orientation"  ).val()) || 0;
+    p["forecastSol2_v1"  ] = Math.round((parseFloat($("#pv_string_2_power"        ).val()) || 0) * 1000);
+    p["forecastSol2_v2"  ] = parseInt(              $("#pv_string_2_declination"  ).val()) || 0;
+    p["forecastSol2_v3"  ] = parseInt(              $("#pv_string_2_orientation"  ).val()) || 0;
+    p["forecastSol3_v1"  ] = Math.round((parseFloat($("#pv_string_3_power"        ).val()) || 0) * 1000);
+    p["forecastSol3_v2"  ] = parseInt(              $("#pv_string_3_declination"  ).val()) || 0;
+    p["forecastSol3_v3"  ] = parseInt(              $("#pv_string_3_orientation"  ).val()) || 0;
+    p["forecastSol4_v1"  ] = Math.round((parseFloat($("#pv_string_4_power"        ).val()) || 0) * 1000);
+    p["forecastSol4_v2"  ] = parseInt(              $("#pv_string_4_declination"  ).val()) || 0;
+    p["forecastSol4_v3"  ] = parseInt(              $("#pv_string_4_orientation"  ).val()) || 0;
+    p["forecastSol5_v1"  ] = Math.round((parseFloat($("#pv_string_5_power"        ).val()) || 0) * 1000);
+    p["forecastSol5_v2"  ] = parseInt(              $("#pv_string_5_declination"  ).val()) || 0;
+    p["forecastSol5_v3"  ] = parseInt(              $("#pv_string_5_orientation"  ).val()) || 0;
+    p["forecastSol6_v1"  ] = Math.round((parseFloat($("#pv_string_6_power"        ).val()) || 0) * 1000);
+    p["forecastSol6_v2"  ] = parseInt(              $("#pv_string_6_declination"  ).val()) || 0;
+    p["forecastSol6_v3"  ] = parseInt(              $("#pv_string_6_orientation"  ).val()) || 0;
+    p["forecastSol7_v1"  ] = Math.round((parseFloat($("#pv_string_7_power"        ).val()) || 0) * 1000);
+    p["forecastSol7_v2"  ] = parseInt(              $("#pv_string_7_declination"  ).val()) || 0;
+    p["forecastSol7_v3"  ] = parseInt(              $("#pv_string_7_orientation"  ).val()) || 0;
+    p["forecastSol8_v1"  ] = Math.round((parseFloat($("#pv_string_8_power"        ).val()) || 0) * 1000);
+    p["forecastSol8_v2"  ] = parseInt(              $("#pv_string_8_declination"  ).val()) || 0;
+    p["forecastSol8_v3"  ] = parseInt(              $("#pv_string_8_orientation"  ).val()) || 0;
+    p["forecastSol101_v1"] = Math.round((parseFloat($("#pv_string_101_power"      ).val()) || 0) * 1000);
+    p["forecastSol101_v2"] = parseInt(              $("#pv_string_101_declination").val()) || 0;
+    p["forecastSol101_v3"] = parseInt(              $("#pv_string_101_orientation").val()) || 0;
+    p["forecastSol102_v1"] = Math.round((parseFloat($("#pv_string_102_power"      ).val()) || 0) * 1000);
+    p["forecastSol102_v2"] = parseInt(              $("#pv_string_102_declination").val()) || 0;
+    p["forecastSol102_v3"] = parseInt(              $("#pv_string_102_orientation").val()) || 0;
+    p["forecastSol103_v1"] = Math.round((parseFloat($("#pv_string_103_power"      ).val()) || 0) * 1000);
+    p["forecastSol103_v2"] = parseInt(              $("#pv_string_103_declination").val()) || 0;
+    p["forecastSol103_v3"] = parseInt(              $("#pv_string_103_orientation").val()) || 0;
+    p["forecastSol104_v1"] = Math.round((parseFloat($("#pv_string_104_power"      ).val()) || 0) * 1000);
+    p["forecastSol104_v2"] = parseInt(              $("#pv_string_104_declination").val()) || 0;
+    p["forecastSol104_v3"] = parseInt(              $("#pv_string_104_orientation").val()) || 0;
+    p["forecastSol105_v1"] = Math.round((parseFloat($("#pv_string_105_power"      ).val()) || 0) * 1000);
+    p["forecastSol105_v2"] = parseInt(              $("#pv_string_105_declination").val()) || 0;
+    p["forecastSol105_v3"] = parseInt(              $("#pv_string_105_orientation").val()) || 0;
+    p["forecastSol106_v1"] = Math.round((parseFloat($("#pv_string_106_power"      ).val()) || 0) * 1000);
+    p["forecastSol106_v2"] = parseInt(              $("#pv_string_106_declination").val()) || 0;
+    p["forecastSol106_v3"] = parseInt(              $("#pv_string_106_orientation").val()) || 0;
+    p["forecastSol107_v1"] = Math.round((parseFloat($("#pv_string_107_power"      ).val()) || 0) * 1000);
+    p["forecastSol107_v2"] = parseInt(              $("#pv_string_107_declination").val()) || 0;
+    p["forecastSol107_v3"] = parseInt(              $("#pv_string_107_orientation").val()) || 0;
+    p["forecastSol108_v1"] = Math.round((parseFloat($("#pv_string_108_power"      ).val()) || 0) * 1000);
+    p["forecastSol108_v2"] = parseInt(              $("#pv_string_108_declination").val()) || 0;
+    p["forecastSol108_v3"] = parseInt(              $("#pv_string_108_orientation").val()) || 0;
+    p["regulationMode"   ] = $("#regulation_check" ).is(":checked") ? "1" : "0";
+    p["extsolMode"       ] = $("#extsol_check"     ).is(":checked") ? "1" : "0";
+    p["meter1Mode"       ] = $("#meter1_mode"      ).val();
+    p["meter2Mode"       ] = $("#meter2_mode"      ).val();
+    p["meter3Mode"       ] = $("#meter3_mode"      ).val();
+    p["meter4Mode"       ] = $("#meter4_mode"      ).val();
+    p["meter1Label"      ] = $("#meter1_label"     ).val();
+    p["meter2Label"      ] = $("#meter2_label"     ).val();
+    p["meter3Label"      ] = $("#meter3_label"     ).val();
+    p["meter4Label"      ] = $("#meter4_label"     ).val();
+    p["extstorMode"      ] = $("#extstor_mode"     ).val();
+    p["gridTcpMode"      ] = $("#grid_tcp_model"   ).val();
+    p["gridTcpIp"        ] = $("#grid_tcp_ip"      ).val().trim();
+    p["extsolTcpMode"    ] = $("#extsol_tcp_model" ).val();
+    p["extsolTcpIp"      ] = $("#extsol_tcp_ip"    ).val().trim();
+    p["extstorTcpMode"   ] = $("#extstor_tcp_model").val();
+    p["extstorTcpIp"     ] = $("#extstor_tcp_ip"   ).val().trim();
+    p["meter1TcpMode"    ] = $("#meter1_tcp_model" ).val();
+    p["meter1TcpIp"      ] = $("#meter1_tcp_ip"    ).val().trim();
+    p["meter2TcpMode"    ] = $("#meter2_tcp_model" ).val();
+    p["meter2TcpIp"      ] = $("#meter2_tcp_ip"    ).val().trim();
+    p["meter3TcpMode"    ] = $("#meter3_tcp_model" ).val();
+    p["meter3TcpIp"      ] = $("#meter3_tcp_ip"    ).val().trim();
+    p["meter4TcpMode"    ] = $("#meter4_tcp_model" ).val();
+    p["meter4TcpIp"      ] = $("#meter4_tcp_ip"    ).val().trim();
 
-    p["controlMaxChargingPowerACMode"] = $("#controlMaxChargingPowerAC_check").is(":checked") ? "1" : "0";
-    p["controlMaxInjectionPowerMode" ] = $("#controlMaxInjectionPower_check" ).is(":checked") ? "1" : "0";
+    // GridOperatorControl — "Not connected" / unchecked consumption resets all dependent values to 0
+    const steuveMode        = $("#steuve_connection").val();
+    const steuveGeneration  = steuveMode !== "0" && $("#steuve_generation_check" ).is(":checked");
+    const steuveConsumption = steuveMode !== "0" && $("#steuve_consumption_check").is(":checked");
+    p["gridOperatorControlMode"       ] = (steuveGeneration || steuveConsumption) ? steuveMode : "0"; // no control active → saved as "Not connected"
+    p["gridOperatorControlConsumption"] = steuveConsumption ? "1" : "0";
+    p["gridOperatorControlGeneration" ] = steuveGeneration  ? "1" : "0";
+    p["gridOperatorControlPmin"       ] = steuveConsumption ? Math.round((parseFloat($("#steuve_pmin").val()) || 0) * 1000) : 0;
+    p["evcGridOperatorControl"        ] = isSteuveWallboxLimitActive() ? "1" : "0";
 
+    // EVCharger
     p["evcTitle"       ] = $("#evcTitle"      ).val().trim();
     p["evcMode"        ] = parseInt($("#evcProducer" ).val());
     if (p["evcMode"] === 0) {
@@ -2777,11 +3539,36 @@ function makeNewParams() {
         p["evcMaxCurrent"  ] = (parseInt($("#evcMaxCurrent").val()) || 0) * 100;
     }
 
+    // Generator — only the fields of the selected type are set, the others stay as stored (optional PARAM_DEFS rows)
+    if (hasGenerator) {
+        const genMode = parseInt($("#generatorType").val()) || 0;
+        p["genMode"] = genMode;
+        if (genMode >= 1) {
+            p["genRatedPower"  ] = Math.round(Number($("#generatorRatedPower").val()) * 1000); // kVA -> VA
+            p["genDesiredPower"] = Math.round(Number($("#generatorDesiredPower").val()));
+        }
+        if (genMode >= 2) {
+            p["genStartSoc"] = Math.round(Number($("#generatorStartSoc").val()));
+            p["genStopSoc" ] = Math.round(Number($("#generatorStopSoc").val()));
+            p["genOutput"  ] = parseInt($("#generatorGpioOutput").val());
+        }
+        if (genMode === 3 && hasGeneratorQuiet) {
+            const quiet = $("#generatorQuietMode").val() === "1" ? 1 : 0;
+            p["genQuietMode"] = quiet;
+            if (quiet) {
+                p["genQuietStart"       ] = generatorTimeToHHMM($("#generatorQuietStart").val());
+                p["genQuietEnd"         ] = generatorTimeToHHMM($("#generatorQuietEnd").val());
+                p["genQuietTargetSoc"   ] = Math.round(Number($("#generatorQuietTargetSoc").val()) || 0);
+                p["genQuietEmergencySoc"] = Math.round(Number($("#generatorQuietEmergencySoc").val()) || 0);
+            }
+        }
+    }
+
     p["systemTimezone"         ] = systemTimezone;
     p["prepareBatteryExtension"] = "0";
     p["cloudSet"               ] = "1";
 
-    p["battery_type" ] = inverterModel >= "11100" ? "3" : (inverterModel >= "11000" ? "2" : (isLiFePO() ? "1" : "0")); // 3=lifepo c-Series (R1/R2), 2=lifepo i-Series (S1 BAT), h5/h10 → 1=lifepo, 0=carbon
+    p["battery_type" ] = inverterModel >= "11100" ? "3" : (inverterModel >= "11000" ? (isS3Battery ? "4" : "2") : (isLiFePO() ? "1" : "0")); // 3=lifepo c-Series (R1/R2), 4/2=lifepo i-Series (S3 BAT/S1 BAT), h5/h10 → 1=lifepo, 0=carbon
     p["reactive_mode"] = "0"; // Reactive mode off
 
     if (elementExists("#extended_lfsmoThreshold")) p["lfsmo_threshold"] = Math.round($("#extended_lfsmoThreshold").val());
@@ -2953,8 +3740,8 @@ function makeOldParams(response) {
     const p = {};
     const temp = response["Inverter"];
 
-    p["nominalSol"    ] = !response.hasOwnProperty("NominalSol"   ) ? 0 : response["NominalSol"   ]["0"]["v1"];
-    p["nominalExtSol" ] = !response.hasOwnProperty("NominalExtSol") ? 0 : response["NominalExtSol"]["0"]["v1"];
+    p["nominalSol"       ] = !response.hasOwnProperty("NominalSol"   ) ? 0 : response["NominalSol"   ]["0"]["v1"];
+    p["nominalExtSol"    ] = !response.hasOwnProperty("NominalExtSol") ? 0 : response["NominalExtSol"]["0"]["v1"];
     p["forecastSol1_v1"  ] = parseInt(response["ForecastSolar"]?.["1"]  ?.["v1"]) || 0;
     p["forecastSol1_v2"  ] = parseInt(response["ForecastSolar"]?.["1"]  ?.["v2"]) || 0;
     p["forecastSol1_v3"  ] = parseInt(response["ForecastSolar"]?.["1"]  ?.["v3"]) || 0;
@@ -3003,20 +3790,41 @@ function makeOldParams(response) {
     p["forecastSol108_v1"] = parseInt(response["ForecastSolar"]?.["108"]?.["v1"]) || 0;
     p["forecastSol108_v2"] = parseInt(response["ForecastSolar"]?.["108"]?.["v2"]) || 0;
     p["forecastSol108_v3"] = parseInt(response["ForecastSolar"]?.["108"]?.["v3"]) || 0;
-    p["regulationMode"] = !response.hasOwnProperty("InjectionMode"       ) ? "0" : response["InjectionMode"       ]["0"]["v5"  ];
-    p["extsolMode"    ] = !response.hasOwnProperty("ModbusExtSolarDevice") ? "0" : response["ModbusExtSolarDevice"]["0"]["mode"];
-    p["meter1Mode"    ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("1") ? "0" : response["UserMeter"]["1"]["mode"];
-    p["meter2Mode"    ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("2") ? "0" : response["UserMeter"]["2"]["mode"];
-    p["meter3Mode"    ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("3") ? "0" : response["UserMeter"]["3"]["mode"];
-    p["meter4Mode"    ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("4") ? "0" : response["UserMeter"]["4"]["mode"];
-    p["meter1Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("1") ? ""  : response["UserMeter"]["1"]["s1"  ];
-    p["meter2Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("2") ? ""  : response["UserMeter"]["2"]["s1"  ];
-    p["meter3Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("3") ? ""  : response["UserMeter"]["3"]["s1"  ];
-    p["meter4Label"   ] = !response.hasOwnProperty("UserMeter") || !response["UserMeter"].hasOwnProperty("4") ? ""  : response["UserMeter"]["4"]["s1"  ];
+    p["regulationMode"   ] = !response.hasOwnProperty("InjectionMode"            )                                                  ? "0" : response["InjectionMode"            ]["0"]["v5"  ];
+    p["extsolMode"       ] = !response.hasOwnProperty("ModbusExtSolarDevice"     )                                                  ? "0" : response["ModbusExtSolarDevice"     ]["0"]["mode"];
+    p["meter1Mode"       ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("1") ? "0" : response["UserMeter"                ]["1"]["mode"];
+    p["meter2Mode"       ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("2") ? "0" : response["UserMeter"                ]["2"]["mode"];
+    p["meter3Mode"       ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("3") ? "0" : response["UserMeter"                ]["3"]["mode"];
+    p["meter4Mode"       ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("4") ? "0" : response["UserMeter"                ]["4"]["mode"];
+    p["meter1Label"      ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("1") ? ""  : response["UserMeter"                ]["1"]["s1"  ];
+    p["meter2Label"      ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("2") ? ""  : response["UserMeter"                ]["2"]["s1"  ];
+    p["meter3Label"      ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("3") ? ""  : response["UserMeter"                ]["3"]["s1"  ];
+    p["meter4Label"      ] = !response.hasOwnProperty("UserMeter"                ) || !response["UserMeter"   ].hasOwnProperty("4") ? ""  : response["UserMeter"                ]["4"]["s1"  ];
+    p["extstorMode"      ] = !response.hasOwnProperty("ModbusExtStorageDevice"   )                                                  ? "0" : response["ModbusExtStorageDevice"   ]["0"]["mode"];
+    p["gridTcpMode"      ] = !response.hasOwnProperty("ModbusGridDeviceTcp"      )                                                  ? "0" : response["ModbusGridDeviceTcp"      ]["0"]["mode"];
+    p["gridTcpIp"        ] = !response.hasOwnProperty("ModbusGridDeviceTcp"      )                                                  ? ""  : response["ModbusGridDeviceTcp"      ]["0"]["s1"  ];
+    p["extsolTcpMode"    ] = !response.hasOwnProperty("ModbusExtSolarDeviceTcp"  )                                                  ? "0" : response["ModbusExtSolarDeviceTcp"  ]["0"]["mode"];
+    p["extsolTcpIp"      ] = !response.hasOwnProperty("ModbusExtSolarDeviceTcp"  )                                                  ? ""  : response["ModbusExtSolarDeviceTcp"  ]["0"]["s1"  ];
+    p["extstorTcpMode"   ] = !response.hasOwnProperty("ModbusExtStorageDeviceTcp")                                                  ? "0" : response["ModbusExtStorageDeviceTcp"]["0"]["mode"];
+    p["extstorTcpIp"     ] = !response.hasOwnProperty("ModbusExtStorageDeviceTcp")                                                  ? ""  : response["ModbusExtStorageDeviceTcp"]["0"]["s1"  ];
+    p["meter1TcpMode"    ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("1") ? "0" : response["UserMeterTcp"             ]["1"]["mode"];
+    p["meter1TcpIp"      ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("1") ? ""  : response["UserMeterTcp"             ]["1"]["s1"  ];
+    p["meter2TcpMode"    ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("2") ? "0" : response["UserMeterTcp"             ]["2"]["mode"];
+    p["meter2TcpIp"      ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("2") ? ""  : response["UserMeterTcp"             ]["2"]["s1"  ];
+    p["meter3TcpMode"    ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("3") ? "0" : response["UserMeterTcp"             ]["3"]["mode"];
+    p["meter3TcpIp"      ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("3") ? ""  : response["UserMeterTcp"             ]["3"]["s1"  ];
+    p["meter4TcpMode"    ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("4") ? "0" : response["UserMeterTcp"             ]["4"]["mode"];
+    p["meter4TcpIp"      ] = !response.hasOwnProperty("UserMeterTcp"             ) || !response["UserMeterTcp"].hasOwnProperty("4") ? ""  : response["UserMeterTcp"             ]["4"]["s1"  ];
 
-    p["controlMaxChargingPowerACMode"] = !response.hasOwnProperty("ControlMaxChargingPowerAC") ? "0" : response["ControlMaxChargingPowerAC"]["0"]["mode"];
-    p["controlMaxInjectionPowerMode" ] = !response.hasOwnProperty("ControlMaxInjectionPower" ) ? "0" : response["ControlMaxInjectionPower" ]["0"]["mode"];
+    // GridOperatorControl — fall back to the real DB state (0) when the row/field is missing
+    const goc = response["GridOperatorControl"]?.["0"];
+    p["gridOperatorControlMode"       ] = goc?.["mode"] ?? "0";
+    p["gridOperatorControlConsumption"] = goc?.["v1"  ] ?? "0";
+    p["gridOperatorControlGeneration" ] = goc?.["v2"  ] ?? "0";
+    p["gridOperatorControlPmin"       ] = parseInt(goc?.["v3"]) || 0;
+    p["evcGridOperatorControl"        ] = response["EVCharger"]?.["1"]?.["v6"] ?? "0";
 
+    // EVCharger
     p["evcTitle"       ] = !response.hasOwnProperty("EVCharger"      ) || !response["EVCharger"      ].hasOwnProperty("1") ?   "" : (response["EVCharger"      ]["1"]["s1"  ] || "");
     p["evcMode"        ] = !response.hasOwnProperty("EVCharger"      ) || !response["EVCharger"      ].hasOwnProperty("1") ?    0 : parseInt(response["EVCharger"      ]["1"]["mode"] || 0);
     p["evcProducerName"] = !response.hasOwnProperty("EVCharger"      ) || !response["EVCharger"      ].hasOwnProperty("1") ?   "" : (response["EVCharger"      ]["1"]["s2"  ] || "");
@@ -3026,6 +3834,25 @@ function makeOldParams(response) {
     p["evcPhaseMode"   ] = !response.hasOwnProperty("EVCharger"      ) || !response["EVCharger"      ].hasOwnProperty("1") ?    0 : parseInt(response["EVCharger"      ]["1"]["v4"  ] || 0);
     p["evcMinCurrent"  ] = !response.hasOwnProperty("EVCharger"      ) || !response["EVCharger"      ].hasOwnProperty("1") ?    0 : parseInt(response["EVCharger"      ]["1"]["v1"  ] || 0);
     p["evcMaxCurrent"  ] = !response.hasOwnProperty("EVCharger"      ) || !response["EVCharger"      ].hasOwnProperty("1") ?    0 : parseInt(response["EVCharger"      ]["1"]["v2"  ] || 0);
+
+    // Generator — only set when the row exists, so the optional PARAM_DEFS rows skip missing rows
+    const gen = response["Generator"]?.["0"];
+    if (gen) {
+        p["genMode"        ] = parseInt(gen["mode"]) || 0;
+        p["genRatedPower"  ] = parseInt(gen["v1"  ]) || 0;
+        p["genDesiredPower"] = parseInt(gen["v2"  ]) || 0;
+        p["genStartSoc"    ] = parseInt(gen["v3"  ]) || 0;
+        p["genStopSoc"     ] = parseInt(gen["v4"  ]) || 0;
+        p["genOutput"      ] = parseInt(gen["v5"  ]) || 0;
+    }
+    const genQuiet = response["GeneratorQuiet"]?.["0"];
+    if (genQuiet) {
+        p["genQuietMode"        ] = parseInt(genQuiet["mode"]) || 0;
+        p["genQuietStart"       ] = parseInt(genQuiet["v1"  ]) || 0;
+        p["genQuietEnd"         ] = parseInt(genQuiet["v2"  ]) || 0;
+        p["genQuietTargetSoc"   ] = parseInt(genQuiet["v3"  ]) || 0;
+        p["genQuietEmergencySoc"] = parseInt(genQuiet["v4"  ]) || 0;
+    }
 
     p["systemTimezone"         ] = !response.hasOwnProperty("SystemTimezone"         ) || !response["SystemTimezone"         ].hasOwnProperty("0") ? ""  : response["SystemTimezone"         ]["0"]["s1"  ];
     p["prepareBatteryExtension"] = !response.hasOwnProperty("PrepareBatteryExtension") || !response["PrepareBatteryExtension"].hasOwnProperty("0") ? "0" : response["PrepareBatteryExtension"]["0"]["mode"];
@@ -3191,6 +4018,11 @@ async function applyParams() {
                 if (restoreResponse !== "1") return showSettingParametersError("E040. Could not set BMS battery connect to 2. Please try again.");
                 await waitForSettingsParameter("Inverter", "10003", "s1", "2");
             }
+            // Wait for background program to settle new settings (especially TCP meter config)
+            for (let i = 15; i > 0; i--) {
+                $("#setupProgress").text(`Finalizing settings... ${i}s`);
+                await sleep(1000);
+            }
             // Show success
             $("#settingParamsIcon").html('<i class="bi bi-check-circle-fill text-success lh-1" style="font-size:3rem;"></i>');
             $("#message").addClass("text-success").html(t("ss_setting_success"));
@@ -3263,6 +4095,11 @@ async function setup_checkParameters() {
                 const restoreResponse = await $.get({ url: "api.php?set=command&type=24064&entity=10003&text2=2" });
                 if (restoreResponse !== "1") return showSettingParametersError("E040. Could not set BMS battery connect to 2. Please try again.");
                 await waitForSettingsParameter("Inverter", "10003", "s1", "2");
+            }
+            // Wait for background program to settle new settings (especially TCP meter config)
+            for (let i = 15; i > 0; i--) {
+                $("#setupProgress").text(`Finalizing settings... ${i}s`);
+                await sleep(1000);
             }
             // Show success
             $("#settingParamsIcon").html('<i class="bi bi-check-circle-fill text-success lh-1" style="font-size:3rem;"></i>');

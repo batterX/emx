@@ -59,14 +59,15 @@ async function doLogin() {
             sessionResponse = await $.post({
                 url: "cmd/session.php",
                 data: {
-                    installer_email:     email,
-                    installer_password:  pass,
-                    installer_gender:    response.gender     ?? "0",
-                    installer_firstname: response.firstname  ?? "",
-                    installer_lastname:  response.lastname   ?? "",
-                    installer_company:   response.company    ?? "",
-                    installer_telephone: response.telephone  ?? "",
-                    installer_country:   response.country    ?? ""
+                    installer_email:        email,
+                    installer_password:     pass,
+                    installer_gender:       response.gender       ?? "0",
+                    installer_firstname:    response.firstname    ?? "",
+                    installer_lastname:     response.lastname     ?? "",
+                    installer_company:      response.company      ?? "",
+                    installer_telephone:    response.telephone    ?? "",
+                    installer_country:      response.country      ?? "",
+                    installer_access_flags: response.access_flags ?? ""
                 }
             });
         } catch {

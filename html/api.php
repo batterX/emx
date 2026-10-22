@@ -143,7 +143,8 @@ else if(isset($_GET["get"]) && strtolower($_GET["get"]) == "history") {
                 $row["extsol_power"         ] === null ? null : intval($row["extsol_power"         ]),
                 $row["gridsol_power"        ] === null ? null : intval($row["gridsol_power"        ]),
                 $row["extstor_power_from"   ] === null ? null : intval($row["extstor_power_from"   ]),
-                $row["extstor_power_to"     ] === null ? null : intval($row["extstor_power_to"     ])
+                $row["extstor_power_to"     ] === null ? null : intval($row["extstor_power_to"     ]),
+                $row["generator_power"      ] === null ? null : intval($row["generator_power"      ])
             ];
         }
         header("Content-Type: application/json");

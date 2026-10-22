@@ -65,6 +65,19 @@ function hideUserAction(rowId) {
     $(`#${rowId}Action`).addClass("d-none");
 }
 
+// Grid present on every phase (UPS input 273–275 > 100 V); null when values are missing
+function isGridInputActive(response) {
+    const v1 = response?.["273"]?.["1"], v2 = response?.["274"]?.["1"], v3 = response?.["275"]?.["1"];
+    if (v1 != undefined && v2 == undefined && v3 == undefined) return v1 > 10000;
+    if (v1 != undefined && v2 != undefined && v3 != undefined) return v1 > 10000 && v2 > 10000 && v3 > 10000;
+    return null;
+}
+
+function updateGridHint(response) {
+    if (isGridInputActive(response) === false) showUserAction("testBatteryCharging", t("st_bc_grid_on"));
+    else hideUserAction("testBatteryCharging");
+}
+
 
 
 
@@ -494,12 +507,15 @@ async function testBatteryCharging_waitUntilCharged() {
             if (response["2465"]["3"] != 11) return await _alert("E021. Please refresh the page! (BatteryChargingAC could not be set to forced-on)");
             if (!response.hasOwnProperty("logtime") || !isLogtimeRecent(response["logtime"])) return await _alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
+            updateGridHint(response);
+
             const power = parseInt(response["1121"]["1"]);
 
             if (isLiFePO()) {
                 const level = parseInt(response["1074"]["1"]);
                 setTestStatus("testBatteryCharging", t("st_bc_charging_level", { target: batteryMinLevel, level, power }));
                 if (batteryWaitCounter < 1 && level >= batteryMinLevel) {
+                    hideUserAction("testBatteryCharging");
                     batteryCharging_alreadyCharged = true;
                     testBatteryCharging();
                     return;
@@ -508,6 +524,7 @@ async function testBatteryCharging_waitUntilCharged() {
                 const voltage = parseInt(response["1042"]["1"]) / 100;
                 setTestStatus("testBatteryCharging", t("st_bc_charging_voltage", { target: batteryMinVoltage, voltage, power }));
                 if (batteryWaitCounter < 1 && voltage >= batteryMinVoltage) {
+                    hideUserAction("testBatteryCharging");
                     batteryCharging_alreadyCharged = true;
                     testBatteryCharging();
                     return;
@@ -554,9 +571,10 @@ async function testBatteryCharging_waitUntilDischarged() {
             if (response["2465"]["5"] != 11) return await _alert("E028. Please refresh the page! (BatteryDischargingAC could not be set to forced-on)");
             if (!response.hasOwnProperty("logtime") || !isLogtimeRecent(response["logtime"])) return await _alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
+            // Solar first; the grid is only checked once solar is off
             const solarPower = parseInt(response["1634"]["0"]);
             if (solarPower > 100) showUserAction("testBatteryCharging", t("st_bc_solar_off"));
-            else hideUserAction("testBatteryCharging");
+            else updateGridHint(response);
 
             const power = parseInt(response["1121"]["1"]);
 
@@ -616,6 +634,8 @@ async function testBatteryCharging_doTest() {
             if (!response.hasOwnProperty("logtime") || !isLogtimeRecent(response["logtime"]))
                 return await _alert("Error! Connection to inverter has been lost. Please refresh the page!");
 
+            updateGridHint(response);
+
             const batteryPower = parseInt(response["1121"]["1"]);
             batteryCharging_count += 1;
             setTestStatus("testBatteryCharging", t("st_bc_testing", { count: batteryCharging_count, power: batteryPower }));
@@ -624,6 +644,7 @@ async function testBatteryCharging_doTest() {
                 if (batteryCharging_count < 5) {
                     await sleep(5000);
                 } else {
+                    hideUserAction("testBatteryCharging");
                     break;
                 }
             } else {

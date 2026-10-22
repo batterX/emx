@@ -15,3 +15,17 @@
     height: 250px;
     border: 1px solid #dee2e6;
 }
+
+#importProjectDropZone {
+    border: 2px dashed var(--bs-success);
+    background-color: rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+#importProjectDropZone:hover,
+#importProjectDropZone.dragover {
+    background-color: rgba(var(--bs-success-rgb), 0.12);
+}
+#importProjectDropZone.dragover {
+    border-style: solid;
+}

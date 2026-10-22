@@ -14,9 +14,12 @@ if(empty($_SESSION["installer_email"])) { header("location: installer_login.php"
 
 $batteryType     = isset($_SESSION["battery_type"])     ? $_SESSION["battery_type"]             : "";
 $batteryCapacity = isset($_SESSION["battery_capacity"]) ? intval($_SESSION["battery_capacity"]) : 0;
-$systemMode      = isset($_SESSION["system_mode"])      ? $_SESSION["system_mode"]              : "0";
 $noBattery       = ($batteryType == "other" && $batteryCapacity == 0) || $batteryType == "";
-$backupMode      = ($systemMode == "1");
+
+// Read the actual system mode live from the inverter (SystemMode[0][mode]: "0" = UPS, "1" = Backup).
+// Not stored in session — system_setup writes it straight to the inverter, so we read it back here.
+$dataSettings    = json_decode(@file_get_contents("http://localhost/api.php?get=settings"), true) ?: [];
+$backupMode      = (isset($dataSettings["SystemMode"]["0"]["mode"]) && $dataSettings["SystemMode"]["0"]["mode"] == "1");
 
 ?>
 

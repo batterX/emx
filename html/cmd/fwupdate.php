@@ -5,7 +5,7 @@ session_start();
 if(empty($_POST)) exit();
 
 $fwActions = ["status", "start"];
-$fwTypes   = ["i-arm", "i-dsp-sm", "i-dsp-lg", "i-bms", "c-merged"];
+$fwTypes   = ["i-arm", "i-dsp-sm", "i-dsp-lg", "i-bms", "i-bms-s3", "c-merged", "c-bms"];
 
 if(!isset($_POST["action"]) || empty($_POST["action"])) exit();
 if(!in_array($_POST["action"], $fwActions)) exit();
@@ -46,9 +46,11 @@ if($_POST["action"] == "start") {
     switch($type) {
         case "i-arm":    $url = "https://api.batterx.app/special/firmware/i-series/arm/WA0-00001-"                   . $version . ".bin"; break;
         case "i-bms":    $url = "https://api.batterx.app/special/firmware/i-series/bms/WA1-00003-00(00OLP_E1_2"      . $version . "_EBS-C).bin"; break;
+        case "i-bms-s3": $url = "https://api.batterx.app/special/firmware/i-series/bms-s3/WA1-00009-"                . $version . ".bin"; break;
         case "i-dsp-lg": $url = "https://api.batterx.app/special/firmware/i-series/dsp-lg/WDM-03200-"                . $version . ".bin"; break;
         case "i-dsp-sm": $url = "https://api.batterx.app/special/firmware/i-series/dsp-sm/WDM-03000-"                . $version . ".bin"; break;
         case "c-merged": $url = "https://api.batterx.app/special/firmware/c-series/merged/V1-"                       . $version . "_H4100.bin"; break;
+        case "c-bms":    $url = "https://api.batterx.app/special/firmware/r1-r2/merged/V1-"                          . $version . "_BZF00.bin"; break;
         default: echo "0"; exit();
     }
     $command = "sudo nsenter -t 1 -m sh -c \"nohup /home/pi/FWUpdate " . escapeshellarg($url) . " > /dev/null 2>&1 &\" && sleep 5 && pgrep FWUpdate > /dev/null && echo 'FWUpdate_OK' || echo 'FWUpdate_NOK'";

@@ -191,9 +191,11 @@ async function getInstallationInfo() {
 
         validateForm();
         tryAutoGeocode();
+        overlayImportedCustomer();
 
     } catch {
         alert("E001. Please refresh the page! (Error while getting installation info from cloud)");
+        overlayImportedCustomer();
     }
 }
 
@@ -237,10 +239,12 @@ async function getCustomerInfo(email) {
         }
 
         validateForm();
+        overlayImportedCustomer();
 
     } catch {
         alert("E002. Please refresh the page! (Error while getting customer info from cloud)");
         validateForm();
+        overlayImportedCustomer();
     }
 }
 
@@ -383,4 +387,145 @@ $("#btn_continue").on("click", submitForm);
     initInstallationMap();
     getInstallationInfo(); // async; tryAutoGeocode() inside will skip if lat already set
     validateForm();
+})();
+
+
+
+
+
+
+
+
+
+
+// Import batterX Project — module-scope state used by overlayImportedCustomer + cloud fetch tail-calls
+let importedProject = null;
+
+function importVal(v) {
+    return (typeof v === "string" && v !== "") ? v : undefined;
+}
+
+function overlayImportedCustomer() {
+    if (!importedProject) return;
+
+    const c = importedProject.customer     ?? {};
+    const i = importedProject.installation ?? {};
+
+    // Customer card — skipped entirely when #email is disabled
+    // (existing customer is already assigned to this system, don't overwrite their info).
+    // System_setup fields are still imported downstream from the session blob.
+    if (!$("#email").is(":disabled")) {
+        if (importVal(c.email))     $("#email"           ).val(c.email);
+        if (importVal(c.gender))    $("#gender"          ).val(c.gender);
+        if (importVal(c.firstname)) $("#firstname"       ).val(c.firstname);
+        if (importVal(c.lastname))  $("#lastname"        ).val(c.lastname);
+        if (importVal(c.company))   $("#company"         ).val(c.company);
+        if (importVal(c.telephone)) $("#telephone"       ).val(c.telephone);
+        if (importVal(c.country))   $("#customer-country").val(c.country);
+        if (importVal(c.city))      $("#customer-city"   ).val(c.city);
+        if (importVal(c.zipcode))   $("#customer-zip"    ).val(c.zipcode);
+        if (importVal(c.address))   $("#customer-address").val(c.address);
+    }
+
+    // Installation card — all-or-nothing overlay. Country is server-rendered pre-filled, so we don't
+    // gate on it. If city + zip + address are ALL empty, apply all 4 (including country) from the file.
+    // If ANY of the three is already filled (from cloud or installer typing), skip the whole block.
+    // Applies whether or not #email is disabled.
+    const cityEmpty    = $("#installation-city"   ).val().trim() === "";
+    const zipEmpty     = $("#installation-zip"    ).val().trim() === "";
+    const addressEmpty = $("#installation-address").val().trim() === "";
+    if (cityEmpty && zipEmpty && addressEmpty) {
+        if (importVal(i.country)) $("#installation-country").val(i.country);
+        if (importVal(i.city))    $("#installation-city"   ).val(i.city);
+        if (importVal(i.zipcode)) $("#installation-zip"    ).val(i.zipcode);
+        if (importVal(i.address)) $("#installation-address").val(i.address);
+    }
+
+    // Auto-check "same address" if customer + installation addresses now match (whichever source they came from)
+    if ($("#customer-country").val().trim() !== "" && $("#customer-country").val().trim() === $("#installation-country").val().trim()
+        && $("#customer-city"   ).val().trim() !== "" && $("#customer-city"   ).val().trim() === $("#installation-city"   ).val().trim()
+        && $("#customer-zip"    ).val().trim() !== "" && $("#customer-zip"    ).val().trim() === $("#installation-zip"    ).val().trim()
+        && $("#customer-address").val().trim() !== "" && $("#customer-address").val().trim() === $("#installation-address").val().trim()) {
+        $("#sameAddress").prop("checked", true).trigger("change");
+    }
+
+    validateForm();
+    tryAutoGeocode();
+}
+
+// Drop zone + hidden file input (guarded server-side via $canImportProject)
+(function() {
+    const $dropZone = $("#importProjectDropZone");
+    if (!$dropZone.length) return;
+    const $fileInput = $("#importProjectFile");
+
+    async function handleProjectFile(file) {
+        if (!file.name.toLowerCase().endsWith(".batterx")) {
+            _alert(t("ci_import_invalid_file"));
+            return;
+        }
+
+        let text;
+        try { text = await file.text(); }
+        catch { _alert(t("ci_import_read_error")); return; }
+
+        let parsed;
+        try { parsed = JSON.parse(text); }
+        catch { _alert(t("ci_import_parse_error")); return; }
+
+        if (parsed?.type !== "batterx_project") {
+            _alert(t("ci_import_wrong_type"));
+            return;
+        }
+
+        // Email-mismatch guard: if #email is disabled and file's email differs, reject
+        const currentEmail = $("#email").val().trim().toLowerCase();
+        const fileEmail    = (parsed?.customer?.email ?? "").trim().toLowerCase();
+        if ($("#email").is(":disabled") && fileEmail && fileEmail !== currentEmail) {
+            _alert(t("ci_import_email_mismatch", { file: fileEmail, current: currentEmail }));
+            return;
+        }
+
+        // Persist to session so system_detect + system_setup can consume
+        try {
+            const resp = await $.post({ url: "cmd/session.php", data: { imported_project: text } });
+            if (resp !== "1") throw new Error("bad response");
+        } catch {
+            _alert(t("ci_import_save_error"));
+            return;
+        }
+
+        importedProject = parsed;
+
+        // Hide drop zone (permanent for this page visit; session clears on next page load)
+        $("#importProjectSectionWrap").addClass("d-none");
+
+        // If email differs and field isn't disabled → set + trigger change (which fires getCustomerInfo → overlay at end)
+        if (fileEmail && fileEmail !== currentEmail && !$("#email").is(":disabled")) {
+            $("#email").val(fileEmail).trigger("change");
+        } else {
+            overlayImportedCustomer();
+        }
+    }
+
+    $fileInput.on("change", function() {
+        const file = this.files[0];
+        if (file) handleProjectFile(file);
+        $(this).val(""); // reset so the same file can be picked again
+    });
+
+    $dropZone.on("dragover", function(e) {
+        e.preventDefault();
+        $(this).addClass("dragover");
+    });
+    $dropZone.on("dragleave dragend", function(e) {
+        e.preventDefault();
+        $(this).removeClass("dragover");
+    });
+    $dropZone.on("drop", function(e) {
+        e.preventDefault();
+        $(this).removeClass("dragover");
+        const files = e.originalEvent.dataTransfer?.files;
+        if (files && files.length) handleProjectFile(files[0]);
+    });
 })();

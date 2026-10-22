@@ -8,17 +8,12 @@ $step = 2;
 
 // Reset session - preserve lang + software_version
 $lang_keep = $_SESSION["lang"] ?? "en";
-$sv_keep   = $_SESSION["software_version"] ?? "";
 session_unset();
-$_SESSION["lang"] = $lang_keep;
-if($sv_keep) $_SESSION["software_version"] = $sv_keep;
+$_SESSION["lang"]             = $lang_keep;
+$_SESSION["software_version"] = $softwareVersion;
 
 
 
-
-// Save "software_version" to SESSION
-if(isset($_GET["software_version"]))
-    $_SESSION["software_version"] = $_GET["software_version"];
 
 // Save "box_apikey" to SESSION
 $output = shell_exec("cat /proc/cpuinfo");

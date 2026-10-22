@@ -16,6 +16,14 @@ if(empty($_SESSION["installer_email"])) { header("location: installer_login.php"
 // Pre-select installer's country in dropdowns
 $installerCountry = isset($_SESSION["installer_country"]) ? $_SESSION["installer_country"] : "de";
 
+// Import batterX Project feature — gated by access_flags bit 16
+$installerAccessFlags = $_SESSION["installer_access_flags"] ?? "";
+$canImportProject     = strlen($installerAccessFlags) > 16 && $installerAccessFlags[16] === "1";
+
+// Clear any prior imported project on every customer_info page load — enables re-import on re-entry
+unset($_SESSION["imported_project"]);
+unset($_SESSION["imported_grid_standard_applied"]);
+
 ?>
 
 
@@ -44,6 +52,17 @@ $installerCountry = isset($_SESSION["installer_country"]) ? $_SESSION["installer
     <div class="page-container">
 
         <h1 class="mb-4"><?php echo t("ci_title"); ?></h1>
+
+        <?php if($canImportProject): ?>
+            <!-- Import batterX Project (drop zone) -->
+            <div id="importProjectSectionWrap">
+                <label for="importProjectFile" id="importProjectDropZone" class="d-block text-center rounded px-4 py-3 mb-4">
+                    <div class="fw-bold mb-1"><?php echo t("ci_import_title"); ?></div>
+                    <div class="text-muted small"><?php echo t("ci_import_hint"); ?></div>
+                </label>
+                <input type="file" id="importProjectFile" accept=".batterx" class="d-none">
+            </div>
+        <?php endif; ?>
 
         <!-- Card 1: Customer Information -->
         <div class="card mb-4 text-start">

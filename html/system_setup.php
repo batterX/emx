@@ -20,6 +20,13 @@ $isEstonia    = $gridStandard === "9";
 
 $customerEmail = $_SESSION["customer_email"] ?? "";
 
+// Imported batterX Project (if any) — normalized to safe JS via json_encode round-trip
+$importedProjectJs = "null";
+if (!empty($_SESSION["imported_project"])) {
+    $decoded = json_decode($_SESSION["imported_project"], true);
+    if ($decoded !== null) $importedProjectJs = json_encode($decoded);
+}
+
 // Get Settings Table
 $dataSettings = json_decode(file_get_contents("http://localhost/api.php?get=settings"), true);
 $inverterModel = $dataSettings["Inverter"]["1"]["s1"];
@@ -229,6 +236,13 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                     <div id="battery_content" class="p-4 border-top">
 
                         <div id="battery_section_0">
+                            <div id="lifepo_sn_read_delay" class="alert alert-primary small mb-3 d-none" role="alert">
+                                <?php echo t("ss_lifepo_sn_read_delay") ?>
+                                <div class="progress" style="margin-top: 0.75rem; height: 0.5rem;">
+                                    <div id="lifepoSnProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%;"></div>
+                                </div>
+                                <div id="lifepoSnProgressText" class="mt-1"></div>
+                            </div>
                             <div id="lifepo_bms_section">
                                 <label for="lifepo_bms" class="form-label text-muted lh-sm mb-1"><?php echo t("ss_battery_bms_sn") ?></label>
                                 <textarea id="lifepo_bms" class="form-control text-uppercase mb-3" placeholder="xxxxxxxxxxxxxxxx" rows="2"></textarea>
@@ -400,7 +414,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     <a href="javascript:void(0)" id="batterx_strings_config_label" class="d-inline-block small mt-2"><?php echo t("ss_pv_strings_config"); ?></a>
 
                                     <div id="pv_string_1" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 1</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 1</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_1_power"><?php echo t("ss_installed_power"); ?></label>
@@ -422,7 +441,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_2" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 2</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 2</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="2" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_2_power"><?php echo t("ss_installed_power"); ?></label>
@@ -444,7 +468,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_3" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 3</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 3</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_3_power"><?php echo t("ss_installed_power"); ?></label>
@@ -466,7 +495,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_4" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 4</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 4</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="4" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_4_power"><?php echo t("ss_installed_power"); ?></label>
@@ -488,7 +522,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_5" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 5</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 5</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="5" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_5_power"><?php echo t("ss_installed_power"); ?></label>
@@ -510,7 +549,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_6" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 6</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 6</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="6" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_6_power"><?php echo t("ss_installed_power"); ?></label>
@@ -532,7 +576,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_7" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 7</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 7</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="7" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_7_power"><?php echo t("ss_installed_power"); ?></label>
@@ -554,7 +603,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_8" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 8</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 8</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="8" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_8_power"><?php echo t("ss_installed_power"); ?></label>
@@ -610,7 +664,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
 
                                     <!-- Right: External -->
 
-                                    <div class="mb-3" style="font-size:1.125rem;"><?php echo t("ss_col_ext_inverter"); ?></div>
+                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                        <span style="font-size:1.125rem;"><?php echo t("ss_col_ext_inverter"); ?></span>
+                                        <a href="javascript:void(0)" id="ext_solar_remove_btn" class="text-danger lh-1 rounded-pill ripple" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_ext_solar_remove'); ?>">
+                                            <i class="bi bi-x" style="font-size:1.5rem;"></i>
+                                        </a>
+                                    </div>
 
                                     <label for="solar_wattpeak_ext" class="form-label text-muted lh-sm mb-1"><?php echo t("ss_solar_size"); ?></label>
                                     <div class="row g-2 mb-3 align-items-center">
@@ -621,7 +680,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     <a href="javascript:void(0)" id="ext_strings_config_label" class="d-inline-block small mt-2"><?php echo t("ss_pv_strings_config"); ?></a>
 
                                     <div id="pv_string_101" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 1</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 1</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="101" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_101_power"><?php echo t("ss_installed_power"); ?></label>
@@ -643,7 +707,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_102" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 2</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 2</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="102" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_102_power"><?php echo t("ss_installed_power"); ?></label>
@@ -665,7 +734,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_103" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 3</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 3</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="103" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_103_power"><?php echo t("ss_installed_power"); ?></label>
@@ -687,7 +761,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_104" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 4</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 4</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="104" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_104_power"><?php echo t("ss_installed_power"); ?></label>
@@ -709,7 +788,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_105" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 5</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 5</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="105" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_105_power"><?php echo t("ss_installed_power"); ?></label>
@@ -731,7 +815,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_106" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 6</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 6</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="106" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_106_power"><?php echo t("ss_installed_power"); ?></label>
@@ -753,7 +842,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_107" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 7</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 7</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="107" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_107_power"><?php echo t("ss_installed_power"); ?></label>
@@ -775,7 +869,12 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                     </div>
 
                                     <div id="pv_string_108" class="d-none">
-                                        <div class="text-muted small py-2"><?php echo t("ss_pv_string"); ?> 8</div>
+                                        <div class="d-flex align-items-center gap-2 py-2">
+                                            <span class="text-muted small"><?php echo t("ss_pv_string"); ?> 8</span>
+                                            <a href="javascript:void(0)" class="pv-string-remove text-danger lh-1 rounded-pill ripple" data-entity="108" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_pv_string_remove'); ?>">
+                                                <i class="bi bi-x fs-5"></i>
+                                            </a>
+                                        </div>
                                         <div class="row g-2 mb-1 align-items-center">
                                             <div class="col-1"></div>
                                             <label class="col-5 col-form-label col-form-label-sm text-muted" for="pv_string_108_power"><?php echo t("ss_installed_power"); ?></label>
@@ -850,16 +949,44 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                 </div>
 
                 <div class="card-body p-0">
+                    <!-- Control Signal Connection -->
                     <div class="p-4">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="controlMaxChargingPowerAC_check">
-                            <label class="form-check-label" for="controlMaxChargingPowerAC_check"><?php echo t("ss_steuve_max_charge_ac") ?> <span class="text-muted d-inline-block">(<?php echo t("ss_steuve_info"); ?>)</span></label>
-                        </div>
+                        <label for="steuve_connection" class="form-label text-muted lh-sm mb-1"><?php echo t("ss_steuve_connection") ?></label>
+                        <select id="steuve_connection" class="form-select">
+                            <option value="0"><?php echo t("ss_steuve_not_connected") ?></option>
+                            <option value="1">FNN-2Bit</option>
+                            <option value="2"><?php echo t("ss_steuve_terminal_strip") ?></option>
+                        </select>
+                        <img id="steuve_image_fnn2bit" src="img/gridoperatorcontrol_fnn2bit.png" class="img-fluid border rounded d-block mx-auto mt-3 d-none" alt="FNN-2Bit">
+                        <img id="steuve_image_terminal_strip" src="img/gridoperatorcontrol_klemmleiste.png" class="img-fluid border rounded d-block mx-auto mt-3 d-none" alt="<?php echo t("ss_steuve_terminal_strip") ?>">
                     </div>
-                    <div class="p-4 border-top">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="controlMaxInjectionPower_check">
-                            <label class="form-check-label" for="controlMaxInjectionPower_check"><?php echo t("ss_steuve_max_injection") ?> <span class="text-muted d-inline-block">(<?php echo t("ss_steuve_info"); ?>)</span></label>
+                    <div id="steuve_content" class="d-none">
+                        <!-- Power Generation Unit (§9 EEG) -->
+                        <div class="p-4 border-top">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="steuve_generation_check">
+                                <label class="form-check-label" for="steuve_generation_check"><?php echo t("ss_steuve_max_injection") ?> (§9 EEG)</label>
+                            </div>
+                        </div>
+                        <!-- Controllable Consumption Device (§14a EnWG) -->
+                        <div class="p-4 border-top">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="steuve_consumption_check">
+                                <label class="form-check-label" for="steuve_consumption_check"><?php echo t("ss_steuve_max_charge_ac") ?> (§14a EnWG)</label>
+                            </div>
+                            <div id="steuve_consumption_content" class="d-none mt-3 px-5">
+                                <div class="form-check mb-3">
+                                    <input type="checkbox" class="form-check-input" id="steuve_wallbox_check">
+                                    <label class="form-check-label" for="steuve_wallbox_check"><?php echo t("ss_steuve_wallbox_limit") ?> <a href="javascript:;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_steuve_wallbox_limit_tooltip'); ?>" class="text-decoration-none">(?)</a></label>
+                                </div>
+                                <label for="steuve_device_count" class="form-label text-muted lh-sm mb-1"><?php echo t("ss_steuve_device_count") ?></label>
+                                <input id="steuve_device_count" class="form-control mb-3" type="text" value="1" disabled>
+                                <label for="steuve_pmin" class="form-label text-muted lh-sm mb-1"><?php echo t("ss_steuve_pmin") ?></label>
+                                <div class="row g-2 align-items-center">
+                                    <div class="col"><input id="steuve_pmin" class="form-control" type="number" step="0.01" min="0" value="4.2"></div>
+                                    <div class="col-auto"><span class="text-muted">kW</span></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1034,15 +1161,21 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
 
                 <div class="card-body p-0">
                     <div class="px-4 py-2">
-                        <button id="btnUserMeters" type="button" class="btn btn-transparent d-block w-100 ripple" data-bs-toggle="modal" data-bs-target="#modalUserMeters">
-                            <div class="fw-bold"><?php echo t("ss_user_meters") ?></div>
-                            <div id="userMeterCount" class="text-muted small text-center"></div>
+                        <button id="btnEnergyMeters" type="button" class="btn btn-transparent d-block w-100 ripple" data-bs-toggle="modal" data-bs-target="#modalEnergyMeters">
+                            <div class="fw-bold"><?php echo t("ss_energy_meters") ?></div>
+                            <div id="energyMeterCount" class="text-muted small text-center"></div>
                         </button>
                     </div>
                     <div class="px-4 py-2 border-top">
                         <button id="btnWallbox" type="button" class="btn btn-transparent d-block w-100 ripple" data-bs-toggle="modal" data-bs-target="#modalWallbox">
                             <div class="fw-bold"><?php echo t("ss_wallbox") ?></div>
                             <div id="wallboxCount" class="text-muted small text-center"></div>
+                        </button>
+                    </div>
+                    <div id="generatorRow" class="px-4 py-2 border-top d-none">
+                        <button id="btnGenerator" type="button" class="btn btn-transparent d-block w-100 ripple" data-bs-toggle="modal" data-bs-target="#modalGenerator">
+                            <div class="fw-bold"><?php echo t("ss_generator") ?></div>
+                            <div id="generatorStatus" class="text-muted small text-center"></div>
                         </button>
                     </div>
                 </div>
@@ -1088,6 +1221,7 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                 </div>
                 <div class="modal-body">
                     <textarea id="installer_memo" class="form-control" rows="5"></textarea>
+                    <p class="text-muted mt-3 mb-0" style="font-size:0.8rem"><i><?php echo t("ss_installer_memo_note"); ?></i></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-success ripple" style="min-width:100px;" data-bs-dismiss="modal"><?php echo t("btn_save") ?></button>
@@ -1097,87 +1231,104 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
     </div>
 
 
-    <!-- Modal: User meters -->
-    <div class="modal fade" id="modalUserMeters" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
+    <!-- Modal: Energy Meters -->
+    <?php
+        $energyMeterCards = [
+            ["key" => "grid",    "titleKey" => "ss_em_grid",    "modbusId" => 1,   "conn" => "grid",   "hasLabel" => false,            "icon" => "bi-speedometer2"],
+            ["key" => "extsol",  "titleKey" => "ss_em_extsol",  "modbusId" => 2,   "conn" => "extsol", "hasLabel" => false,            "icon" => "bi-sun"         ],
+            ["key" => "extstor", "titleKey" => "ss_em_extstor", "modbusId" => 4,   "conn" => "yesno",  "hasLabel" => false,            "icon" => "bi-battery-half"],
+            ["key" => "meter1",  "titleKey" => "ss_user_meter", "modbusId" => 101, "conn" => "user",   "hasLabel" => true, "num" => 1, "icon" => "bi-1-circle"    ],
+            ["key" => "meter2",  "titleKey" => "ss_user_meter", "modbusId" => 102, "conn" => "user",   "hasLabel" => true, "num" => 2, "icon" => "bi-2-circle"    ],
+            ["key" => "meter3",  "titleKey" => "ss_user_meter", "modbusId" => 103, "conn" => "user",   "hasLabel" => true, "num" => 3, "icon" => "bi-3-circle"    ],
+            ["key" => "meter4",  "titleKey" => "ss_user_meter", "modbusId" => 104, "conn" => "user",   "hasLabel" => true, "num" => 4, "icon" => "bi-4-circle"    ],
+        ];
+    ?>
+    <div class="modal fade" id="modalEnergyMeters" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><?php echo t("ss_user_meters") ?></h5>
+                    <h5 class="modal-title"><?php echo t("ss_energy_meters") ?></h5>
                 </div>
-                <div class="modal-body p-0">
-
-                    <div class="p-3 border-bottom">
-                        <div class="small fw-bold mb-2"><?php echo t("ss_user_meter") ?> 1 (Modbus ID 101)</div>
-                        <div class="row g-2 mb-1 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter1_mode"><?php echo t("ss_meter_connected") ?></label>
-                            <div class="col-6">
-                                <select id="meter1_mode" class="form-select form-select-sm">
-                                    <option value="0" selected=""><?php echo t("btn_no") ?></option>
-                                    <option value="1"><?php echo t("btn_yes") ?></option>
-                                    <option value="2"><?php echo t("ss_meter_external_load") ?></option>
-                                </select>
+                <div class="modal-body p-3 pb-0">
+                    <?php foreach ($energyMeterCards as $card): ?>
+                        <?php
+                            $key       = $card["key"];
+                            $modbusId  = $card["modbusId"];
+                            $conn      = $card["conn"];
+                            $hasLabel  = $card["hasLabel"];
+                            $isDisabled = ($conn === "grid" || $conn === "extsol");
+                            $title = ($card["titleKey"] === "ss_user_meter") ? t("ss_user_meter") . " " . $card["num"] : t($card["titleKey"]);
+                        ?>
+                        <div class="card mb-3">
+                            <div class="card-header h6">
+                                <i class="bi <?php echo $card["icon"]; ?>"></i> <?php echo $title; ?>
+                            </div>
+                            <div class="card-body p-3">
+                                <!-- Connected -->
+                                <div class="row g-2 align-items-center">
+                                    <label class="col-6 col-form-label col-form-label-sm text-muted" for="<?php echo $key; ?>_mode">
+                                        <?php echo t("ss_meter_connected") ?>
+                                        <?php if ($conn === "extsol"): ?>
+                                            <a href="javascript:;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_em_extsol_connected_tooltip') ?>" class="text-decoration-none">(?)</a>
+                                        <?php endif; ?>
+                                    </label>
+                                    <div class="col-6">
+                                        <select id="<?php echo $key; ?>_mode" class="form-select form-select-sm"<?php echo $isDisabled ? " disabled" : ""; ?>>
+                                            <?php if ($conn === "grid"): ?>
+                                                <option value="1" selected><?php echo t("ss_em_yes_required") ?></option>
+                                            <?php elseif ($conn === "extsol" || $conn === "yesno"): ?>
+                                                <option value="0" selected><?php echo t("btn_no") ?></option>
+                                                <option value="1"><?php echo t("btn_yes") ?></option>
+                                            <?php else: /* user */ ?>
+                                                <option value="0" selected><?php echo t("btn_no") ?></option>
+                                                <option value="1"><?php echo t("btn_yes") ?></option>
+                                                <option value="2"><?php echo t("ss_meter_external_load") ?></option>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <!-- Config block (Model + Modbus ID / IP + Verify) -->
+                                <div id="<?php echo $key; ?>_config" class="mt-2 d-none">
+                                    <?php if ($hasLabel): ?>
+                                        <!-- Label (user meters only) -->
+                                        <div class="row g-2 mb-2 align-items-center">
+                                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="<?php echo $key; ?>_label"><?php echo t("ss_meter_label") ?></label>
+                                            <div class="col-6"><input id="<?php echo $key; ?>_label" class="form-control form-control-sm" type="text" placeholder="<?php echo t("ss_user_meter") ?> <?php echo $card["num"]; ?>"></div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <!-- Model select -->
+                                    <div class="row g-2 mb-2 align-items-center">
+                                        <label class="col-6 col-form-label col-form-label-sm text-muted" for="<?php echo $key; ?>_tcp_model"><?php echo t("ss_em_model") ?></label>
+                                        <div class="col-6">
+                                            <select id="<?php echo $key; ?>_tcp_model" class="form-select form-select-sm">
+                                                <option value="0"><?php echo t("ss_em_model_default") ?></option>
+                                                <option value="1">Eastron SDM630 TCP</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <!-- Modbus ID (RTU) -->
+                                    <div id="<?php echo $key; ?>_modbus_id_row" class="row g-2 align-items-center">
+                                        <label class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_em_modbus_id") ?></label>
+                                        <div class="col-6"><input type="text" class="form-control form-control-sm" value="<?php echo $modbusId; ?>" disabled></div>
+                                    </div>
+                                    <!-- IP + Verify (TCP) -->
+                                    <div id="<?php echo $key; ?>_tcp_rows" class="d-none">
+                                        <div class="row g-2 mb-2 align-items-center">
+                                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="<?php echo $key; ?>_tcp_ip"><?php echo t("ss_em_ip_address") ?></label>
+                                            <div class="col-6"><input type="text" id="<?php echo $key; ?>_tcp_ip" class="form-control form-control-sm" placeholder="192.168.1.100"></div>
+                                        </div>
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-6"></div>
+                                            <div class="col-6 d-flex align-items-center">
+                                                <span id="<?php echo $key; ?>_verify_result" class="lh-1" style="font-size:1.5rem"></span>
+                                                <button type="button" id="<?php echo $key; ?>_verify_btn" class="btn btn-sm btn-outline-success d-flex justify-content-center align-items-center flex-grow-1 ripple" disabled><?php echo t("ss_em_verify_communication") ?></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="row g-2 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter1_label"><?php echo t("ss_meter_label") ?></label>
-                            <div class="col-6"><input id="meter1_label" class="form-control form-control-sm" type="text" placeholder="<?php echo t("ss_user_meter") ?> 1"></div>
-                        </div>
-                    </div>
-
-                    <div class="p-3 border-bottom">
-                        <div class="small fw-bold mb-2"><?php echo t("ss_user_meter") ?> 2 (Modbus ID 102)</div>
-                        <div class="row g-2 mb-1 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter2_mode"><?php echo t("ss_meter_connected") ?></label>
-                            <div class="col-6">
-                                <select id="meter2_mode" class="form-select form-select-sm">
-                                    <option value="0" selected=""><?php echo t("btn_no") ?></option>
-                                    <option value="1"><?php echo t("btn_yes") ?></option>
-                                    <option value="2"><?php echo t("ss_meter_external_load") ?></option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-2 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter2_label"><?php echo t("ss_meter_label") ?></label>
-                            <div class="col-6"><input id="meter2_label" class="form-control form-control-sm" type="text" placeholder="<?php echo t("ss_user_meter") ?> 2"></div>
-                        </div>
-                    </div>
-
-                    <div class="p-3 border-bottom">
-                        <div class="small fw-bold mb-2"><?php echo t("ss_user_meter") ?> 3 (Modbus ID 103)</div>
-                        <div class="row g-2 mb-1 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter3_mode"><?php echo t("ss_meter_connected") ?></label>
-                            <div class="col-6">
-                                <select id="meter3_mode" class="form-select form-select-sm">
-                                    <option value="0" selected=""><?php echo t("btn_no") ?></option>
-                                    <option value="1"><?php echo t("btn_yes") ?></option>
-                                    <option value="2"><?php echo t("ss_meter_external_load") ?></option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-2 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter3_label"><?php echo t("ss_meter_label") ?></label>
-                            <div class="col-6"><input id="meter3_label" class="form-control form-control-sm" type="text" placeholder="<?php echo t("ss_user_meter") ?> 3"></div>
-                        </div>
-                    </div>
-
-                    <div class="p-3">
-                        <div class="small fw-bold mb-2"><?php echo t("ss_user_meter") ?> 4 (Modbus ID 104)</div>
-                        <div class="row g-2 mb-1 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter4_mode"><?php echo t("ss_meter_connected") ?></label>
-                            <div class="col-6">
-                                <select id="meter4_mode" class="form-select form-select-sm">
-                                    <option value="0" selected=""><?php echo t("btn_no") ?></option>
-                                    <option value="1"><?php echo t("btn_yes") ?></option>
-                                    <option value="2"><?php echo t("ss_meter_external_load") ?></option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-2 align-items-center">
-                            <label class="col-6 col-form-label col-form-label-sm text-muted" for="meter4_label"><?php echo t("ss_meter_label") ?></label>
-                            <div class="col-6"><input id="meter4_label" class="form-control form-control-sm" type="text" placeholder="<?php echo t("ss_user_meter") ?> 4"></div>
-                        </div>
-                    </div>
-
+                    <?php endforeach; ?>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-success ripple" style="min-width:100px;" data-bs-dismiss="modal"><?php echo t("btn_save") ?></button>
@@ -1318,6 +1469,163 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <?php if ($isVde4105): ?>
+                    <!-- §14a EnWG limit (display-only, mirrored from the SteuVE section) -->
+                    <div id="evcSteuveCard" class="px-3 pb-3 d-none">
+                        <div class="card">
+                            <div class="card-header h6">
+                                <i class="bi bi-sliders"></i> <?php echo t("ss_steuve_title") ?>
+                            </div>
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="evcSteuveLimit" disabled>
+                                    <label class="form-check-label" for="evcSteuveLimit"><?php echo t("ss_evc_steuve_limit") ?> <a href="javascript:;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="<?php echo t('ss_evc_steuve_limit_tooltip') ?>" class="text-decoration-none">(?)</a></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success ripple" style="min-width:100px;" data-bs-dismiss="modal"><?php echo t("btn_save") ?></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Generator -->
+    <div id="modalGenerator" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?php echo t("ss_generator") ?></h5>
+                </div>
+                <div class="modal-body p-0">
+
+                    <!-- Type + Power (Mobile, Stationary, Off-grid) -->
+                    <div class="p-3">
+                        <div class="row g-2 align-items-center">
+                            <label for="generatorType" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_type") ?></label>
+                            <div class="col-6">
+                                <select id="generatorType" class="form-select form-select-sm">
+                                    <option value="0"><?php echo t("ss_gen_type_none") ?></option>
+                                    <option value="1"><?php echo t("ss_gen_type_mobile") ?></option>
+                                    <option value="2"><?php echo t("ss_gen_type_stationary") ?></option>
+                                    <option value="3"><?php echo t("ss_gen_type_offgrid") ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="generatorPowerRows" class="d-none mt-2">
+                            <div class="row g-2 mb-2 align-items-center">
+                                <label for="generatorRatedPower" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_rated_power") ?></label>
+                                <div class="col-6">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="generatorRatedPower" class="form-control" min="0.1" max="6000" step="0.1">
+                                        <span class="input-group-text">kVA</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center">
+                                <label for="generatorDesiredPower" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_desired_power") ?></label>
+                                <div class="col-6">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="generatorDesiredPower" class="form-control" min="1" max="100" step="1">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;"><?php echo t("ss_gen_power_info") ?></p>
+                        </div>
+                    </div>
+
+                    <!-- Automatic start (Stationary, Off-grid) -->
+                    <div id="generatorAutoRows" class="p-3 border-top d-none">
+                        <div class="row g-2 mb-2 align-items-center">
+                            <label for="generatorStartSoc" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_start_soc") ?></label>
+                            <div class="col-6">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="generatorStartSoc" class="form-control" min="15" max="100" step="1">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-2 align-items-center">
+                            <label for="generatorStopSoc" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_stop_soc") ?></label>
+                            <div class="col-6">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="generatorStopSoc" class="form-control" min="15" max="100" step="1">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-center">
+                            <label for="generatorGpioOutput" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_gpio_output") ?></label>
+                            <div class="col-6">
+                                <select id="generatorGpioOutput" class="form-select form-select-sm">
+                                    <option value="" hidden></option>
+                                    <?php foreach ([1, 2, 3, 4] as $n): ?>
+                                    <option value="<?php echo $n ?>"><?php echo t("ss_gen_output") ?> <?php echo $n ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;"><?php echo t("ss_gen_auto_info") ?></p>
+                    </div>
+
+                    <!-- Quiet time (Off-grid) -->
+                    <div id="generatorQuietSection" class="p-3 border-top d-none">
+                        <div class="row g-2 align-items-center">
+                            <label for="generatorQuietMode" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_quiet_time") ?></label>
+                            <div class="col-6">
+                                <select id="generatorQuietMode" class="form-select form-select-sm">
+                                    <option value="0"><?php echo t("ss_gen_quiet_off") ?></option>
+                                    <option value="1"><?php echo t("ss_gen_quiet_on") ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="generatorQuietRows" class="d-none mt-2">
+                            <div class="row g-2 mb-2 align-items-center">
+                                <label for="generatorQuietStart" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_quiet_start") ?></label>
+                                <div class="col-6">
+                                    <input type="time" id="generatorQuietStart" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-2 align-items-center">
+                                <label for="generatorQuietEnd" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_quiet_end") ?></label>
+                                <div class="col-6">
+                                    <input type="time" id="generatorQuietEnd" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-2 align-items-center">
+                                <label for="generatorQuietTargetSoc" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_quiet_target_soc") ?></label>
+                                <div class="col-6">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="generatorQuietTargetSoc" class="form-control" min="0" max="100" step="1">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center">
+                                <label for="generatorQuietEmergencySoc" class="col-6 col-form-label col-form-label-sm text-muted"><?php echo t("ss_gen_quiet_emergency_soc") ?></label>
+                                <div class="col-6">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" id="generatorQuietEmergencySoc" class="form-control" min="0" max="100" step="1">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;"><?php echo t("ss_gen_quiet_info") ?></p>
+                        </div>
+                    </div>
+
+                    <!-- Generator info (all types) -->
+                    <div id="generatorInfoSection" class="p-3 border-top d-none">
+                        <label for="generatorInfo" class="form-label small text-muted mb-1"><?php echo t("ss_gen_info") ?></label>
+                        <textarea id="generatorInfo" class="form-control form-control-sm" rows="4" placeholder="<?php echo t("ss_gen_info_placeholder") ?>"></textarea>
                     </div>
 
                 </div>
@@ -1572,6 +1880,25 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
     </div>
 
 
+    <!-- Modal: Confirm PE on protected output (i/c/k-Series) -->
+    <div class="modal fade" id="modalConfirmPeOutput" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><?php echo t("ss_pe_confirm_title") ?></h5>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3"><?php echo t("ss_pe_confirm_message1") ?></p>
+                    <p class="mb-0" style="color:red"><?php echo t("ss_pe_confirm_message2") ?></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm px-4 py-2 btn-success ripple" style="min-width:50%"><b><?php echo t("btn_confirm") ?></b></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Modal: Confirm internal solar -->
     <div class="modal fade" id="modalConfirmInternalSolar" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -1740,6 +2067,8 @@ if(isset($dataSettings["SystemTimezone"]["0"]) && $dataSettings["SystemTimezone"
         const hasSolarWideInputRange = <?php echo $hasSolarWideInputRange ? "true" : "false"; ?>;
         const hasGridReconnectDelay  = <?php echo $hasGridReconnectDelay  ? "true" : "false"; ?>;
         const hasLfsmoDroop          = <?php echo $hasLfsmoDroop          ? "true" : "false"; ?>;
+
+        const importedProject        = <?php echo $importedProjectJs; ?>;
     </script>
 
     <script src="js/system_setup.js?v=<?php echo $versionHash; ?>"></script>

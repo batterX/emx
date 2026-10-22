@@ -92,6 +92,12 @@ function formatKwp($wp) {
     return rtrim(rtrim(number_format($kwp, 2, '.', ''), '0'), '.');
 }
 
+// HHMM int → "HH:MM" (2200 → "22:00")
+function formatHHMM($hhmm) {
+    $v = intval($hhmm);
+    return sprintf("%02d:%02d", intdiv($v, 100), $v % 100);
+}
+
 // Serial number pairs helper: groups SNs 2 per line
 function formatSNPairs($raw, $perLine = 2) {
     $arr = array_values(array_filter(array_map('trim', preg_split('/[\n,]+/', $raw))));
@@ -129,10 +135,6 @@ $isClix = isset(PNS_BOX[sv("box_partnumber")]["type"]) && PNS_BOX[sv("box_partnu
 
 // Device partnumber
 $devicePartnumber = isset($_SESSION["device_partnumber"]) ? $_SESSION["device_partnumber"] : "";
-
-// Controllable load
-$controlMaxCharging  = (isset($dataSettings["ControlMaxChargingPowerAC"]["0"]["mode"]) && $dataSettings["ControlMaxChargingPowerAC"]["0"]["mode"] == "1");
-$controlMaxInjection = (isset($dataSettings["ControlMaxInjectionPower"]["0"]["mode"])   && $dataSettings["ControlMaxInjectionPower"]["0"]["mode"]   == "1");
 
 // Live settings display values (SYSTEM + SOLAR sections)
 $solBxWp    = isset($dataSettings["NominalSol"   ]["0"]["v1"]) ? intval($dataSettings["NominalSol"   ]["0"]["v1"]) : 0;
@@ -203,7 +205,8 @@ if(sv("installer_og_email") !== sv("installer_email")) { // not the same install
     $pdfData["installer_for_commissioning"] .= "\n" . "• " . tRaw("is_telephone") . ": " . sv("installer_telephone");
 }
 
-$pdfData["installer_memo"] = sv("note");
+// Installer memo — removed from summary (may contain installer-only info; customer will see this doc in future)
+// $pdfData["installer_memo"] = sv("note");
 
 // Customer
 
@@ -241,9 +244,31 @@ $pdfData["grid_fuse"] = isset($dataSettings["SystemMode"]["0"]["v5"]) && intval(
 
 // Controllable Load
 
-$pdfData["controllable_load_max_charging_ac"] = $controlMaxCharging ? tRaw("is_enabled") : tRaw("is_disabled");
+// GridOperatorControl[0]: mode = connection, v1 = §14a consumption, v2 = §9 EEG generation, v3 = Pmin (W, 0 = not set → 4200)
+$goc        = $dataSettings["GridOperatorControl"]["0"] ?? [];
+$gocMode    = intval($goc["mode"] ?? 0);
+$gocWallbox = intval($dataSettings["EVCharger"]["1"]["v6"] ?? 0) === 1; // §14a limit applies to the batterX wallbox
 
-$pdfData["controllable_load_max_injection"] = $controlMaxInjection ? tRaw("is_enabled") : tRaw("is_disabled");
+$connectionMap = [
+    0 => tRaw("is_steuve_not_connected"),
+    1 => "FNN-2Bit",
+    2 => tRaw("is_steuve_terminal_strip"),
+];
+$pdfData["steuve_connection"] = $connectionMap[$gocMode] ?? (string) $gocMode;
+$pdfData["steuve_connected"]  = $gocMode > 0; // gates the two control rows
+
+$pdfData["steuve_generation"] = intval($goc["v2"] ?? 0) === 1 ? tRaw("is_enabled") : tRaw("is_disabled");
+
+if(intval($goc["v1"] ?? 0) === 1) {
+    $pminW = intval($goc["v3"] ?? 0);
+    $pdfData["steuve_consumption"] = implode("\n", [
+        tRaw("is_enabled"),
+        tRaw("is_steuve_device_count") . " = " . ($gocWallbox ? "2" : "1"),
+        tRaw("is_steuve_pmin")         . " = " . formatKwp($pminW > 0 ? $pminW : 4200) . " kW",
+    ]);
+} else {
+    $pdfData["steuve_consumption"] = tRaw("is_disabled");
+}
 
 // Solar
 
@@ -467,6 +492,63 @@ if($evcMode > 0) {
         tRaw("is_phase_switching") . " = " . ($phaseMap[$phaseMode] ?? "") . "\n" .
         tRaw("is_min_current")     . " = " . $minCur . " A\n" .
         tRaw("is_max_current")     . " = " . $maxCur . " A";
+
+    // §14a limit (EVCharger[1].v6) — VDE4105 only, "" hides the row
+    $pdfData["wallbox_steuve_limit"] = $isVde4105 ? ($gocWallbox ? tRaw("is_enabled") : tRaw("is_disabled")) : "";
+}
+
+// Generator
+
+$generator     = $dataSettings["Generator"]["0"] ?? null;
+$generatorMode = intval($generator["mode"] ?? 0);
+$pdfData["generator_show"] = !empty(PNS_DEVICE[sv("device_partnumber")]["generator"] ?? false) && $generator !== null && $generatorMode > 0;
+if($pdfData["generator_show"]) {
+
+    // Type
+    $genTypeMap = [
+        1 => tRaw("is_gen_type_mobile"),
+        2 => tRaw("is_gen_type_stationary"),
+        3 => tRaw("is_gen_type_offgrid"),
+    ];
+    $pdfData["generator_type"] = $genTypeMap[$generatorMode] ?? (string)$generatorMode;
+
+    // Power — rated power + desired share (kVA in brackets)
+    $ratedVa    = intval($generator["v1"] ?? 0);
+    $desiredPct = intval($generator["v2"] ?? 0);
+    $pdfData["generator_power"] =
+        tRaw("is_gen_rated_power")   . " = " . formatKwp($ratedVa) . " kVA\n" .
+        tRaw("is_gen_desired_power") . " = " . $desiredPct . " % (" . formatKwp($ratedVa * $desiredPct / 100) . " kVA)";
+
+    // Automatic start — Stationary and Off-grid only
+    $pdfData["generator_auto_start"] = "";
+    if($generatorMode >= 2) {
+        $genOutput     = intval($generator["v5"] ?? 0);
+        $genOutputName = trim($dataSettings["BxOutPin"][$genOutput]["name"] ?? "");
+        $pdfData["generator_auto_start"] =
+            tRaw("is_gen_start_soc")   . " = " . intval($generator["v3"] ?? 0) . " %\n" .
+            tRaw("is_gen_stop_soc")    . " = " . intval($generator["v4"] ?? 0) . " %\n" .
+            tRaw("is_gen_gpio_output") . " = " . tRaw("is_gen_output") . " " . $genOutput . ($genOutputName !== "" ? " (" . $genOutputName . ")" : "");
+    }
+
+    // Quiet time — Off-grid only, when the row exists; SoC 0 = off
+    $pdfData["generator_quiet"] = "";
+    $genQuiet = $dataSettings["GeneratorQuiet"]["0"] ?? null;
+    if($generatorMode === 3 && $genQuiet !== null) {
+        if(intval($genQuiet["mode"] ?? 0) === 1) {
+            $genQuietSoc = function($v) { return intval($v) > 0 ? intval($v) . " %" : tRaw("is_disabled"); };
+            $pdfData["generator_quiet"] =
+                tRaw("is_enabled") . "\n" .
+                tRaw("is_gen_quiet_start")         . " = " . formatHHMM($genQuiet["v1"] ?? 0) . "\n" .
+                tRaw("is_gen_quiet_end")           . " = " . formatHHMM($genQuiet["v2"] ?? 0) . "\n" .
+                tRaw("is_gen_quiet_target_soc")    . " = " . $genQuietSoc($genQuiet["v3"] ?? 0) . "\n" .
+                tRaw("is_gen_quiet_emergency_soc") . " = " . $genQuietSoc($genQuiet["v4"] ?? 0);
+        } else {
+            $pdfData["generator_quiet"] = tRaw("is_disabled");
+        }
+    }
+
+    // Generator info (free text from setup)
+    $pdfData["generator_info"] = sv("generator_info");
 }
 
 ?>
@@ -549,12 +631,14 @@ if($evcMode > 0) {
                             <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["installer_for_commissioning"]); ?></span>
                         </div>
                     <?php endif; ?>
+                    <?php /* Installer memo — removed from summary (may contain installer-only info; customer will see this doc in future) ?>
                     <?php if($pdfData["installer_memo"] !== ""): ?>
                         <div class="is-row">
                             <span class="is-label"><?php echo t("is_installer_memo"); ?></span>
                             <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["installer_memo"]); ?></span>
                         </div>
                     <?php endif; ?>
+                    <?php */ ?>
 
                     <!-- Customer -->
                     <div class="is-section-head"><?php echo t("is_section_customer"); ?></div>
@@ -774,13 +858,19 @@ if($evcMode > 0) {
                     <?php if($isVde4105): ?>
                         <div class="is-section-head"><?php echo t("is_section_controllable_load"); ?></div>
                         <div class="is-row">
-                            <span class="is-label"><?php echo t("is_max_charging_power_ac"); ?></span>
-                            <span class="is-value"><?php echo htmlspecialchars($pdfData["controllable_load_max_charging_ac"]); ?></span>
+                            <span class="is-label"><?php echo t("is_steuve_connection"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["steuve_connection"]); ?></span>
                         </div>
-                        <div class="is-row">
-                            <span class="is-label"><?php echo t("is_max_injection_power"); ?></span>
-                            <span class="is-value"><?php echo htmlspecialchars($pdfData["controllable_load_max_injection"]); ?></span>
-                        </div>
+                        <?php if($pdfData["steuve_connected"]): ?>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_steuve_generation_unit"); ?> (§9 EEG)</span>
+                                <span class="is-value"><?php echo htmlspecialchars($pdfData["steuve_generation"]); ?></span>
+                            </div>
+                            <div class="is-row">
+                                <span class="is-label"><?php echo t("is_steuve_consumption_device"); ?> (§14a EnWG)</span>
+                                <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["steuve_consumption"]); ?></span>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <!-- Grid Parameters -->
@@ -843,6 +933,43 @@ if($evcMode > 0) {
                             <span class="is-label"><?php echo t("is_electrical_wiring"); ?></span>
                             <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["wallbox_electrical"]); ?></span>
                         </div>
+                        <?php if($pdfData["wallbox_steuve_limit"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_evc_steuve_limit"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["wallbox_steuve_limit"]); ?></span>
+                        </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <!-- Generator -->
+                    <?php if($pdfData["generator_show"]): ?>
+                        <div class="is-section-head"><?php echo t("is_section_generator"); ?></div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_gen_type"); ?></span>
+                            <span class="is-value"><?php echo htmlspecialchars($pdfData["generator_type"]); ?></span>
+                        </div>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_gen_power"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["generator_power"]); ?></span>
+                        </div>
+                        <?php if($pdfData["generator_auto_start"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_gen_auto_start"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["generator_auto_start"]); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if($pdfData["generator_quiet"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_gen_quiet_time"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["generator_quiet"]); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if($pdfData["generator_info"] !== ""): ?>
+                        <div class="is-row">
+                            <span class="is-label"><?php echo t("is_gen_info"); ?></span>
+                            <span class="is-value" style="white-space: pre-wrap"><?php echo htmlspecialchars($pdfData["generator_info"]); ?></span>
+                        </div>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                 </div>

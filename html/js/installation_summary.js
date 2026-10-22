@@ -215,7 +215,8 @@ async function generatePdf() {
     row(t("is_telephone"),                     pdfData.installer_og_telephone);
     row(t("is_technician_on_site"),            pdfData.installer_on_site);
     row(t("is_installer_for_commissioning"),   pdfData.installer_for_commissioning);
-    row(t("is_installer_memo"),                pdfData.installer_memo);
+    // Installer memo — removed from summary (may contain installer-only info; customer will see this doc in future)
+    // row(t("is_installer_memo"),                pdfData.installer_memo);
 
     // ── Customer ──
     sectionHeader(t("is_section_customer"));
@@ -284,8 +285,11 @@ async function generatePdf() {
     // ── Controllable Load ──
     if(isVde4105) {
         sectionHeader(t("is_section_controllable_load"));
-        row(t("is_max_charging_power_ac"), pdfData.controllable_load_max_charging_ac);
-        row(t("is_max_injection_power"),   pdfData.controllable_load_max_injection);
+        row(t("is_steuve_connection"), pdfData.steuve_connection);
+        if(pdfData.steuve_connected) {
+            row(t("is_steuve_generation_unit")    + " (§9 EEG)",   pdfData.steuve_generation);
+            row(t("is_steuve_consumption_device") + " (§14a EnWG)", pdfData.steuve_consumption);
+        }
     }
 
     // ── Grid Parameters ──
@@ -314,6 +318,17 @@ async function generatePdf() {
         row(t("is_serial_number"),         pdfData.wallbox_serial);
         row(t("is_network_configuration"), pdfData.wallbox_network);
         row(t("is_electrical_wiring"),     pdfData.wallbox_electrical);
+        row(t("is_evc_steuve_limit"),      pdfData.wallbox_steuve_limit);
+    }
+
+    // ── Generator ──
+    if(pdfData.generator_show) {
+        sectionHeader(t("is_section_generator"));
+        row(t("is_gen_type"),       pdfData.generator_type);
+        row(t("is_gen_power"),      pdfData.generator_power);
+        row(t("is_gen_auto_start"), pdfData.generator_auto_start);
+        row(t("is_gen_quiet_time"), pdfData.generator_quiet);
+        row(t("is_gen_info"),       pdfData.generator_info);
     }
 
     // ── Confirmation ──
@@ -429,19 +444,20 @@ function buildFormData(authCode, pdfBlob) {
     fd.append("solar_feedinlimitation", d.hasOwnProperty("solar_feedinlimitation") && d["solar_feedinlimitation"] != "" ? d["solar_feedinlimitation"] : String(totalWp > 0 ? Math.round(injWp / totalWp * 100) : 0));
 
     if(d.hasOwnProperty("solar_info")) fd.append("solar_info", d["solar_info"]);
+    if(d.hasOwnProperty("generator_info")) fd.append("generator_info", d["generator_info"]);
     if(d.hasOwnProperty("note"      )) fd.append("note",       d["note"      ]);
 
     if(d.hasOwnProperty("box_apikey"      ) && d["box_apikey"      ] != "") fd.append("box_apikey"      , d["box_apikey"      ]);
     if(d.hasOwnProperty("box_serial"      ) && d["box_serial"      ] != "") fd.append("box_serial"      , d["box_serial"      ]);
     if(d.hasOwnProperty("box_partnumber"  ) && d["box_partnumber"  ] != "") fd.append("box_partnumber"  , d["box_partnumber"  ]);
-    if(d.hasOwnProperty("software_version") && d["software_version"] != "") fd.append("software_version", d["software_version"]);
+    fd.append("software_version", d["software_version"] || softwareVersion); // never empty — cloud requires it
 
     // Battery
     const bt = d["battery_type"];
     if(bt === "lifepo") {
         fd.append("has_battery",     "1");
         fd.append("battery_type",    "lifepo");
-        fd.append("battery_voltage", boxType === "livex" ? "51" : "48");
+        if(d.hasOwnProperty("battery_voltage"      ) && d["battery_voltage"      ] != "") fd.append("battery_voltage"      , d["battery_voltage"      ]);
         if(d.hasOwnProperty("battery_serialnumbers") && d["battery_serialnumbers"] != "") fd.append("battery_serialnumbers", d["battery_serialnumbers"]);
         if(d.hasOwnProperty("battery_bms"          ) && d["battery_bms"          ] != "") fd.append("battery_bms"          , d["battery_bms"          ]);
     } else if(bt === "carbon") {
@@ -575,7 +591,7 @@ $("#btn_reboot").on("click", async () => {
     $("#rebootStatus").html(`<span class="spinner-border spinner-border-sm border-2 me-2" role="status"></span>${t("is_reboot_rebooting")}`).removeClass("d-none");
     try { await $.post("cmd/reboot.php"); } catch {}
     await waitForReboot();
-    $("#rebootStatus").removeClass("text-muted").addClass("text-success").html(`<i class="bi bi-check-circle-fill me-2"></i>${t("is_reboot_success")}`);
+    $("#rebootStatus").removeClass("text-muted").addClass("text-success").html(`<i class="bi bi-check-circle-fill me-2"></i>${t("is_reboot_success")}. ${t("is_reboot_can_close")}`);
     // Button stays disabled; page stays on success screen — installer is done.
 });
 

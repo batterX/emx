@@ -24,7 +24,9 @@ let isGridLoss              = true;
 let iArmUpdateNeeded        = "";
 let iDspUpdateNeeded        = "";
 let iBmsUpdateNeeded        = "";
+let isS3Battery             = false; // i-Series with S3 BAT (Inverter[1101] = 3) — own BMS firmware
 let cMergedUpdateNeeded     = "";
+let cBmsUpdateNeeded        = "";
 let estimatedUpdateDuration = 0;
 let batterySoC              = 0;
 let batteryVoltage          = 0;
@@ -290,8 +292,17 @@ async function step4(settings) {
 
 // MARK: Step 5 — Firmware version check
 
+// R1/R2 version is "aa.bb" or "aa.bb-cc.dd" — compare only the parts that are there
+function isCBmsUpToDate(fw) {
+    const parts = fw.split("-").flatMap(p => p.split("."));
+    return parts.every((v, i) => v === cBmsLatestVersion[i]);
+}
+
 function step5(settings) {
     const modelInt = parseInt(inverterModel, 10);
+
+    // No battery data (SoC and voltage both 0) → leave the battery firmware alone
+    const bmsFw = (batterySoC == 0 && batteryVoltage == 0) ? "" : bmsFirmware;
 
     if (modelInt >= 11001 && modelInt <= 11099) {
         // i-Series: compare ARM, DSP, BMS firmware versions
@@ -306,9 +317,10 @@ function step5(settings) {
         const durationArm   = iArmEstimatedDuration;
         const durationDsp   = inverterModel >= "11020" ? iDspLgEstimatedDuration : iDspSmEstimatedDuration;
 
-        const currentBms    = bmsFirmware ? bmsFirmware.split(".") : [];
-        const newBms        = [iBmsLatestVersion[0], iBmsLatestVersion[1]];
-        const durationBms   = iBmsEstimatedDuration;
+        isS3Battery         = settings?.["Inverter"]?.["1101"]?.["s1"] == "3";
+        const currentBms    = bmsFw ? bmsFw.split(".") : [];
+        const newBms        = isS3Battery ? [iBmsS3LatestVersion[0], iBmsS3LatestVersion[1]] : [iBmsLatestVersion[0], iBmsLatestVersion[1]];
+        const durationBms   = isS3Battery ? iBmsS3EstimatedDuration : iBmsEstimatedDuration;
 
         const newVersionInv = `V${newArm[0]}.${newDsp[0]}.${firstPart[2]}.${firstPart[3]}-V${newArm[1]}.${newDsp[1]}.${secondPart[2]}.${secondPart[3]}`;
         const newVersionBms = `${newBms[0]}.${newBms[1]}`;
@@ -319,14 +331,14 @@ function step5(settings) {
 
         iArmUpdateNeeded = isArmUpToDate ? "" : `${newArm[0]}(${newArm[1]})`;
         iDspUpdateNeeded = isDspUpToDate ? "" : `${newDsp[0]}(${newDsp[1]})`;
-        iBmsUpdateNeeded = isBmsUpToDate ? "" : `${newBms[0]}${newBms[1]}`;
+        iBmsUpdateNeeded = isBmsUpToDate ? "" : (isS3Battery ? `${newBms[0]}(${newBms[1]})` : `${newBms[0]}${newBms[1]}`);
         estimatedUpdateDuration = (isArmUpToDate ? 0 : durationArm) + (isDspUpToDate ? 0 : durationDsp) + (isBmsUpToDate ? 0 : durationBms);
 
         if (currentBms.length === 0) {
             $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}`);
             $("#latestVersion").html(`<small>INVERTER</small><br>${newVersionInv}`);
         } else {
-            $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}<br><small>BMS</small><br>${bmsFirmware}`);
+            $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}<br><small>BMS</small><br>${bmsFw}`);
             $("#latestVersion").html(`<small>INVERTER</small><br>${newVersionInv}<br><small>BMS</small><br>${newVersionBms}`);
         }
         $("#estimatedDuration").text(`${estimatedUpdateDuration} min`);
@@ -337,7 +349,7 @@ function step5(settings) {
             $("#firmwareUpdate").removeClass("d-none");
         }
     } else if (modelInt >= 11101 && modelInt <= 11199) {
-        // c-Series: single merged firmware update
+        // c-Series: single merged firmware update + R1/R2 battery
         const invParts   = inverterFirmware.split("-");
         const firstPart  = invParts[0].split(".");
         const secondPart = invParts[1].split(".");
@@ -350,16 +362,27 @@ function step5(settings) {
         const isUpToDate = aa === cMergedLatestVersion[0] && bb === cMergedLatestVersion[1]
                         && cc === cMergedLatestVersion[2] && dd === cMergedLatestVersion[3];
 
+        // R1/R2 battery: settings hold "aa.bb" or "aa.bb-cc.dd"
+        const isBmsUpToDate = !bmsFw || isCBmsUpToDate(bmsFw);
+        const hasBmsFullVer = bmsFw.includes("-");
+
         cMergedUpdateNeeded     = isUpToDate ? "" : `${cMergedLatestVersion[0]}${cMergedLatestVersion[1]}-${cMergedLatestVersion[2]}${cMergedLatestVersion[3]}`;
-        estimatedUpdateDuration = isUpToDate ? 0 : cMergedEstimatedDuration;
+        cBmsUpdateNeeded        = isBmsUpToDate ? "" : `${cBmsLatestVersion[0]}${cBmsLatestVersion[1]}-${cBmsLatestVersion[2]}${cBmsLatestVersion[3]}`;
+        estimatedUpdateDuration = (isUpToDate ? 0 : cMergedEstimatedDuration) + (isBmsUpToDate ? 0 : cBmsEstimatedDuration);
 
-        const newVersion = `V${cMergedLatestVersion[0]}.${cMergedLatestVersion[2]}.${firstPart[2]}.${firstPart[3]}-V${cMergedLatestVersion[1]}.${cMergedLatestVersion[3]}.${secondPart[2]}.${secondPart[3]}`;
+        const newVersion    = `V${cMergedLatestVersion[0]}.${cMergedLatestVersion[2]}.${firstPart[2]}.${firstPart[3]}-V${cMergedLatestVersion[1]}.${cMergedLatestVersion[3]}.${secondPart[2]}.${secondPart[3]}`;
+        const newVersionBms = `${cBmsLatestVersion[0]}.${cBmsLatestVersion[1]}` + (hasBmsFullVer ? `-${cBmsLatestVersion[2]}.${cBmsLatestVersion[3]}` : "");
 
-        $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}`);
-        $("#latestVersion").html(`<small>INVERTER</small><br>${newVersion}`);
-        $("#estimatedDuration").text(`${cMergedEstimatedDuration} min`);
+        if (!bmsFw) {
+            $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}`);
+            $("#latestVersion").html(`<small>INVERTER</small><br>${newVersion}`);
+        } else {
+            $("#installedVersion").html(`<small>INVERTER</small><br>${inverterFirmware}<br><small>BMS</small><br>${bmsFw}`);
+            $("#latestVersion").html(`<small>INVERTER</small><br>${newVersion}<br><small>BMS</small><br>${newVersionBms}`);
+        }
+        $("#estimatedDuration").text(`${estimatedUpdateDuration} min`);
 
-        if (isUpToDate) {
+        if (isUpToDate && isBmsUpToDate) {
             showReady(true);
         } else {
             $("#firmwareUpdate").removeClass("d-none");
@@ -374,6 +397,34 @@ function showReady(showFirmwareStatus) {
     if (showFirmwareStatus) $("#firmwareUpToDate").removeClass("d-none");
     $("#gridStandardCard").removeClass("d-none");
     $("#btn_continue").removeClass("d-none").prop("disabled", false);
+    autoApplyImportedGridStandard();
+}
+
+// Auto-apply the imported grid standard (if any) once the grid card is visible.
+// Pre-selects the imported value in both selects, then fires applyMachineModel() which shows the
+// spinner + reloads the page after the change confirms.
+// Skipped when: already applied this session, no import, imported matches current, or imported
+// value isn't in the inverter's supported list. The "applied" flag persists until customer_info is
+// re-visited (which unsets it), so a manual change by the installer after auto-apply is respected.
+async function autoApplyImportedGridStandard() {
+    if (importedGridStandardApplied) return;
+    const importedStandard = importedProject?.grid?.standard;
+    if (!importedStandard || importedStandard === gridStandard) return;
+    if ($(`#machineModelSelect option[value='${importedStandard}']`).length === 0) return;
+
+    $("#germanyMachineModelSelect").val(importedStandard);
+    $("#machineModelSelect"       ).val(importedStandard);
+
+    // Disable Continue synchronously — showReady() just enabled it, and the awaits below leave a
+    // window where the installer could navigate to system_setup with the OLD grid_standard in session.
+    $("#btn_continue").prop("disabled", true);
+
+    // Mark as consumed BEFORE firing apply, so a failure mid-way still doesn't loop-apply on reload.
+    try {
+        await $.post({ url: "cmd/session.php", data: { imported_grid_standard_applied: "1" } });
+    } catch { /* non-blocking; worst case we auto-apply once more on next visit */ }
+
+    await applyMachineModel(importedStandard);
 }
 
 
@@ -499,7 +550,7 @@ async function waitForBatteryVoltage() {
 }
 
 async function verifyFirmwareUpdate(expectedVersion, firmwareType) {
-    const maxWait = (firmwareType === "bms" ? 7 : 2) * 60000;
+    const maxWait = (firmwareType === "bms" || firmwareType === "bms-s3" || firmwareType === "c-bms" ? 7 : 2) * 60000;
     const startTime = Date.now();
     while (Date.now() - startTime < maxWait) {
         try {
@@ -516,11 +567,12 @@ async function verifyFirmwareUpdate(expectedVersion, firmwareType) {
                         if (`${a[1]}(${b[1]})` === expectedVersion) return true;
                     }
                 }
-            } else if (firmwareType === "bms") {
+            } else if (firmwareType === "bms" || firmwareType === "bms-s3") {
                 const fw = r?.["Inverter"]?.["1103"]?.["s1"];
                 if (fw) {
                     const parts = fw.split(".");
-                    if (`${parts[0]}${parts[1]}` === expectedVersion) return true;
+                    const current = firmwareType === "bms" ? `${parts[0]}${parts[1]}` : `${parts[0]}(${parts[1]})`;
+                    if (current === expectedVersion) return true;
                 }
             } else if (firmwareType === "c-merged") {
                 const fw = r?.["Inverter"]?.["3"]?.["s1"];
@@ -531,6 +583,9 @@ async function verifyFirmwareUpdate(expectedVersion, firmwareType) {
                     const current = `${a[0].substring(1)}${b[0].substring(1)}-${a[1]}${b[1]}`;
                     if (current === expectedVersion) return true;
                 }
+            } else if (firmwareType === "c-bms") {
+                const fw = r?.["Inverter"]?.["1103"]?.["s1"];
+                if (fw && isCBmsUpToDate(fw)) return true;
             }
             await sleep(5000);
         } catch { await sleep(5000); }
@@ -584,12 +639,13 @@ async function performFirmwareUpdates() {
         }
 
         if (iBmsUpdateNeeded) {
-            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: "i-bms", version: iBmsUpdateNeeded } });
+            const bmsType = isS3Battery ? "i-bms-s3" : "i-bms";
+            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: bmsType, version: iBmsUpdateNeeded } });
             if (r !== "1") throw new Error("Failed to start BMS firmware update");
             await waitForFirmwareUpdateComplete();
             if (!await waitForProgramRestart()) throw new Error("Program did not restart after BMS update");
             if (!await waitForBatteryVoltage()) throw new Error("Battery did not reconnect after BMS update");
-            if (!await verifyFirmwareUpdate(iBmsUpdateNeeded, "bms")) throw new Error("BMS firmware verification failed");
+            if (!await verifyFirmwareUpdate(iBmsUpdateNeeded, isS3Battery ? "bms-s3" : "bms")) throw new Error("BMS firmware verification failed");
         }
 
         if (cMergedUpdateNeeded) {
@@ -598,6 +654,15 @@ async function performFirmwareUpdates() {
             await waitForFirmwareUpdateComplete();
             if (!await waitForProgramRestart()) throw new Error("Program did not restart after c-Series firmware update");
             if (!await verifyFirmwareUpdate(cMergedUpdateNeeded, "c-merged")) throw new Error("c-Series firmware verification failed");
+        }
+
+        if (cBmsUpdateNeeded) {
+            const r = await $.post({ url: "cmd/fwupdate.php", data: { action: "start", type: "c-bms", version: cBmsUpdateNeeded } });
+            if (r !== "1") throw new Error("Failed to start BMS firmware update");
+            await waitForFirmwareUpdateComplete();
+            if (!await waitForProgramRestart()) throw new Error("Program did not restart after BMS update");
+            if (!await waitForBatteryVoltage()) throw new Error("Battery did not reconnect after BMS update");
+            if (!await verifyFirmwareUpdate(cBmsUpdateNeeded, "c-bms")) throw new Error("BMS firmware verification failed");
         }
 
         window.removeEventListener("beforeunload", preventPageLeave);

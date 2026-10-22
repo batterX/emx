@@ -15,6 +15,16 @@ if(empty($_SESSION["installer_email"])) { header("location: installer_login.php"
 // Use for country-specific grid standard UI
 $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["installation_country"] : "de";
 
+// Imported batterX Project (if any) — normalized to safe JS via json_encode round-trip
+$importedProjectJs = "null";
+if (!empty($_SESSION["imported_project"])) {
+    $decoded = json_decode($_SESSION["imported_project"], true);
+    if ($decoded !== null) $importedProjectJs = json_encode($decoded);
+}
+
+// Session flag: has the imported grid standard already been auto-applied this session?
+$importedGridStandardApplied = !empty($_SESSION["imported_grid_standard_applied"]);
+
 ?>
 
 
@@ -232,13 +242,20 @@ $installationCountry = isset($_SESSION["installation_country"]) ? $_SESSION["ins
         const iDspSmLatestVersion      = <?php echo json_encode($iDspSmLatestVersion); ?>;
         const iDspLgLatestVersion      = <?php echo json_encode($iDspLgLatestVersion); ?>;
         const iBmsLatestVersion        = <?php echo json_encode($iBmsLatestVersion); ?>;
+        const iBmsS3LatestVersion      = <?php echo json_encode($iBmsS3LatestVersion); ?>;
         const iArmEstimatedDuration    = <?php echo json_encode($iArmEstimatedDuration); ?>;
         const iDspSmEstimatedDuration  = <?php echo json_encode($iDspSmEstimatedDuration); ?>;
         const iDspLgEstimatedDuration  = <?php echo json_encode($iDspLgEstimatedDuration); ?>;
         const iBmsEstimatedDuration    = <?php echo json_encode($iBmsEstimatedDuration); ?>;
+        const iBmsS3EstimatedDuration  = <?php echo json_encode($iBmsS3EstimatedDuration); ?>;
 
         const cMergedLatestVersion     = <?php echo json_encode($cMergedLatestVersion); ?>;
         const cMergedEstimatedDuration = <?php echo json_encode($cMergedEstimatedDuration); ?>;
+        const cBmsLatestVersion        = <?php echo json_encode($cBmsLatestVersion); ?>;
+        const cBmsEstimatedDuration    = <?php echo json_encode($cBmsEstimatedDuration); ?>;
+
+        const importedProject             = <?php echo $importedProjectJs; ?>;
+        const importedGridStandardApplied = <?php echo $importedGridStandardApplied ? 'true' : 'false'; ?>;
     </script>
 
     <script src="js/system_detect.js?v=<?php echo $versionHash; ?>"></script>
