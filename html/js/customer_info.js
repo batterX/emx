@@ -453,7 +453,7 @@ function overlayImportedCustomer() {
     tryAutoGeocode();
 }
 
-// Drop zone + hidden file input (guarded server-side via $canImportProject)
+// Drop zone + hidden file input (shown for every installer)
 (function() {
     const $dropZone = $("#importProjectDropZone");
     if (!$dropZone.length) return;
