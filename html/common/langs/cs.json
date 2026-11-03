@@ -55,6 +55,8 @@
     "ci_error_no_access":      "Nemáte přístup k tomuto zákazníkovi. Prosím použijte jinou e-mailovou adresu!",
     "ci_location_map":             "Místo instalace",
     "ci_use_installation_address": "Použít adresu instalace",
+    "ci_location_not_found":       "Adresu se nepodařilo na mapě najít. Klikněte prosím na mapu a nastavte místo instalace.",
+    "ci_location_required":        "Klikněte prosím na mapu a nastavte místo instalace.",
     "ci_import_title":             "Importovat soubor",
     "ci_import_hint":              "Přetáhněte sem soubor projektu batterX nebo klikněte",
     "ci_import_invalid_file":      "Vyberte prosím soubor .batterx",

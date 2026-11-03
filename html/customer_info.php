@@ -189,6 +189,7 @@ unset($_SESSION["imported_grid_standard_applied"]);
                         </small>
                         <small class="text-muted text-nowrap" id="installationLocationCoords">&nbsp;</small>
                     </div>
+                    <p id="installationLocationHint" class="d-none text-danger small lh-sm mt-3 mb-0"></p>
                 </div>
                 <input id="installationLat" type="hidden">
                 <input id="installationLon" type="hidden">

@@ -4,6 +4,9 @@ let installation_data  = {};
 let installationMap    = null;
 let installationMarker = null;
 
+let isGeocoding   = false; // address lookup running — location hint stays hidden
+let geocodeFailed = false; // last lookup found nothing or failed
+
 function validateForm() {
     const sameAddress = $("#sameAddress").is(":checked");
 
@@ -30,6 +33,14 @@ function validateForm() {
     const coordsOk = $("#installationLat").val() !== "" && $("#installationLon").val() !== "";
 
     $("#btn_continue").prop("disabled", !customerOk || !installationOk || !installerOk || !hasAccessToUser || !coordsOk);
+
+    updateLocationHint(customerOk && installationOk && installerOk && hasAccessToUser, coordsOk);
+}
+
+// Location hint: no marker yet and the lookup failed, or everything else is filled in
+function updateLocationHint(restComplete, coordsOk) {
+    const show = !coordsOk && !isGeocoding && (geocodeFailed || restComplete);
+    $("#installationLocationHint").text(t(geocodeFailed ? "ci_location_not_found" : "ci_location_required")).toggleClass("d-none", !show);
 }
 
 // Map: update hidden inputs + coords display, then revalidate
@@ -94,6 +105,10 @@ async function geocodeInstallationAddress() {
     const $btn = $("#btnUseInstallationAddress");
     $btn.prop("disabled", true);
 
+    isGeocoding   = true;
+    geocodeFailed = false;
+    validateForm();
+
     try {
         const q = [address, zip, city, country].filter(Boolean).join(", ");
         const results = await $.get({
@@ -103,11 +118,22 @@ async function geocodeInstallationAddress() {
 
         if(results && results.length > 0) {
             setInstallationMarker(parseFloat(results[0].lat), parseFloat(results[0].lon));
+        } else {
+            geocodeFailed = true;
+            // Move the map to the town (no marker) so the installer only has to click the house
+            await sleep(1000); // Nominatim allows max 1 request per second
+            const town = await $.get({
+                url: "https://nominatim.openstreetmap.org/search",
+                data: { format: "json", limit: 1, q: [zip, city, country].filter(Boolean).join(", ") }
+            });
+            if(town && town.length > 0 && installationMap) installationMap.setView([parseFloat(town[0].lat), parseFloat(town[0].lon)], 14);
         }
     } catch {
-        // Silently ignore — user can still drag the marker manually
+        geocodeFailed = true;
     } finally {
+        isGeocoding = false;
         $btn.prop("disabled", false);
+        validateForm();
     }
 }
 

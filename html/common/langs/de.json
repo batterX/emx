@@ -55,6 +55,8 @@
     "ci_error_no_access":      "Sie haben keinen Zugang zu diesem Kunden. Bitte verwenden Sie eine andere E-Mail-Adresse!",
     "ci_location_map":             "Installationsstandort",
     "ci_use_installation_address": "Installationsadresse verwenden",
+    "ci_location_not_found":       "Die Adresse konnte auf der Karte nicht gefunden werden. Bitte klicken Sie auf die Karte, um den Installationsstandort festzulegen.",
+    "ci_location_required":        "Bitte klicken Sie auf die Karte, um den Installationsstandort festzulegen.",
     "ci_import_title":             "Datei importieren",
     "ci_import_hint":              "batterX-Projektdatei hierher ziehen oder klicken",
     "ci_import_invalid_file":      "Bitte wählen Sie eine .batterx-Datei",
